@@ -4,26 +4,26 @@
 
 @layer base {
   :root {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 4%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 352 82% 38%; /* Rouge Rubis #B11226 */
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 65%;
-    --accent: 210 100% 56%; /* Bleu Électrique #1E90FF */
-    --accent-foreground: 0 0% 98%;
+    --background: 0 0% 0%; /* Noir Absolu OLED */
+    --foreground: 0 0% 100%;
+    --card: 0 100% 2%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 0%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 351 100% 45%; /* Rouge Rubis Néon #E30022 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 5%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 210 100% 56%; /* Bleu Électrique pour les données */
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 352 82% 38%;
-    --radius: 1.5rem;
+    --border: 351 100% 45% / 0.2; /* Bordure rouge rubis 20% */
+    --input: 0 0% 10%;
+    --ring: 351 100% 45%;
+    --radius: 1.25rem;
   }
 }
 
@@ -37,11 +37,18 @@
   }
 }
 
-.glass {
-  background: rgba(10, 10, 10, 0.7);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+@layer components {
+  .cyber-card {
+    @apply bg-gradient-to-br from-black to-[#2A0000] border border-primary/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)];
+  }
+  
+  .neon-glow {
+    @apply shadow-[0_0_20px_rgba(227,0,34,0.4)];
+  }
+
+  .neon-text {
+    text-shadow: 0 0 10px rgba(227,0,34,0.5);
+  }
 }
 
 .progress-ring-circle {

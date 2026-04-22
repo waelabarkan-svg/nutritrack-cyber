@@ -41,25 +41,27 @@ export function HydrationCard() {
   const progress = Math.min(glasses / target, 1);
 
   return (
-    <Card className="glass overflow-hidden relative p-6 border-none shadow-2xl">
+    <Card className="cyber-card overflow-hidden relative p-6">
       <div 
-        className="absolute bottom-0 left-0 right-0 bg-accent/10 transition-all duration-1000 ease-out" 
+        className="absolute bottom-0 left-0 right-0 bg-accent/20 transition-all duration-1000 ease-out shadow-[0_-5px_15px_rgba(30,144,255,0.2)]" 
         style={{ height: `${progress * 100}%` }}
       />
       <div className="relative z-10">
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-2">
             <Droplets className="text-accent" size={24} />
-            <h3 className="font-bold text-lg">Hydratation</h3>
+            <h3 className="font-bold text-lg uppercase tracking-tighter">Flux Hydrique</h3>
           </div>
-          <span className="text-accent font-black text-xl">{glasses} <span className="text-sm font-normal text-muted-foreground">/ {target} verres</span></span>
+          <span className="text-accent font-black text-2xl tracking-tighter shadow-accent/20 drop-shadow-sm">
+            {glasses} <span className="text-sm font-normal text-muted-foreground">/ {target} UNITÉS</span>
+          </span>
         </div>
 
         <div className="flex justify-center gap-4 mt-6">
           <Button 
             variant="outline" 
             size="icon" 
-            className="rounded-xl border-accent/20 text-accent hover:bg-accent/10 h-12 w-12"
+            className="rounded-xl border-accent/20 text-accent hover:bg-accent/10 h-12 w-12 bg-black"
             onClick={() => updateHydration(glasses - 1)}
           >
             <Minus size={20} />
@@ -67,7 +69,7 @@ export function HydrationCard() {
           <Button 
             variant="outline" 
             size="icon" 
-            className="rounded-xl bg-accent/10 border-accent/20 text-accent hover:bg-accent/20 w-16 h-16"
+            className="rounded-xl bg-accent/10 border-accent/30 text-accent hover:bg-accent/20 w-16 h-16 shadow-[0_0_15px_rgba(30,144,255,0.3)]"
             onClick={() => updateHydration(glasses + 1)}
           >
             <Plus size={28} />
