@@ -2,28 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, setDoc } from 'firebase/firestore';
+import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '@/firebase/config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
-
-// Config forcée en dur pour éliminer le bug "api-key-not-valid"
-const firebaseConfig = {
-  apiKey: 'AIzaSyA4qB0gN6V7L00JhutP1rwSiRLF9sTUXsU',
-  authDomain: 'studio-7017378573-cff64.firebaseapp.com',
-  projectId: 'studio-7017378573-cff64',
-  storageBucket: 'studio-7017378573-cff64.firebasestorage.app',
-  messagingSenderId: '328031842182',
-  appId: '1:328031842182:web:508c94a3587a90eb464607'
-};
-
-// Initialisation sécurisée locale à la page pour bypasser les erreurs globales
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const auth = getAuth(app);
-const db = getFirestore(app);
 
 export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -34,6 +19,7 @@ export default function LoginPage() {
   const router = useRouter();
 
   useEffect(() => {
+    // Utilisation de l'instance auth centralisée
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         router.push('/');
