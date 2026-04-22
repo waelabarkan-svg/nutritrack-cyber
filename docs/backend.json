@@ -1,0 +1,65 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User profile data including personal stats and nutrition goals.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "gender": { "type": "string", "enum": ["male", "female"] },
+        "age": { "type": "number" },
+        "height": { "type": "number" },
+        "weight": { "type": "number" },
+        "targetWeight": { "type": "number" },
+        "activityLevel": { "type": "string", "enum": ["sedentary", "light", "moderate", "active", "very_active"] },
+        "goal": { "type": "string", "enum": ["lose", "maintain", "gain"] }
+      },
+      "required": ["name", "email"]
+    },
+    "Meal": {
+      "title": "Meal Entry",
+      "description": "A food item logged by the user.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "calories": { "type": "number" },
+        "protein": { "type": "number" },
+        "carbs": { "type": "number" },
+        "fat": { "type": "number" },
+        "date": { "type": "string", "format": "date" },
+        "type": { "type": "string", "enum": ["breakfast", "lunch", "dinner", "snack"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "calories", "date", "type"]
+    },
+    "Hydration": {
+      "title": "Hydration Entry",
+      "description": "Amount of water consumed on a specific day.",
+      "type": "object",
+      "properties": {
+        "amount": { "type": "number" }
+      },
+      "required": ["amount"]
+    }
+  },
+  "auth": {
+    "providers": ["email"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile documents."
+    },
+    "/users/{userId}/meals/{mealId}": {
+      "schema": { "$ref": "#/entities/Meal" },
+      "description": "Subcollection for user food logs."
+    },
+    "/users/{userId}/hydration/{date}": {
+      "schema": { "$ref": "#/entities/Hydration" },
+      "description": "Daily hydration tracking documents."
+    }
+  }
+}

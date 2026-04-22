@@ -1,3 +1,16 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "app-logo",
+      "description": "NutriTrack minimalist logo",
+      "imageUrl": "https://picsum.photos/seed/nutri1/200/200",
+      "imageHint": "nutrition leaf"
+    },
+    {
+      "id": "hero-dashboard",
+      "description": "Healthy food and tracking",
+      "imageUrl": "https://picsum.photos/seed/nutri2/800/400",
+      "imageHint": "healthy food"
+    }
+  ]
 }
