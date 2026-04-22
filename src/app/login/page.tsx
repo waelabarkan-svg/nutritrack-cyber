@@ -37,16 +37,16 @@ export default function LoginPage() {
           email,
           createdAt: new Date().toISOString()
         });
-        toast({ title: "Identity Initialized", description: "Biometric link established." });
+        toast({ title: "IDENTITY INITIALIZED", description: "Biometric link established." });
       } else {
         await signInWithEmailAndPassword(auth, email, password);
-        toast({ title: "Access Granted", description: "Decryption successful." });
+        toast({ title: "ACCESS GRANTED", description: "Decryption successful." });
       }
       router.push('/');
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Access Denied",
+        title: "ACCESS DENIED",
         description: error.message || "Credential validation failed."
       });
     }
@@ -56,20 +56,20 @@ export default function LoginPage() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-black text-white selection:bg-primary/30">
-      <div className="mb-12 text-center space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-        <h1 className="text-3xl font-black text-primary tracking-[0.2em] uppercase neon-text-red">NutriTrack</h1>
-        <div className="h-[1px] w-16 bg-gradient-to-r from-transparent via-primary/50 to-transparent mx-auto" />
-        <p className="text-[8px] font-black text-primary/30 uppercase tracking-[0.8em]">Core OS v2.0</p>
+      <div className="mb-10 text-center space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+        <h1 className="text-xl font-black text-primary tracking-[0.4em] uppercase neon-text-red">NutriTrack</h1>
+        <div className="h-[1px] w-12 bg-gradient-to-r from-transparent via-primary/50 to-transparent mx-auto" />
+        <p className="text-[7px] font-black text-primary/30 uppercase tracking-[0.8em]">Core OS v2.0</p>
       </div>
 
-      <div className="w-full max-w-sm p-8 rounded-[1rem] bg-black/40 backdrop-blur-xl border border-primary/20 shadow-[0_0_40px_rgba(255,0,0,0.15)] animate-in zoom-in-95 duration-700 relative">
+      <div className="w-full max-w-sm p-8 bg-black/60 backdrop-blur-2xl border border-primary/20 shadow-[0_15px_50px_-15px_rgba(255,0,0,0.3)] animate-in zoom-in-95 duration-700 relative">
         <form onSubmit={handleAuth} className="space-y-8">
           {isSignUp && (
             <div className="space-y-2">
               <Label className="text-[9px] uppercase font-black tracking-widest text-muted-foreground ml-1">Designation</Label>
               <Input 
                 type="text" 
-                className="bg-black border-white/10 h-14 font-black uppercase rounded-none focus:border-primary/50 transition-all text-sm tracking-wider" 
+                className="bg-black/40 border-white/10 h-14 font-black uppercase rounded-none focus:border-primary/50 transition-all text-sm tracking-wider" 
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -80,7 +80,7 @@ export default function LoginPage() {
             <Label className="text-[9px] uppercase font-black tracking-widest text-muted-foreground ml-1">Email Vector</Label>
             <Input 
               type="email" 
-              className="bg-black border-white/10 h-14 font-black rounded-none focus:border-primary/50 transition-all text-sm tracking-wider" 
+              className="bg-black/40 border-white/10 h-14 font-black rounded-none focus:border-primary/50 transition-all text-sm tracking-wider" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -90,13 +90,13 @@ export default function LoginPage() {
             <Label className="text-[9px] uppercase font-black tracking-widest text-muted-foreground ml-1">Access Key</Label>
             <Input 
               type="password" 
-              className="bg-black border-white/10 h-14 font-black rounded-none focus:border-primary/50 transition-all text-sm tracking-wider" 
+              className="bg-black/40 border-white/10 h-14 font-black rounded-none focus:border-primary/50 transition-all text-sm tracking-wider" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
-          <Button type="submit" className="w-full h-16 font-black text-sm tracking-[0.4em] border-primary neon-glow-red bg-black hover:bg-primary/5 transition-all mt-4 rounded-none">
+          <Button type="submit" className="w-full h-16 font-black text-sm tracking-[0.4em] border-primary neon-glow-red bg-black hover:bg-primary/10 transition-all mt-4 rounded-none border">
             {isSignUp ? 'INITIALIZE' : 'DECRYPT'}
           </Button>
         </form>

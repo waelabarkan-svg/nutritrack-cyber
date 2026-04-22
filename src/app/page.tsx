@@ -49,7 +49,7 @@ export default function Home() {
   if (authLoading || statsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-black">
-        <div className="w-8 h-8 border border-primary border-t-transparent animate-spin shadow-[0_0_10px_rgba(255,0,0,0.5)]"></div>
+        <div className="w-8 h-8 border border-primary border-t-transparent animate-spin shadow-[0_0_15px_rgba(255,0,0,0.5)]"></div>
       </div>
     );
   }
@@ -72,7 +72,7 @@ export default function Home() {
       <header className="flex justify-between items-start mb-16">
         <div className="space-y-1">
           <p className="text-primary/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-red">Protocol Active</p>
-          <h1 className="text-xl font-black tracking-tighter neon-text-red uppercase">NutriTrack System</h1>
+          <h1 className="text-xl font-black tracking-tighter neon-text-red uppercase">NutriTrack</h1>
         </div>
         <div className="flex flex-col items-end">
           <div className="w-10 h-10 border border-primary/40 bg-black flex items-center justify-center shadow-[0_0_10px_rgba(255,0,0,0.2)]">
@@ -85,7 +85,7 @@ export default function Home() {
       <section className="flex flex-col items-center mb-16 relative py-4">
         <CircularProgress 
           size={240} 
-          strokeWidth={2} 
+          strokeWidth={1} 
           progress={calProgress} 
           color="#FF0000"
         >
@@ -102,7 +102,7 @@ export default function Home() {
 
       <section className="grid grid-cols-3 gap-6 mb-12">
         <div className="flex flex-col items-center text-center space-y-3">
-          <div className="w-10 h-10 border border-primary/30 flex items-center justify-center bg-black">
+          <div className="w-10 h-10 border border-primary/30 flex items-center justify-center bg-black shadow-[0_0_10px_rgba(255,0,0,0.2)]">
              <Beef className="text-primary" size={16} />
           </div>
           <div className="space-y-1">
@@ -111,7 +111,7 @@ export default function Home() {
           </div>
         </div>
         <div className="flex flex-col items-center text-center space-y-3 border-x border-white/5">
-          <div className="w-10 h-10 border border-accent/30 flex items-center justify-center bg-black">
+          <div className="w-10 h-10 border border-accent/30 flex items-center justify-center bg-black shadow-[0_0_10px_rgba(0,212,255,0.2)]">
              <Wheat className="text-accent" size={16} />
           </div>
           <div className="space-y-1">
@@ -120,7 +120,7 @@ export default function Home() {
           </div>
         </div>
         <div className="flex flex-col items-center text-center space-y-3">
-          <div className="w-10 h-10 border border-accent/30 flex items-center justify-center bg-black">
+          <div className="w-10 h-10 border border-accent/30 flex items-center justify-center bg-black shadow-[0_0_10px_rgba(0,212,255,0.2)]">
              <Droplet className="text-accent" size={16} />
           </div>
           <div className="space-y-1">

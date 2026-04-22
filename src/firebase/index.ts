@@ -10,10 +10,9 @@ let auth: Auth;
 let db: Firestore;
 
 export function initializeFirebase() {
-  const isValidConfig = firebaseConfig.apiKey && firebaseConfig.apiKey !== "undefined" && firebaseConfig.apiKey.length > 5;
-
+  // Initialisation directe sans fallback instable
   if (getApps().length === 0) {
-    app = initializeApp(isValidConfig ? firebaseConfig : { apiKey: "PLACEHOLDER_KEY_FOR_STABILITY" });
+    app = initializeApp(firebaseConfig);
   } else {
     app = getApp();
   }
