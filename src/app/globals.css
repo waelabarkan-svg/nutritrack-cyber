@@ -23,7 +23,7 @@
     --border: 0 0% 15%;
     --input: 0 0% 5%;
     --ring: 0 100% 50%;
-    --radius: 0rem; /* Style angulaire luxe */
+    --radius: 1rem; /* 16px par défaut */
   }
 }
 
@@ -39,35 +39,35 @@
 
 @layer components {
   .cyber-card-red {
-    @apply bg-black border border-primary/30 shadow-[0_0_8px_rgba(255,0,0,0.15)] transition-all duration-500;
+    @apply bg-black border border-primary/30 shadow-[0_0_15px_rgba(255,0,0,0.2)] transition-all duration-500 rounded-[16px];
   }
   
   .cyber-card-blue {
-    @apply bg-black border border-accent/30 shadow-[0_0_8px_rgba(0,212,255,0.15)] transition-all duration-500;
+    @apply bg-black border border-accent/30 shadow-[0_0_15px_rgba(0,212,255,0.2)] transition-all duration-500 rounded-[16px];
   }
 
   .neon-glow-red {
-    @apply shadow-[0_0_15px_rgba(255,0,0,0.4)];
+    @apply shadow-[0_0_20px_rgba(255,0,0,0.5)];
   }
 
   .neon-glow-blue {
-    @apply shadow-[0_0_15px_rgba(0,212,255,0.4)];
+    @apply shadow-[0_0_20px_rgba(0,212,255,0.5)];
   }
 
   .neon-text-red {
-    text-shadow: 0 0 10px rgba(255,0,0,0.7);
+    text-shadow: 0 0 12px rgba(255,0,0,0.8);
   }
 
   .neon-text-blue {
-    text-shadow: 0 0 10px rgba(0,212,255,0.7);
+    text-shadow: 0 0 12px rgba(0,212,255,0.8);
   }
 
   .laser-line-h {
-    @apply h-[1px] w-full bg-gradient-to-r from-transparent via-primary/30 to-transparent my-8;
+    @apply h-[1px] w-full bg-gradient-to-r from-transparent via-primary/40 to-transparent my-8;
   }
 
   .laser-line-h-blue {
-    @apply h-[1px] w-full bg-gradient-to-r from-transparent via-accent/30 to-transparent my-8;
+    @apply h-[1px] w-full bg-gradient-to-r from-transparent via-accent/40 to-transparent my-8;
   }
 }
 
