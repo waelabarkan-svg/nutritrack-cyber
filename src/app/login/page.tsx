@@ -47,7 +47,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Access Denied",
-        description: error.message
+        description: error.message || "Credential validation failed."
       });
     }
   };
@@ -55,48 +55,48 @@ export default function LoginPage() {
   if (loading) return null;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-black text-white">
-      <div className="mb-10 text-center space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-        <h1 className="text-4xl font-black text-primary tracking-tighter uppercase neon-text-red">NutriTrack</h1>
-        <div className="h-[1px] w-12 bg-gradient-to-r from-transparent via-primary to-transparent mx-auto" />
-        <p className="text-[8px] font-black text-primary/40 uppercase tracking-[0.8em]">Core OS v2.0</p>
+    <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-black text-white selection:bg-primary/30">
+      <div className="mb-12 text-center space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+        <h1 className="text-3xl font-black text-primary tracking-[0.2em] uppercase neon-text-red">NutriTrack</h1>
+        <div className="h-[1px] w-16 bg-gradient-to-r from-transparent via-primary/50 to-transparent mx-auto" />
+        <p className="text-[8px] font-black text-primary/30 uppercase tracking-[0.8em]">Core OS v2.0</p>
       </div>
 
-      <div className="w-full max-w-sm p-8 rounded-[2rem] bg-black/60 backdrop-blur-2xl border border-primary/20 shadow-[0_20px_60px_rgba(255,0,0,0.2)] animate-in zoom-in-95 duration-700">
+      <div className="w-full max-w-sm p-8 rounded-[1rem] bg-black/40 backdrop-blur-xl border border-primary/20 shadow-[0_0_40px_rgba(255,0,0,0.15)] animate-in zoom-in-95 duration-700 relative">
         <form onSubmit={handleAuth} className="space-y-8">
           {isSignUp && (
-            <div className="space-y-3">
+            <div className="space-y-2">
               <Label className="text-[9px] uppercase font-black tracking-widest text-muted-foreground ml-1">Designation</Label>
               <Input 
                 type="text" 
-                className="bg-white/5 border-white/10 h-14 font-black uppercase rounded-xl focus:border-primary/50 transition-all" 
+                className="bg-black border-white/10 h-14 font-black uppercase rounded-none focus:border-primary/50 transition-all text-sm tracking-wider" 
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
               />
             </div>
           )}
-          <div className="space-y-3">
+          <div className="space-y-2">
             <Label className="text-[9px] uppercase font-black tracking-widest text-muted-foreground ml-1">Email Vector</Label>
             <Input 
               type="email" 
-              className="bg-white/5 border-white/10 h-14 font-black rounded-xl focus:border-primary/50 transition-all" 
+              className="bg-black border-white/10 h-14 font-black rounded-none focus:border-primary/50 transition-all text-sm tracking-wider" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
-          <div className="space-y-3">
+          <div className="space-y-2">
             <Label className="text-[9px] uppercase font-black tracking-widest text-muted-foreground ml-1">Access Key</Label>
             <Input 
               type="password" 
-              className="bg-white/5 border-white/10 h-14 font-black rounded-xl focus:border-primary/50 transition-all" 
+              className="bg-black border-white/10 h-14 font-black rounded-none focus:border-primary/50 transition-all text-sm tracking-wider" 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
           </div>
-          <Button type="submit" className="w-full h-16 font-black text-base tracking-[0.4em] border-primary neon-glow-red rounded-xl bg-black hover:bg-primary/5 transition-all">
+          <Button type="submit" className="w-full h-16 font-black text-sm tracking-[0.4em] border-primary neon-glow-red bg-black hover:bg-primary/5 transition-all mt-4 rounded-none">
             {isSignUp ? 'INITIALIZE' : 'DECRYPT'}
           </Button>
         </form>

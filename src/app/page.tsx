@@ -41,7 +41,7 @@ export default function Home() {
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
-    } else if (!authLoading && user && !statsLoading && !stats?.weight) {
+    } else if (!authLoading && user && !statsLoading && stats && !stats.weight) {
       router.push('/profile');
     }
   }, [user, authLoading, stats, statsLoading, router]);

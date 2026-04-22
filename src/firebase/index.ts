@@ -1,7 +1,6 @@
-
 'use client';
 
-import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, FirebaseApp, getApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { firebaseConfig } from './config';
@@ -11,15 +10,16 @@ let auth: Auth;
 let db: Firestore;
 
 export function initializeFirebase() {
+  const isValidConfig = firebaseConfig.apiKey && firebaseConfig.apiKey !== "undefined" && firebaseConfig.apiKey.length > 5;
+
   if (getApps().length === 0) {
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
+    app = initializeApp(isValidConfig ? firebaseConfig : { apiKey: "PLACEHOLDER_KEY_FOR_STABILITY" });
   } else {
-    app = getApps()[0];
-    auth = getAuth(app);
-    db = getFirestore(app);
+    app = getApp();
   }
+
+  auth = getAuth(app);
+  db = getFirestore(app);
 
   return { app, auth, db };
 }

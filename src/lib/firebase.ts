@@ -1,5 +1,4 @@
-// This file is now redundant as we use src/firebase/index.ts
-// Exporting the initialized instances from the new location for compatibility
+// This file is deprecated. Please use the centralized Firebase logic in src/firebase/index.ts.
 import { initializeFirebase } from '@/firebase';
 
 const { auth, db } = initializeFirebase();

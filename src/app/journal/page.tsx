@@ -94,7 +94,7 @@ export default function JournalPage() {
               <div className="space-y-2">
                 <Label className="text-[9px] uppercase font-black tracking-[0.3em] text-muted-foreground">Identification</Label>
                 <Input 
-                  className="bg-white/5 border-white/10 h-14 font-black uppercase tracking-wider" 
+                  className="bg-white/5 border-white/10 h-14 font-black uppercase tracking-wider text-white" 
                   placeholder="ITEM DESCRIPTION"
                   value={newMeal.name}
                   onChange={(e) => setNewMeal({...newMeal, name: e.target.value.toUpperCase()})}
@@ -106,7 +106,7 @@ export default function JournalPage() {
                   <Label className="text-[9px] uppercase font-black tracking-[0.3em] text-muted-foreground">Calories (KCAL)</Label>
                   <Input 
                     type="number" 
-                    className="bg-white/5 border-white/10 h-14 font-black"
+                    className="bg-white/5 border-white/10 h-14 font-black text-white"
                     value={newMeal.calories}
                     onChange={(e) => setNewMeal({...newMeal, calories: e.target.value})}
                     required 
@@ -118,7 +118,7 @@ export default function JournalPage() {
                     value={newMeal.type} 
                     onValueChange={(v: any) => setNewMeal({...newMeal, type: v})}
                   >
-                    <SelectTrigger className="bg-white/5 border-white/10 h-14 font-black">
+                    <SelectTrigger className="bg-white/5 border-white/10 h-14 font-black text-white">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-black border-white/10 text-white">
@@ -138,7 +138,7 @@ export default function JournalPage() {
 
       <div className="space-y-16">
         {mealSections.map((section) => {
-          const sectionMeals = (meals || []).filter(m => m.type === section.type);
+          const sectionMeals = (meals || []).filter((m: any) => m.type === section.type);
           const Icon = section.icon;
           return (
             <div key={section.type} className="space-y-6">
@@ -148,8 +148,8 @@ export default function JournalPage() {
               </div>
               
               <div className="space-y-4">
-                {sectionMeals.length > 0 ? sectionMeals.map((meal) => (
-                  <div key={meal.id} className="cyber-card-red p-5 flex justify-between items-center bg-black">
+                {sectionMeals.length > 0 ? sectionMeals.map((meal: any) => (
+                  <div key={meal.id} className="cyber-card-red p-5 flex justify-between items-center bg-black border border-primary/20">
                     <div className="space-y-2">
                       <h3 className="font-black text-sm uppercase tracking-wider">{meal.name}</h3>
                       <div className="flex gap-6 text-[9px] font-black text-muted-foreground uppercase tracking-widest">
