@@ -1,2 +1,3 @@
-// This file is deprecated. All Firebase logic is now centralized in src/firebase/index.ts.
+// Ce fichier est supprimé pour éviter tout conflit.
+// Toute la logique est maintenant dans src/firebase/config.ts
 export {};

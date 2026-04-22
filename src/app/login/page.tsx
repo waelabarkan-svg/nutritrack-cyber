@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useFirestore, useAuth, useUser } from '@/firebase';
+import { db as useFirestore, auth as useAuth } from '@/firebase/config';
+import { useUser } from '@/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
@@ -16,8 +17,10 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const router = useRouter();
-  const db = useFirestore();
-  const auth = useAuth();
+  
+  // Utilisation directe des instances
+  const db = useFirestore;
+  const auth = useAuth;
   const { user, loading } = useUser();
 
   useEffect(() => {
