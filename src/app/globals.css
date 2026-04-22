@@ -10,20 +10,20 @@
     --card-foreground: 0 0% 100%;
     --popover: 0 0% 0%;
     --popover-foreground: 0 0% 100%;
-    --primary: 0 100% 50%; /* Rouge Pur #FF0000 */
-    --primary-foreground: 0 100% 50%;
+    --primary: 0 100% 50%; /* Rouge Rubis Pur */
+    --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 5%;
     --secondary-foreground: 0 0% 100%;
     --muted: 0 0% 10%;
     --muted-foreground: 0 0% 40%;
-    --accent: 210 100% 56%; /* Bleu Électrique */
+    --accent: 190 100% 50%; /* Bleu Électrique #00D4FF */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 100% 50% / 0.3; /* Bordure rouge fine */
-    --input: 0 0% 10%;
+    --border: 0 0% 15%;
+    --input: 0 0% 5%;
     --ring: 0 100% 50%;
-    --radius: 0.75rem;
+    --radius: 0rem; /* Style angulaire luxe */
   }
 }
 
@@ -32,35 +32,47 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-body select-none;
+    @apply bg-background text-foreground font-body select-none antialiased;
     -webkit-tap-highlight-color: transparent;
   }
 }
 
 @layer components {
-  .cyber-card {
-    @apply bg-black border border-primary/40 shadow-[0_0_10px_rgba(255,0,0,0.15)] rounded-xl transition-all duration-300;
+  .cyber-card-red {
+    @apply bg-black border border-primary/30 shadow-[0_0_8px_rgba(255,0,0,0.15)] transition-all duration-500;
   }
   
-  .neon-glow {
+  .cyber-card-blue {
+    @apply bg-black border border-accent/30 shadow-[0_0_8px_rgba(0,212,255,0.15)] transition-all duration-500;
+  }
+
+  .neon-glow-red {
     @apply shadow-[0_0_15px_rgba(255,0,0,0.4)];
   }
 
-  .neon-text {
-    text-shadow: 0 0 8px rgba(255,0,0,0.6);
+  .neon-glow-blue {
+    @apply shadow-[0_0_15px_rgba(0,212,255,0.4)];
+  }
+
+  .neon-text-red {
+    text-shadow: 0 0 10px rgba(255,0,0,0.7);
+  }
+
+  .neon-text-blue {
+    text-shadow: 0 0 10px rgba(0,212,255,0.7);
   }
 
   .laser-line-h {
-    @apply h-[1px] w-full bg-gradient-to-r from-transparent via-primary/40 to-transparent my-8;
+    @apply h-[1px] w-full bg-gradient-to-r from-transparent via-primary/30 to-transparent my-8;
   }
 
-  .laser-line-v {
-    @apply w-[1px] h-full bg-gradient-to-b from-transparent via-primary/40 to-transparent mx-4;
+  .laser-line-h-blue {
+    @apply h-[1px] w-full bg-gradient-to-r from-transparent via-accent/30 to-transparent my-8;
   }
 }
 
 .progress-ring-circle {
-  transition: stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
   transform: rotate(-90deg);
   transform-origin: 50% 50%;
 }
