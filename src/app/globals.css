@@ -6,24 +6,24 @@
   :root {
     --background: 0 0% 0%; /* Noir Absolu OLED */
     --foreground: 0 0% 100%;
-    --card: 0 100% 2%;
+    --card: 0 0% 0%;
     --card-foreground: 0 0% 100%;
     --popover: 0 0% 0%;
     --popover-foreground: 0 0% 100%;
-    --primary: 351 100% 45%; /* Rouge Rubis Néon #E30022 */
-    --primary-foreground: 0 0% 100%;
+    --primary: 0 100% 50%; /* Rouge Pur #FF0000 */
+    --primary-foreground: 0 100% 50%;
     --secondary: 0 0% 5%;
     --secondary-foreground: 0 0% 100%;
     --muted: 0 0% 10%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 210 100% 56%; /* Bleu Électrique pour les données */
+    --muted-foreground: 0 0% 40%;
+    --accent: 210 100% 56%; /* Bleu Électrique */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 351 100% 45% / 0.2; /* Bordure rouge rubis 20% */
+    --border: 0 100% 50% / 0.3; /* Bordure rouge fine */
     --input: 0 0% 10%;
-    --ring: 351 100% 45%;
-    --radius: 1.25rem;
+    --ring: 0 100% 50%;
+    --radius: 0.75rem;
   }
 }
 
@@ -39,15 +39,23 @@
 
 @layer components {
   .cyber-card {
-    @apply bg-gradient-to-br from-black to-[#2A0000] border border-primary/20 shadow-[0_10px_30px_rgba(0,0,0,0.5)];
+    @apply bg-black border border-primary/40 shadow-[0_0_10px_rgba(255,0,0,0.15)] rounded-xl transition-all duration-300;
   }
   
   .neon-glow {
-    @apply shadow-[0_0_20px_rgba(227,0,34,0.4)];
+    @apply shadow-[0_0_15px_rgba(255,0,0,0.4)];
   }
 
   .neon-text {
-    text-shadow: 0 0 10px rgba(227,0,34,0.5);
+    text-shadow: 0 0 8px rgba(255,0,0,0.6);
+  }
+
+  .laser-line-h {
+    @apply h-[1px] w-full bg-gradient-to-r from-transparent via-primary/40 to-transparent my-8;
+  }
+
+  .laser-line-v {
+    @apply w-[1px] h-full bg-gradient-to-b from-transparent via-primary/40 to-transparent mx-4;
   }
 }
 

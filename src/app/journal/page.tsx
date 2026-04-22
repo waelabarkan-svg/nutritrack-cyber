@@ -58,9 +58,9 @@ export default function JournalPage() {
       });
       setIsAdding(false);
       setNewMeal({ name: '', calories: '', protein: '', carbs: '', fat: '', type: 'breakfast' });
-      toast({ title: "Journal mis à jour", description: "Le repas a été ajouté." });
+      toast({ title: "Journal Updated", description: "Entry added to local database." });
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Erreur", description: error.message });
+      toast({ variant: "destructive", title: "Error", description: error.message });
     }
   };
 
@@ -68,145 +68,119 @@ export default function JournalPage() {
     if (!user) return;
     try {
       deleteDoc(doc(db, 'users', user.uid, 'meals', id));
-      toast({ title: "Supprimé", description: "L'entrée a été retirée." });
+      toast({ title: "Deleted", description: "Entry removed." });
     } catch (e) {
       console.error(e);
     }
   };
 
   const mealSections: { type: MealType; label: string; icon: any }[] = [
-    { type: 'breakfast', label: 'Petit-déjeuner', icon: Coffee },
-    { type: 'lunch', label: 'Déjeuner', icon: Utensils },
-    { type: 'dinner', label: 'Dîner', icon: Moon },
-    { type: 'snack', label: 'En-cas', icon: Apple },
+    { type: 'breakfast', label: 'Breakfast', icon: Coffee },
+    { type: 'lunch', label: 'Lunch', icon: Utensils },
+    { type: 'dinner', label: 'Dinner', icon: Moon },
+    { type: 'snack', label: 'Snacks', icon: Apple },
   ];
 
   if (loading || !user) return null;
 
   return (
-    <main className="px-6 pt-12 max-w-md mx-auto pb-32 min-h-screen bg-[#0A0A0A]">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-black">Journal</h1>
+    <main className="px-6 pt-12 max-w-md mx-auto pb-32 min-h-screen bg-black">
+      <div className="flex justify-between items-center mb-12">
+        <div className="space-y-1">
+          <p className="text-primary/60 text-[10px] font-black uppercase tracking-[0.4em] neon-text">Log System</p>
+          <h1 className="text-3xl font-black tracking-tighter">DAILY JOURNAL</h1>
+        </div>
         <Dialog open={isAdding} onOpenChange={setIsAdding}>
           <DialogTrigger asChild>
-            <Button size="icon" className="rounded-2xl h-12 w-12 shadow-lg bg-primary text-primary-foreground">
+            <Button size="icon" className="rounded-full w-12 h-12">
               <Plus size={24} />
             </Button>
           </DialogTrigger>
-          <DialogContent className="glass border-none max-w-[90vw] rounded-3xl">
+          <DialogContent className="bg-black border border-primary/40 rounded-3xl max-w-[90vw] text-white">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-black">Ajouter un repas</DialogTitle>
+              <DialogTitle className="text-xl font-black uppercase tracking-widest text-primary neon-text">New Entry</DialogTitle>
             </DialogHeader>
-            <form onSubmit={addMeal} className="space-y-4">
-              <div className="space-y-1">
-                <Label>Nom de l'aliment</Label>
+            <form onSubmit={addMeal} className="space-y-6">
+              <div className="space-y-2">
+                <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Item Name</Label>
                 <Input 
-                  className="bg-secondary/50 border-none h-12 rounded-xl" 
-                  placeholder="ex: Salade de quinoa"
+                  className="bg-white/5 border-white/10 h-12 rounded-xl" 
+                  placeholder="QUINOA SALAD"
                   value={newMeal.name}
                   onChange={(e) => setNewMeal({...newMeal, name: e.target.value})}
                   required 
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label>Calories</Label>
+                <div className="space-y-2">
+                  <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Calories</Label>
                   <Input 
                     type="number" 
-                    className="bg-secondary/50 border-none h-12 rounded-xl"
+                    className="bg-white/5 border-white/10 h-12 rounded-xl"
                     value={newMeal.calories}
                     onChange={(e) => setNewMeal({...newMeal, calories: e.target.value})}
                     required 
                   />
                 </div>
-                <div className="space-y-1">
-                  <Label>Type</Label>
+                <div className="space-y-2">
+                   <Label className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Period</Label>
                   <Select 
                     value={newMeal.type} 
                     onValueChange={(v: any) => setNewMeal({...newMeal, type: v})}
                   >
-                    <SelectTrigger className="bg-secondary/50 border-none h-12 rounded-xl">
+                    <SelectTrigger className="bg-white/5 border-white/10 h-12 rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="glass border-none">
-                      <SelectItem value="breakfast">Petit-déjeuner</SelectItem>
-                      <SelectItem value="lunch">Déjeuner</SelectItem>
-                      <SelectItem value="dinner">Dîner</SelectItem>
-                      <SelectItem value="snack">En-cas</SelectItem>
+                    <SelectContent className="bg-black border-white/10 text-white">
+                      <SelectItem value="breakfast">Breakfast</SelectItem>
+                      <SelectItem value="lunch">Lunch</SelectItem>
+                      <SelectItem value="dinner">Dinner</SelectItem>
+                      <SelectItem value="snack">Snack</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-[10px] uppercase font-bold text-primary">Prot. (g)</Label>
-                  <Input 
-                    type="number" 
-                    className="bg-secondary/50 border-none h-10 rounded-xl"
-                    value={newMeal.protein}
-                    onChange={(e) => setNewMeal({...newMeal, protein: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] uppercase font-bold text-accent">Gluc. (g)</Label>
-                  <Input 
-                    type="number" 
-                    className="bg-secondary/50 border-none h-10 rounded-xl"
-                    value={newMeal.carbs}
-                    onChange={(e) => setNewMeal({...newMeal, carbs: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] uppercase font-bold text-accent">Lip. (g)</Label>
-                  <Input 
-                    type="number" 
-                    className="bg-secondary/50 border-none h-10 rounded-xl"
-                    value={newMeal.fat}
-                    onChange={(e) => setNewMeal({...newMeal, fat: e.target.value})}
-                  />
-                </div>
-              </div>
-              <Button type="submit" className="w-full h-14 font-black text-lg mt-4 rounded-2xl shadow-xl">LOG FOOD</Button>
+              <Button type="submit" className="w-full h-14 font-black">SAVE ENTRY</Button>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-12">
         {mealSections.map((section) => {
           const sectionMeals = (meals || []).filter(m => m.type === section.type);
           const Icon = section.icon;
           return (
-            <div key={section.type} className="space-y-3">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Icon size={18} />
-                <h2 className="text-sm font-bold uppercase tracking-widest">{section.label}</h2>
+            <div key={section.type} className="space-y-4">
+              <div className="flex items-center gap-3 text-muted-foreground">
+                <Icon size={14} className="text-primary/60" />
+                <h2 className="text-[10px] font-black uppercase tracking-[0.3em]">{section.label}</h2>
               </div>
               
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {sectionMeals.length > 0 ? sectionMeals.map((meal) => (
-                  <Card key={meal.id} className="glass p-4 border-none flex justify-between items-center group shadow-lg">
-                    <div>
-                      <h3 className="font-bold text-lg">{meal.name}</h3>
-                      <div className="flex gap-3 text-xs text-muted-foreground mt-1">
-                        <span className="text-primary font-bold">{meal.calories} kcal</span>
-                        <span>•</span>
-                        <span className="text-primary/70">P: {meal.protein}g</span>
-                        <span className="text-accent/70">G: {meal.carbs}g</span>
-                        <span className="text-accent/70">L: {meal.fat}g</span>
+                  <Card key={meal.id} className="cyber-card p-4 flex justify-between items-center group">
+                    <div className="space-y-1">
+                      <h3 className="font-black text-sm uppercase tracking-tight">{meal.name}</h3>
+                      <div className="flex gap-4 text-[9px] font-bold text-muted-foreground">
+                        <span className="text-primary neon-text">{meal.calories} KCAL</span>
+                        <span className="opacity-40">/</span>
+                        <span>P: {meal.protein}G</span>
+                        <span>C: {meal.carbs}G</span>
+                        <span>F: {meal.fat}G</span>
                       </div>
                     </div>
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="text-destructive/30 hover:text-destructive hover:bg-destructive/10 rounded-xl"
+                      className="text-white/20 hover:text-primary hover:bg-primary/10 rounded-full w-8 h-8"
                       onClick={() => deleteMeal(meal.id)}
                     >
-                      <Trash2 size={18} />
+                      <Trash2 size={14} />
                     </Button>
                   </Card>
                 )) : (
-                  <p className="text-xs text-muted-foreground/40 italic px-2">Aucune entrée.</p>
+                  <div className="h-[1px] w-full bg-white/5" />
                 )}
               </div>
             </div>

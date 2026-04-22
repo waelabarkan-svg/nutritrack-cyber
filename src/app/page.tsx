@@ -50,7 +50,7 @@ export default function Home() {
   if (authLoading || statsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-black">
-        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin neon-glow"></div>
+        <div className="w-8 h-8 border border-primary border-t-transparent rounded-full animate-spin shadow-[0_0_10px_rgba(255,0,0,0.5)]"></div>
       </div>
     );
   }
@@ -69,80 +69,69 @@ export default function Home() {
   const calProgress = dailyLog.calories / goals.calories;
 
   return (
-    <main className="px-6 pt-12 max-w-md mx-auto min-h-screen bg-black text-white">
-      <header className="flex justify-between items-end mb-10">
-        <div>
-          <h2 className="text-primary/70 text-xs font-bold uppercase tracking-[0.3em] neon-text">Status Cyber</h2>
-          <h1 className="text-4xl font-black mt-1 tracking-tighter">Salut, {user?.displayName?.split(' ')[0] || 'Agent'}</h1>
+    <main className="px-6 pt-12 max-w-md mx-auto min-h-screen bg-black text-white selection:bg-primary/30">
+      <header className="flex justify-between items-center mb-12">
+        <div className="space-y-1">
+          <p className="text-primary/60 text-[10px] font-black uppercase tracking-[0.4em] neon-text">System Active</p>
+          <h1 className="text-3xl font-black tracking-tighter">AGENT {user?.displayName?.split(' ')[0].toUpperCase() || 'UNKNOWN'}</h1>
         </div>
-        <div className="w-12 h-12 rounded-xl border border-primary/30 bg-black flex items-center justify-center shadow-[0_0_15px_rgba(227,0,34,0.2)]">
-          <span className="font-black text-primary text-xl">{user?.displayName?.[0] || 'A'}</span>
+        <div className="w-10 h-10 rounded-full border border-primary/40 bg-black flex items-center justify-center shadow-[0_0_15px_rgba(255,0,0,0.2)]">
+          <span className="font-black text-primary text-sm">{user?.displayName?.[0] || 'A'}</span>
         </div>
       </header>
 
-      <section className="flex flex-col items-center mb-10 relative">
-        <div className="absolute inset-0 bg-primary/10 blur-[120px] rounded-full" />
+      <section className="flex flex-col items-center mb-12 relative py-4">
         <CircularProgress 
-          size={280} 
-          strokeWidth={16} 
+          size={260} 
+          strokeWidth={4} 
           progress={calProgress} 
           color="#FF0000"
         >
           <div className="flex flex-col items-center">
-            <div className="w-14 h-14 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center mb-3 neon-glow">
-              <Flame className="text-primary fill-primary/20" size={28} />
-            </div>
-            <span className="text-6xl font-black tracking-tighter neon-text">{dailyLog.calories}</span>
-            <span className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.2em] mt-1">CIBLE {goals.calories} KCAL</span>
+            <span className="text-5xl font-black tracking-tighter neon-text">{dailyLog.calories}</span>
+            <div className="w-12 h-[1px] bg-primary/30 my-2" />
+            <span className="text-[9px] text-muted-foreground uppercase font-black tracking-[0.3em]">Goal {goals.calories}</span>
           </div>
         </CircularProgress>
       </section>
 
-      <section className="grid grid-cols-3 gap-3 mb-8">
-        <Card className="cyber-card p-4 flex flex-col items-center text-center">
-          <Beef className="text-primary mb-2 neon-text" size={20} />
+      <div className="laser-line-h" />
+
+      <section className="grid grid-cols-3 gap-4 mb-8">
+        <div className="flex flex-col items-center text-center space-y-2">
+          <div className="w-8 h-8 rounded-full border border-primary/30 flex items-center justify-center mb-1">
+             <Beef className="text-primary" size={14} />
+          </div>
           <span className="text-lg font-black">{dailyLog.protein}g</span>
-          <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider">Prot</span>
-          <div className="w-full bg-white/5 h-1 rounded-full mt-3 overflow-hidden">
-            <div 
-              className="bg-primary h-full transition-all duration-1000 shadow-[0_0_8px_rgba(227,0,34,0.8)]" 
-              style={{ width: `${Math.min((dailyLog.protein / goals.protein) * 100, 100)}%` }} 
-            />
+          <span className="text-[8px] text-muted-foreground uppercase font-bold tracking-widest">Protein</span>
+        </div>
+        <div className="flex flex-col items-center text-center space-y-2 border-x border-white/5">
+          <div className="w-8 h-8 rounded-full border border-accent/30 flex items-center justify-center mb-1">
+             <Wheat className="text-accent" size={14} />
           </div>
-        </Card>
-        <Card className="cyber-card p-4 flex flex-col items-center text-center">
-          <Wheat className="text-accent mb-2" size={20} />
           <span className="text-lg font-black">{dailyLog.carbs}g</span>
-          <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider">Gluc</span>
-          <div className="w-full bg-white/5 h-1 rounded-full mt-3 overflow-hidden">
-            <div 
-              className="bg-accent h-full transition-all duration-1000 shadow-[0_0_8px_rgba(30,144,255,0.8)]" 
-              style={{ width: `${Math.min((dailyLog.carbs / goals.carbs) * 100, 100)}%` }} 
-            />
+          <span className="text-[8px] text-muted-foreground uppercase font-bold tracking-widest">Carbs</span>
+        </div>
+        <div className="flex flex-col items-center text-center space-y-2">
+          <div className="w-8 h-8 rounded-full border border-accent/30 flex items-center justify-center mb-1">
+             <Droplet className="text-accent" size={14} />
           </div>
-        </Card>
-        <Card className="cyber-card p-4 flex flex-col items-center text-center">
-          <Droplet className="text-accent mb-2" size={20} />
           <span className="text-lg font-black">{dailyLog.fat}g</span>
-          <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider">Lip</span>
-          <div className="w-full bg-white/5 h-1 rounded-full mt-3 overflow-hidden">
-            <div 
-              className="bg-accent h-full transition-all duration-1000 shadow-[0_0_8px_rgba(30,144,255,0.8)]" 
-              style={{ width: `${Math.min((dailyLog.fat / goals.fat) * 100, 100)}%` }} 
-            />
-          </div>
-        </Card>
+          <span className="text-[8px] text-muted-foreground uppercase font-bold tracking-widest">Lipids</span>
+        </div>
       </section>
 
-      <div className="mb-8">
+      <div className="laser-line-h" />
+
+      <div className="mb-12">
         <HydrationCard />
       </div>
 
       <button 
         onClick={() => router.push('/journal')}
-        className="fixed bottom-24 right-6 w-16 h-16 bg-primary text-white rounded-xl shadow-[0_0_20px_rgba(227,0,34,0.6)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-40 border border-white/20"
+        className="fixed bottom-24 right-6 w-14 h-14 bg-black text-primary rounded-full shadow-[0_0_15px_rgba(255,0,0,0.5)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-40 border border-primary"
       >
-        <Plus size={32} strokeWidth={3} />
+        <Plus size={24} strokeWidth={3} />
       </button>
 
       <BottomNav />
