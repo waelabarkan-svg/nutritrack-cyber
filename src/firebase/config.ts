@@ -1,5 +1,9 @@
 'use client';
 
+/**
+ * Configuration Firebase officielle - Verrouillée en dur.
+ * Ne pas utiliser de variables d'environnement pour éviter les erreurs d'initialisation.
+ */
 export const firebaseConfig = {
   apiKey: 'AIzaSyA4qB0gN6V7L00JhutP1rwSiRLF9sTUXsU',
   authDomain: 'studio-7017378573-cff64.firebaseapp.com',

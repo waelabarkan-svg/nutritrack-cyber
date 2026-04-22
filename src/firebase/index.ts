@@ -9,6 +9,10 @@ let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
 
+/**
+ * Initialise les services Firebase en utilisant la configuration centralisée.
+ * Cette fonction est appelée par le FirebaseClientProvider au démarrage de l'app.
+ */
 export function initializeFirebase() {
   if (getApps().length === 0) {
     app = initializeApp(firebaseConfig);
