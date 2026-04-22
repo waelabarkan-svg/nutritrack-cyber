@@ -1,9 +1,5 @@
 'use client';
 
-/**
- * Configuration Firebase officielle stabilisée.
- * Les valeurs sont inscrites directement pour garantir l'initialisation du SDK.
- */
 export const firebaseConfig = {
   apiKey: 'AIzaSyA4qB0gN6V7L00JhutP1rwSiRLF9sTUXsU',
   authDomain: 'studio-7017378573-cff64.firebaseapp.com',

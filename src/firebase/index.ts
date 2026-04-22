@@ -10,7 +10,6 @@ let auth: Auth;
 let db: Firestore;
 
 export function initializeFirebase() {
-  // Initialisation directe sans fallback instable
   if (getApps().length === 0) {
     app = initializeApp(firebaseConfig);
   } else {
