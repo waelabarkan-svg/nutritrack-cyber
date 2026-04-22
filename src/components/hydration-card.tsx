@@ -30,11 +30,7 @@ export function HydrationCard() {
     const amount = Math.max(0, newAmount);
     setGlasses(amount);
     const docRef = doc(db, 'users', user.uid, 'hydration', today);
-    try {
-      setDoc(docRef, { amount }, { merge: true });
-    } catch (e) {
-      console.error(e);
-    }
+    setDoc(docRef, { amount }, { merge: true });
   };
 
   const progress = Math.min(glasses / target, 1);
@@ -48,8 +44,8 @@ export function HydrationCard() {
               <Droplets className="text-accent" size={18} />
             </div>
             <div>
-              <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-accent neon-text-blue">Hydration Protocol</h3>
-              <p className="text-[8px] text-muted-foreground font-black uppercase tracking-widest mt-1">Optimum Capacity: {target} Units</p>
+              <h3 className="font-black text-[9px] uppercase tracking-[0.3em] text-accent neon-text-blue">Hydration Protocol</h3>
+              <p className="text-[7px] text-muted-foreground font-black uppercase tracking-widest mt-1">Optimum Capacity: {target} Units</p>
             </div>
           </div>
           <div className="text-right">
@@ -63,12 +59,12 @@ export function HydrationCard() {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="border border-accent/20 text-accent h-10 w-10 hover:bg-accent/10"
+            className="border border-accent/20 text-accent h-10 w-10 hover:bg-accent/10 border-none"
             onClick={() => updateHydration(glasses - 1)}
           >
             <Minus size={16} />
           </Button>
-          <div className="flex-1 max-w-[140px] h-[2px] bg-white/5 relative">
+          <div className="flex-1 max-w-[140px] h-[1px] bg-white/5 relative">
             <div 
               className="bg-accent h-full transition-all duration-1000 shadow-[0_0_10px_rgba(0,212,255,0.8)]"
               style={{ width: `${progress * 100}%` }}
@@ -77,7 +73,7 @@ export function HydrationCard() {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="border border-accent text-accent h-14 w-14 shadow-[0_0_15px_rgba(0,212,255,0.3)] hover:bg-accent/10"
+            className="border border-accent text-accent h-14 w-14 shadow-[0_0_15px_rgba(0,212,255,0.3)] hover:bg-accent/10 rounded-none"
             onClick={() => updateHydration(glasses + 1)}
           >
             <Plus size={24} />

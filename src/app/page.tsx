@@ -54,25 +54,25 @@ export default function Home() {
     );
   }
 
-  const displayStats = stats || {
-    gender: 'male' as const,
+  const displayStats: UserStats = (stats as UserStats) || {
+    gender: 'male',
     age: 25,
     height: 175,
     weight: 70,
     targetWeight: 70,
-    activityLevel: 'moderate' as const,
-    goal: 'maintain' as const
+    activityLevel: 'moderate',
+    goal: 'maintain'
   };
   
   const goals = calculateNutritionGoals(displayStats);
-  const calProgress = dailyLog.calories / goals.calories;
+  const calProgress = goals.calories > 0 ? dailyLog.calories / goals.calories : 0;
 
   return (
     <main className="px-6 pt-16 max-w-md mx-auto min-h-screen bg-black text-white selection:bg-primary/30">
       <header className="flex justify-between items-start mb-16">
         <div className="space-y-1">
           <p className="text-primary/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-red">Protocol Active</p>
-          <h1 className="text-2xl font-black tracking-tighter neon-text-red uppercase">NutriTrack System</h1>
+          <h1 className="text-xl font-black tracking-tighter neon-text-red uppercase">NutriTrack System</h1>
         </div>
         <div className="flex flex-col items-end">
           <div className="w-10 h-10 border border-primary/40 bg-black flex items-center justify-center shadow-[0_0_10px_rgba(255,0,0,0.2)]">
@@ -106,7 +106,7 @@ export default function Home() {
              <Beef className="text-primary" size={16} />
           </div>
           <div className="space-y-1">
-            <span className="text-lg font-black block">{dailyLog.protein}g</span>
+            <span className="text-lg font-black block neon-text-red">{dailyLog.protein}g</span>
             <span className="text-[8px] text-muted-foreground uppercase font-black tracking-widest block">Protein</span>
           </div>
         </div>
