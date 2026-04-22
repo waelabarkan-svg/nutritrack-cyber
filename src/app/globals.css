@@ -1,30 +1,29 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 144 11% 12%;
+    --background: 0 0% 4%;
     --foreground: 0 0% 98%;
-    --card: 144 11% 15%;
+    --card: 0 0% 8%;
     --card-foreground: 0 0% 98%;
-    --popover: 144 11% 12%;
+    --popover: 0 0% 4%;
     --popover-foreground: 0 0% 98%;
-    --primary: 132 77% 55%;
-    --primary-foreground: 144 11% 12%;
-    --secondary: 144 11% 20%;
+    --primary: 352 82% 38%; /* Rouge Rubis #B11226 */
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 12%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 144 11% 20%;
-    --muted-foreground: 144 5% 65%;
-    --accent: 198 85% 61%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 210 100% 56%; /* Bleu Électrique #1E90FF */
     --accent-foreground: 0 0% 98%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 144 5% 25%;
-    --input: 144 5% 25%;
-    --ring: 132 77% 55%;
-    --radius: 1rem;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 352 82% 38%;
+    --radius: 1.5rem;
   }
 }
 
@@ -39,14 +38,14 @@
 }
 
 .glass {
-  background: rgba(28, 35, 30, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(10, 10, 10, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .progress-ring-circle {
-  transition: stroke-dashoffset 0.35s;
+  transition: stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   transform: rotate(-90deg);
   transform-origin: 50% 50%;
 }

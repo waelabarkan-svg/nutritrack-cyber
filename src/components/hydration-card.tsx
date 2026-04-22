@@ -1,19 +1,18 @@
-
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Droplets, Plus, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { useAuth } from './auth-provider';
+import { useFirestore, useUser } from '@/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 export function HydrationCard() {
-  const { user } = useAuth();
+  const { user } = useUser();
+  const db = useFirestore();
   const [glasses, setGlasses] = useState(0);
   const target = 8;
-  const today = new Date().toISOString().split('T')[0];
+  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   useEffect(() => {
     if (!user) return;
@@ -25,7 +24,7 @@ export function HydrationCard() {
       }
     };
     fetchHydration();
-  }, [user, today]);
+  }, [user, today, db]);
 
   const updateHydration = async (newAmount: number) => {
     if (!user) return;
@@ -33,7 +32,7 @@ export function HydrationCard() {
     setGlasses(amount);
     const docRef = doc(db, 'users', user.uid, 'hydration', today);
     try {
-      await setDoc(docRef, { amount }, { merge: true });
+      setDoc(docRef, { amount }, { merge: true });
     } catch (e) {
       console.error(e);
     }
@@ -42,25 +41,25 @@ export function HydrationCard() {
   const progress = Math.min(glasses / target, 1);
 
   return (
-    <Card className="glass overflow-hidden relative p-6">
+    <Card className="glass overflow-hidden relative p-6 border-none shadow-2xl">
       <div 
-        className="absolute bottom-0 left-0 right-0 bg-accent/20 transition-all duration-700 ease-out" 
+        className="absolute bottom-0 left-0 right-0 bg-accent/10 transition-all duration-1000 ease-out" 
         style={{ height: `${progress * 100}%` }}
       />
       <div className="relative z-10">
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center gap-2">
             <Droplets className="text-accent" size={24} />
-            <h3 className="font-semibold text-lg">Hydration</h3>
+            <h3 className="font-bold text-lg">Hydratation</h3>
           </div>
-          <span className="text-accent font-bold text-xl">{glasses} <span className="text-sm font-normal text-muted-foreground">/ {target} glasses</span></span>
+          <span className="text-accent font-black text-xl">{glasses} <span className="text-sm font-normal text-muted-foreground">/ {target} verres</span></span>
         </div>
 
         <div className="flex justify-center gap-4 mt-6">
           <Button 
             variant="outline" 
             size="icon" 
-            className="rounded-full border-accent/30 text-accent hover:bg-accent/10"
+            className="rounded-xl border-accent/20 text-accent hover:bg-accent/10 h-12 w-12"
             onClick={() => updateHydration(glasses - 1)}
           >
             <Minus size={20} />
@@ -68,7 +67,7 @@ export function HydrationCard() {
           <Button 
             variant="outline" 
             size="icon" 
-            className="rounded-full bg-accent/20 border-accent/30 text-accent hover:bg-accent/40 w-14 h-14"
+            className="rounded-xl bg-accent/10 border-accent/20 text-accent hover:bg-accent/20 w-16 h-16"
             onClick={() => updateHydration(glasses + 1)}
           >
             <Plus size={28} />

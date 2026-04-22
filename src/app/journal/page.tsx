@@ -1,26 +1,25 @@
-
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/components/auth-provider';
+import { useUser, useFirestore, useCollection } from '@/firebase';
 import { BottomNav } from '@/components/bottom-nav';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Search, Coffee, Utensils, Moon, Apple } from 'lucide-react';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { Plus, Trash2, Coffee, Utensils, Moon, Apple } from 'lucide-react';
+import { collection, addDoc, query, where, deleteDoc, doc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
 export default function JournalPage() {
-  const { user, loading } = useAuth();
+  const { user, loading } = useUser();
+  const db = useFirestore();
   const router = useRouter();
-  const [meals, setMeals] = useState<any[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [newMeal, setNewMeal] = useState({
     name: '',
@@ -31,87 +30,79 @@ export default function JournalPage() {
     type: 'breakfast' as MealType
   });
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+
+  const mealsQuery = useMemo(() => {
+    if (!user) return null;
+    return query(collection(db, 'users', user.uid, 'meals'), where('date', '==', today));
+  }, [user, today, db]);
+
+  const { data: meals } = useCollection(mealsQuery);
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
-    if (user) fetchMeals();
   }, [user, loading, router]);
-
-  const fetchMeals = async () => {
-    if (!user) return;
-    const mealsRef = collection(db, 'users', user.uid, 'meals');
-    const q = query(mealsRef, where('date', '==', today));
-    const querySnapshot = await getDocs(q);
-    const mealsData: any[] = [];
-    querySnapshot.forEach((doc) => {
-      mealsData.push({ id: doc.id, ...doc.data() });
-    });
-    setMeals(mealsData);
-  };
 
   const addMeal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     try {
-      await addDoc(collection(db, 'users', user.uid, 'meals'), {
+      addDoc(collection(db, 'users', user.uid, 'meals'), {
         ...newMeal,
-        calories: parseInt(newMeal.calories),
-        protein: parseInt(newMeal.protein),
-        carbs: parseInt(newMeal.carbs),
-        fat: parseInt(newMeal.fat),
+        calories: parseInt(newMeal.calories) || 0,
+        protein: parseInt(newMeal.protein) || 0,
+        carbs: parseInt(newMeal.carbs) || 0,
+        fat: parseInt(newMeal.fat) || 0,
         date: today,
         createdAt: new Date().toISOString()
       });
       setIsAdding(false);
       setNewMeal({ name: '', calories: '', protein: '', carbs: '', fat: '', type: 'breakfast' });
-      fetchMeals();
-      toast({ title: "Logged!", description: "Meal added to your journal." });
+      toast({ title: "Journal mis à jour", description: "Le repas a été ajouté." });
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message });
+      toast({ variant: "destructive", title: "Erreur", description: error.message });
     }
   };
 
   const deleteMeal = async (id: string) => {
     if (!user) return;
     try {
-      await deleteDoc(doc(db, 'users', user.uid, 'meals', id));
-      fetchMeals();
-      toast({ title: "Removed", description: "Entry deleted." });
+      deleteDoc(doc(db, 'users', user.uid, 'meals', id));
+      toast({ title: "Supprimé", description: "L'entrée a été retirée." });
     } catch (e) {
       console.error(e);
     }
   };
 
   const mealSections: { type: MealType; label: string; icon: any }[] = [
-    { type: 'breakfast', label: 'Breakfast', icon: Coffee },
-    { type: 'lunch', label: 'Lunch', icon: Utensils },
-    { type: 'dinner', label: 'Dinner', icon: Moon },
-    { type: 'snack', label: 'Snacks', icon: Apple },
+    { type: 'breakfast', label: 'Petit-déjeuner', icon: Coffee },
+    { type: 'lunch', label: 'Déjeuner', icon: Utensils },
+    { type: 'dinner', label: 'Dîner', icon: Moon },
+    { type: 'snack', label: 'En-cas', icon: Apple },
   ];
 
   if (loading || !user) return null;
 
   return (
-    <main className="px-6 pt-12 max-w-md mx-auto pb-32">
+    <main className="px-6 pt-12 max-w-md mx-auto pb-32 min-h-screen bg-[#0A0A0A]">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-black">Food Journal</h1>
+        <h1 className="text-3xl font-black">Journal</h1>
         <Dialog open={isAdding} onOpenChange={setIsAdding}>
           <DialogTrigger asChild>
-            <Button size="icon" className="rounded-full h-12 w-12 shadow-lg">
+            <Button size="icon" className="rounded-2xl h-12 w-12 shadow-lg bg-primary text-primary-foreground">
               <Plus size={24} />
             </Button>
           </DialogTrigger>
-          <DialogContent className="glass border-none max-w-xs sm:max-w-md">
+          <DialogContent className="glass border-none max-w-[90vw] rounded-3xl">
             <DialogHeader>
-              <DialogTitle>Add Food Item</DialogTitle>
+              <DialogTitle className="text-2xl font-black">Ajouter un repas</DialogTitle>
             </DialogHeader>
             <form onSubmit={addMeal} className="space-y-4">
               <div className="space-y-1">
-                <Label>Food Name</Label>
+                <Label>Nom de l'aliment</Label>
                 <Input 
-                  className="bg-secondary/50 border-none" 
-                  placeholder="e.g. Avocado Toast"
+                  className="bg-secondary/50 border-none h-12 rounded-xl" 
+                  placeholder="ex: Salade de quinoa"
                   value={newMeal.name}
                   onChange={(e) => setNewMeal({...newMeal, name: e.target.value})}
                   required 
@@ -122,60 +113,60 @@ export default function JournalPage() {
                   <Label>Calories</Label>
                   <Input 
                     type="number" 
-                    className="bg-secondary/50 border-none"
+                    className="bg-secondary/50 border-none h-12 rounded-xl"
                     value={newMeal.calories}
                     onChange={(e) => setNewMeal({...newMeal, calories: e.target.value})}
                     required 
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label>Meal Type</Label>
+                  <Label>Type</Label>
                   <Select 
                     value={newMeal.type} 
                     onValueChange={(v: any) => setNewMeal({...newMeal, type: v})}
                   >
-                    <SelectTrigger className="bg-secondary/50 border-none">
+                    <SelectTrigger className="bg-secondary/50 border-none h-12 rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="breakfast">Breakfast</SelectItem>
-                      <SelectItem value="lunch">Lunch</SelectItem>
-                      <SelectItem value="dinner">Dinner</SelectItem>
-                      <SelectItem value="snack">Snack</SelectItem>
+                    <SelectContent className="glass border-none">
+                      <SelectItem value="breakfast">Petit-déjeuner</SelectItem>
+                      <SelectItem value="lunch">Déjeuner</SelectItem>
+                      <SelectItem value="dinner">Dîner</SelectItem>
+                      <SelectItem value="snack">En-cas</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-[10px] uppercase">Prot. (g)</Label>
+                  <Label className="text-[10px] uppercase font-bold text-primary">Prot. (g)</Label>
                   <Input 
                     type="number" 
-                    className="bg-secondary/50 border-none"
+                    className="bg-secondary/50 border-none h-10 rounded-xl"
                     value={newMeal.protein}
                     onChange={(e) => setNewMeal({...newMeal, protein: e.target.value})}
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[10px] uppercase">Carbs (g)</Label>
+                  <Label className="text-[10px] uppercase font-bold text-accent">Gluc. (g)</Label>
                   <Input 
                     type="number" 
-                    className="bg-secondary/50 border-none"
+                    className="bg-secondary/50 border-none h-10 rounded-xl"
                     value={newMeal.carbs}
                     onChange={(e) => setNewMeal({...newMeal, carbs: e.target.value})}
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[10px] uppercase">Fat (g)</Label>
+                  <Label className="text-[10px] uppercase font-bold text-accent">Lip. (g)</Label>
                   <Input 
                     type="number" 
-                    className="bg-secondary/50 border-none"
+                    className="bg-secondary/50 border-none h-10 rounded-xl"
                     value={newMeal.fat}
                     onChange={(e) => setNewMeal({...newMeal, fat: e.target.value})}
                   />
                 </div>
               </div>
-              <Button type="submit" className="w-full h-12 font-bold mt-4">Log Food</Button>
+              <Button type="submit" className="w-full h-14 font-black text-lg mt-4 rounded-2xl shadow-xl">LOG FOOD</Button>
             </form>
           </DialogContent>
         </Dialog>
@@ -183,7 +174,7 @@ export default function JournalPage() {
 
       <div className="space-y-8">
         {mealSections.map((section) => {
-          const sectionMeals = meals.filter(m => m.type === section.type);
+          const sectionMeals = (meals || []).filter(m => m.type === section.type);
           const Icon = section.icon;
           return (
             <div key={section.type} className="space-y-3">
@@ -194,30 +185,28 @@ export default function JournalPage() {
               
               <div className="space-y-2">
                 {sectionMeals.length > 0 ? sectionMeals.map((meal) => (
-                  <Card key={meal.id} className="glass p-4 border-none flex justify-between items-center group">
+                  <Card key={meal.id} className="glass p-4 border-none flex justify-between items-center group shadow-lg">
                     <div>
                       <h3 className="font-bold text-lg">{meal.name}</h3>
                       <div className="flex gap-3 text-xs text-muted-foreground mt-1">
-                        <span>{meal.calories} kcal</span>
+                        <span className="text-primary font-bold">{meal.calories} kcal</span>
                         <span>•</span>
-                        <span>P: {meal.protein}g</span>
-                        <span>•</span>
-                        <span>C: {meal.carbs}g</span>
-                        <span>•</span>
-                        <span>F: {meal.fat}g</span>
+                        <span className="text-primary/70">P: {meal.protein}g</span>
+                        <span className="text-accent/70">G: {meal.carbs}g</span>
+                        <span className="text-accent/70">L: {meal.fat}g</span>
                       </div>
                     </div>
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="text-destructive/50 hover:text-destructive hover:bg-destructive/10"
+                      className="text-destructive/30 hover:text-destructive hover:bg-destructive/10 rounded-xl"
                       onClick={() => deleteMeal(meal.id)}
                     >
                       <Trash2 size={18} />
                     </Button>
                   </Card>
                 )) : (
-                  <p className="text-xs text-muted-foreground/50 italic px-2">No items logged yet.</p>
+                  <p className="text-xs text-muted-foreground/40 italic px-2">Aucune entrée.</p>
                 )}
               </div>
             </div>
