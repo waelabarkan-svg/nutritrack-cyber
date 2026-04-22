@@ -49,7 +49,7 @@ export default function Home() {
   if (authLoading || statsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-black">
-        <div className="w-8 h-8 border border-primary border-t-transparent animate-spin shadow-[0_0_15px_rgba(255,0,0,0.5)]"></div>
+        <div className="w-12 h-12 border border-primary border-t-transparent animate-spin shadow-[0_0_20px_rgba(255,0,0,0.6)]"></div>
       </div>
     );
   }
@@ -72,11 +72,11 @@ export default function Home() {
       <header className="flex justify-between items-start mb-16">
         <div className="space-y-1">
           <p className="text-primary/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-red">Protocol Active</p>
-          <h1 className="text-xl font-black tracking-tighter neon-text-red uppercase">NutriTrack</h1>
+          <h1 className="text-lg font-black tracking-[0.2em] neon-text-red uppercase">NutriTrack</h1>
         </div>
         <div className="flex flex-col items-end">
-          <div className="w-10 h-10 border border-primary/40 bg-black flex items-center justify-center shadow-[0_0_10px_rgba(255,0,0,0.2)]">
-            <span className="font-black text-primary text-xs">{user?.displayName?.[0] || 'A'}</span>
+          <div className="w-10 h-10 border border-primary/40 bg-black flex items-center justify-center shadow-[0_0_10px_rgba(255,0,0,0.3)]">
+            <span className="font-black text-primary text-xs neon-text-red">{user?.displayName?.[0] || 'A'}</span>
           </div>
           <span className="text-[8px] font-black text-muted-foreground mt-2 uppercase tracking-widest">ID: {user?.uid.substring(0, 8)}</span>
         </div>
@@ -92,8 +92,8 @@ export default function Home() {
           <div className="flex flex-col items-center">
             <span className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.4em] mb-1">Energy Flux</span>
             <span className="text-5xl font-black tracking-tighter neon-text-red">{dailyLog.calories}</span>
-            <div className="w-16 h-[1px] bg-primary/40 my-3" />
-            <span className="text-[9px] text-primary uppercase font-black tracking-[0.3em]">Goal {goals.calories}</span>
+            <div className="w-16 h-[1px] bg-primary/40 my-4 shadow-[0_0_10px_rgba(255,0,0,0.5)]" />
+            <span className="text-[9px] text-primary uppercase font-black tracking-[0.3em] neon-text-red">Goal {goals.calories}</span>
           </div>
         </CircularProgress>
       </section>
@@ -101,30 +101,30 @@ export default function Home() {
       <div className="laser-line-h" />
 
       <section className="grid grid-cols-3 gap-6 mb-12">
-        <div className="flex flex-col items-center text-center space-y-3">
-          <div className="w-10 h-10 border border-primary/30 flex items-center justify-center bg-black shadow-[0_0_10px_rgba(255,0,0,0.2)]">
-             <Beef className="text-primary" size={16} />
+        <div className="flex flex-col items-center text-center space-y-4">
+          <div className="w-10 h-10 border border-primary/30 flex items-center justify-center bg-black shadow-[0_0_10px_rgba(255,0,0,0.2)] group">
+             <Beef className="text-primary group-hover:scale-110 transition-transform" size={16} />
           </div>
           <div className="space-y-1">
-            <span className="text-lg font-black block neon-text-red">{dailyLog.protein}g</span>
+            <span className="text-lg font-black block neon-text-red tracking-tight">{dailyLog.protein}g</span>
             <span className="text-[8px] text-muted-foreground uppercase font-black tracking-widest block">Protein</span>
           </div>
         </div>
-        <div className="flex flex-col items-center text-center space-y-3 border-x border-white/5">
-          <div className="w-10 h-10 border border-accent/30 flex items-center justify-center bg-black shadow-[0_0_10px_rgba(0,212,255,0.2)]">
-             <Wheat className="text-accent" size={16} />
+        <div className="flex flex-col items-center text-center space-y-4 border-x border-white/5">
+          <div className="w-10 h-10 border border-accent/30 flex items-center justify-center bg-black shadow-[0_0_10px_rgba(0,212,255,0.2)] group">
+             <Wheat className="text-accent group-hover:scale-110 transition-transform" size={16} />
           </div>
           <div className="space-y-1">
-            <span className="text-lg font-black block neon-text-blue">{dailyLog.carbs}g</span>
+            <span className="text-lg font-black block neon-text-blue tracking-tight">{dailyLog.carbs}g</span>
             <span className="text-[8px] text-muted-foreground uppercase font-black tracking-widest block">Carbohydrate</span>
           </div>
         </div>
-        <div className="flex flex-col items-center text-center space-y-3">
-          <div className="w-10 h-10 border border-accent/30 flex items-center justify-center bg-black shadow-[0_0_10px_rgba(0,212,255,0.2)]">
-             <Droplet className="text-accent" size={16} />
+        <div className="flex flex-col items-center text-center space-y-4">
+          <div className="w-10 h-10 border border-accent/30 flex items-center justify-center bg-black shadow-[0_0_10px_rgba(0,212,255,0.2)] group">
+             <Droplet className="text-accent group-hover:scale-110 transition-transform" size={16} />
           </div>
           <div className="space-y-1">
-            <span className="text-lg font-black block neon-text-blue">{dailyLog.fat}g</span>
+            <span className="text-lg font-black block neon-text-blue tracking-tight">{dailyLog.fat}g</span>
             <span className="text-[8px] text-muted-foreground uppercase font-black tracking-widest block">Lipid Flux</span>
           </div>
         </div>
@@ -138,9 +138,9 @@ export default function Home() {
 
       <button 
         onClick={() => router.push('/journal')}
-        className="fixed bottom-28 right-8 w-14 h-14 bg-black text-primary border border-primary shadow-[0_0_20px_rgba(255,0,0,0.4)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-40"
+        className="fixed bottom-28 right-8 w-14 h-14 bg-black text-primary border border-primary shadow-[0_0_20px_rgba(255,0,0,0.4)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-40 rounded-none group"
       >
-        <Plus size={24} strokeWidth={3} />
+        <Plus size={24} strokeWidth={3} className="group-hover:neon-text-red" />
       </button>
 
       <BottomNav />
