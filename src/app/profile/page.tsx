@@ -51,21 +51,21 @@ export default function ProfilePage() {
   if (loading || !user) return null;
 
   return (
-    <main className="px-6 pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white">
-      <div className="space-y-1 mb-12">
-        <p className="text-primary/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-red">Agent Profile</p>
-        <h1 className="text-3xl font-black tracking-tighter uppercase neon-text-red">Biometric Data</h1>
+    <main className="px-4 sm:px-6 pt-12 sm:pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white">
+      <div className="space-y-1 mb-8 sm:mb-12">
+        <p className="text-primary/60 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.5em] neon-text-red">Agent Profile</p>
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase neon-text-red">Biometric Data</h1>
       </div>
       
-      <form onSubmit={handleSubmit} className="space-y-10">
-        <div className="grid grid-cols-2 gap-6">
-          <div className="space-y-3">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Genotype</Label>
+      <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-10">
+        <div className="grid grid-cols-2 gap-4 sm:gap-6">
+          <div className="space-y-2 sm:space-y-3">
+            <Label className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-muted-foreground">Genotype</Label>
             <Select 
               value={stats.gender} 
               onValueChange={(v: any) => setStats({...stats, gender: v})}
             >
-              <SelectTrigger className="bg-white/5 border-white/10 h-14 font-black">
+              <SelectTrigger className="bg-white/5 border-white/10 h-12 sm:h-14 font-black">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-black border-white/10">
@@ -74,69 +74,69 @@ export default function ProfilePage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-3">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Chrono Age</Label>
+          <div className="space-y-2 sm:space-y-3">
+            <Label className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-muted-foreground">Chrono Age</Label>
             <Input 
               type="number" 
-              className="bg-white/5 border-white/10 h-14 font-black" 
+              className="bg-white/5 border-white/10 h-12 sm:h-14 font-black" 
               value={stats.age}
               onChange={(e) => setStats({...stats, age: parseInt(e.target.value)})}
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
-          <div className="space-y-3">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Altitude (CM)</Label>
+        <div className="grid grid-cols-2 gap-4 sm:gap-6">
+          <div className="space-y-2 sm:space-y-3">
+            <Label className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-muted-foreground">Altitude (CM)</Label>
             <Input 
               type="number" 
-              className="bg-white/5 border-white/10 h-14 font-black" 
+              className="bg-white/5 border-white/10 h-12 sm:h-14 font-black" 
               value={stats.height}
               onChange={(e) => setStats({...stats, height: parseInt(e.target.value)})}
             />
           </div>
-          <div className="space-y-3">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Mass Index (KG)</Label>
+          <div className="space-y-2 sm:space-y-3">
+            <Label className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-muted-foreground">Mass Index (KG)</Label>
             <Input 
               type="number" 
-              className="bg-white/5 border-white/10 h-14 font-black" 
+              className="bg-white/5 border-white/10 h-12 sm:h-14 font-black" 
               value={stats.weight}
               onChange={(e) => setStats({...stats, weight: parseInt(e.target.value)})}
             />
           </div>
         </div>
 
-        <div className="space-y-3">
-          <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Target Vector (KG)</Label>
+        <div className="space-y-2 sm:space-y-3">
+          <Label className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-muted-foreground">Target Vector (KG)</Label>
           <Input 
             type="number" 
-            className="bg-white/5 border-white/10 h-14 font-black" 
+            className="bg-white/5 border-white/10 h-12 sm:h-14 font-black" 
             value={stats.targetWeight}
             onChange={(e) => setStats({...stats, targetWeight: parseInt(e.target.value)})}
           />
         </div>
 
-        <div className="space-y-3">
-          <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Activity Protocol</Label>
+        <div className="space-y-2 sm:space-y-3">
+          <Label className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-muted-foreground">Activity Protocol</Label>
           <Select 
             value={stats.activityLevel} 
             onValueChange={(v: any) => setStats({...stats, activityLevel: v})}
           >
-            <SelectTrigger className="bg-white/5 border-white/10 h-14 font-black">
+            <SelectTrigger className="bg-white/5 border-white/10 h-12 sm:h-14 font-black">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-black border-white/10">
-              <SelectItem value="sedentary">MINIMAL (STATIONARY)</SelectItem>
-              <SelectItem value="light">LIGHT (1-3 PHASES/WK)</SelectItem>
-              <SelectItem value="moderate">MODERATE (3-5 PHASES/WK)</SelectItem>
-              <SelectItem value="active">HIGH (6-7 PHASES/WK)</SelectItem>
-              <SelectItem value="very_active">EXTREME (24/7)</SelectItem>
+              <SelectItem value="sedentary">MINIMAL</SelectItem>
+              <SelectItem value="light">LIGHT (1-3/WK)</SelectItem>
+              <SelectItem value="moderate">MODERATE (3-5/WK)</SelectItem>
+              <SelectItem value="active">HIGH (6-7/WK)</SelectItem>
+              <SelectItem value="very_active">EXTREME</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        <Button type="submit" className="w-full h-18 font-black text-lg tracking-[0.3em] border-primary neon-glow-red mt-4">
-          SAVE SYSTEM PARAMETERS
+        <Button type="submit" className="w-full h-14 sm:h-18 font-black text-sm sm:text-lg tracking-[0.2em] sm:tracking-[0.3em] border-primary neon-glow-red mt-2">
+          SAVE PARAMETERS
         </Button>
       </form>
 
