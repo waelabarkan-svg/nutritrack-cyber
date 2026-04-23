@@ -30,7 +30,6 @@ export default function JournalPage() {
   const [aiEstimating, setAiEstimating] = useState(false);
   const [aiResult, setAiResult] = useState<any>(null);
   const [scanningImage, setScanningImage] = useState<string | null>(null);
-  const [isCapturing, setIsCapturing] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -62,7 +61,6 @@ export default function JournalPage() {
   }, [searchTerm]);
 
   const startCamera = async () => {
-    setIsCapturing(true);
     setAiResult(null);
     setScanningImage(null);
     try {
@@ -79,7 +77,6 @@ export default function JournalPage() {
         title: "ACCÈS CAMÉRA REFUSÉ", 
         description: "Veuillez autoriser l'accès à la caméra." 
       });
-      setIsCapturing(false);
     }
   };
 
@@ -88,7 +85,6 @@ export default function JournalPage() {
       const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
       tracks.forEach(track => track.stop());
     }
-    setIsCapturing(false);
   };
 
   const capturePhoto = () => {
@@ -129,19 +125,11 @@ export default function JournalPage() {
       if ('vibrate' in navigator) navigator.vibrate([100, 50, 100]);
     } catch (e: any) {
       console.error('Scan error:', e);
-      const isRateLimit = e.message?.includes('429') || e.message?.includes('RESOURCE_EXHAUSTED');
-      const isNotFound = e.message?.includes('404');
-      
       toast({ 
         variant: "destructive", 
-        title: isRateLimit ? "SERVEUR SATURÉ" : isNotFound ? "ERREUR SYSTÈME" : "ERREUR DE LECTURE", 
-        description: isRateLimit 
-          ? "Réessaie dans 60s, la liaison neurale est surchargée." 
-          : isNotFound 
-            ? "Le module Vision (Gemini) est momentanément indisponible."
-            : "L'IA n'a pas pu identifier le plat." 
+        title: "ERREUR DE LECTURE OPTIQUE", 
+        description: "Liaison saturée ou image illisible. Réessaie."
       });
-      if (!isRateLimit) setScanningImage(null);
     } finally {
       setAiEstimating(false);
     }
@@ -155,11 +143,10 @@ export default function JournalPage() {
       const result = await estimateDish({ dishName: searchTerm });
       setAiResult(result);
     } catch (e: any) {
-      const isRateLimit = e.message?.includes('429') || e.message?.includes('RESOURCE_EXHAUSTED');
       toast({ 
         variant: "destructive", 
-        title: isRateLimit ? "SERVEUR SATURÉ" : "ERREUR RÉSEAU", 
-        description: isRateLimit ? "Liaison IA interrompue. Patiente 60s." : "Échec de la liaison IA." 
+        title: "ERREUR SYSTÈME", 
+        description: "Liaison IA interrompue." 
       });
     } finally {
       setAiEstimating(false);
@@ -181,7 +168,7 @@ export default function JournalPage() {
       setIsScannerOpen(false);
       toast({ 
         title: "SYSTÈME MIS À JOUR", 
-        description: food.aiAnalysis ? food.aiAnalysis.toUpperCase() : `${food.name} AJOUTÉ.` 
+        description: "DONNÉES SYNCHRONISÉES." 
       });
     } catch (e) {
       toast({ variant: "destructive", title: "ERREUR", description: "Échec de l'enregistrement." });
@@ -375,9 +362,18 @@ export default function JournalPage() {
                                 <p className="text-[7px] text-muted-foreground uppercase font-black">LIPID</p>
                               </div>
                             </div>
-                            <p className="text-[9px] italic text-accent/80 font-black uppercase tracking-wider mb-4">
-                              "{aiResult.aiAnalysis}"
-                            </p>
+                            
+                            <div className="space-y-2 mb-4">
+                              <p className="text-[9px] italic text-accent/80 font-black uppercase tracking-wider border-l-2 border-accent pl-2">
+                                "{aiResult.aiAnalysis}"
+                              </p>
+                              {aiResult.healthAdvice && (
+                                <p className="text-[10px] text-primary font-bold uppercase tracking-tight leading-tight">
+                                  💡 {aiResult.healthAdvice}
+                                </p>
+                              )}
+                            </div>
+
                             <Button variant="outline" className="w-full text-[10px] font-black tracking-widest" onClick={() => { setScanningImage(null); setAiResult(null); }}>RESCANNER</Button>
                           </div>
                         )}
@@ -517,9 +513,16 @@ export default function JournalPage() {
                       <p className="text-[7px] text-muted-foreground uppercase font-black">LIPID</p>
                     </div>
                   </div>
-                  <p className="text-[9px] italic text-[#a855f7]/80 font-black uppercase tracking-wider border-t border-[#a855f7]/20 pt-2">
-                    "{aiResult.aiAnalysis}"
-                  </p>
+                  <div className="space-y-2 border-t border-[#a855f7]/20 pt-2">
+                    <p className="text-[9px] italic text-[#a855f7]/80 font-black uppercase tracking-wider">
+                      "{aiResult.aiAnalysis}"
+                    </p>
+                    {aiResult.healthAdvice && (
+                      <p className="text-[10px] text-primary font-bold uppercase tracking-tight">
+                        💡 {aiResult.healthAdvice}
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
