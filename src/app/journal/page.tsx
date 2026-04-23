@@ -153,7 +153,7 @@ export default function JournalPage() {
     }
   };
 
-  const saveToBiometricMemory = (food: any) => {
+  const saveToBiometricMemory = (food: any, isScan = false) => {
     const history = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
     const dateKey = new Date().toISOString().split('T')[0];
     
@@ -161,18 +161,17 @@ export default function JournalPage() {
     if (index > -1) {
       history[index].calories += Number(food.calories);
       history[index].protein += Number(food.protein);
-      history[index].scans = (history[index].scans || 0) + 1;
+      if (isScan) history[index].scans = (history[index].scans || 0) + 1;
     } else {
       history.push({
         date: dateKey,
         calories: Number(food.calories),
         protein: Number(food.protein),
-        scans: 1
+        scans: isScan ? 1 : 0
       });
     }
     
-    // Garder les 30 derniers jours pour l'analyse locale
-    const limitedHistory = history.slice(-30);
+    const limitedHistory = history.slice(-180); // Garder 6 mois
     localStorage.setItem('biometric_memory', JSON.stringify(limitedHistory));
   };
 
@@ -190,9 +189,8 @@ export default function JournalPage() {
         createdAt: new Date().toISOString()
       });
 
-      if (isScan) {
-        saveToBiometricMemory(food);
-      }
+      // Toujours enregistrer en mémoire biométrique locale pour le graphique
+      saveToBiometricMemory(food, isScan);
 
       setSearchTerm('');
       setAiResult(null);
@@ -226,6 +224,9 @@ export default function JournalPage() {
         date: today,
         createdAt: new Date().toISOString()
       });
+      
+      saveToBiometricMemory(food, false);
+
       setIsCustomOpen(false);
       setCustomFood({ name: '', calories: '', protein: '', carbs: '', fat: '' });
       toast({ title: "SAISIE VALIDÉE", description: "DONNÉES SYNCHRONISÉES." });

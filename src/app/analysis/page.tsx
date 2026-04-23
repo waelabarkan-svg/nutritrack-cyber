@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase';
 import { BottomNav } from '@/components/bottom-nav';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
-import { Button } from '@/components/ui/button';
-import { Activity, Flame, Beef, Zap } from 'lucide-react';
+import { Activity, Flame, Beef, Zap, AlertTriangle } from 'lucide-react';
 
 type TimeRange = '7J' | '1M' | '6M';
 
@@ -19,27 +18,9 @@ export default function AnalysisPage() {
   useEffect(() => {
     if (!loading && !user) router.push('/login');
     
-    // Charger la mémoire biométrique depuis le localStorage
+    // Charger la mémoire biométrique réelle depuis le localStorage
     const storedHistory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
-    
-    // Simuler des données si vide pour l'effet visuel initial (optionnel, mais mieux pour le cyberpunk)
-    if (storedHistory.length === 0) {
-      const mockData = [];
-      const now = new Date();
-      for (let i = 10; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(now.getDate() - i);
-        mockData.push({
-          date: d.toISOString().split('T')[0],
-          calories: 1800 + Math.floor(Math.random() * 600),
-          protein: 120 + Math.floor(Math.random() * 40),
-          scans: Math.floor(Math.random() * 5)
-        });
-      }
-      setHistory(mockData);
-    } else {
-      setHistory(storedHistory);
-    }
+    setHistory(storedHistory);
   }, [user, loading, router]);
 
   const filteredData = useMemo(() => {
@@ -72,6 +53,8 @@ export default function AnalysisPage() {
 
   if (loading || !user) return null;
 
+  const hasData = filteredData.length > 0;
+
   return (
     <main className="px-6 pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white selection:bg-primary/20">
       <div className="space-y-1 mb-8">
@@ -95,44 +78,59 @@ export default function AnalysisPage() {
         ))}
       </div>
 
-      <div className="cyber-card-yellow p-4 mb-8 h-[250px] bg-black/40 border-primary/20">
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-[8px] font-black text-primary/80 uppercase tracking-widest">Projection Energétique (KCAL)</span>
-          <Activity size={12} className="text-primary animate-pulse" />
-        </div>
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={filteredData}>
-            <defs>
-              <linearGradient id="colorCal" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#fde047" stopOpacity={0.3}/>
-                <stop offset="95%" stopColor="#fde047" stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-            <XAxis 
-              dataKey="date" 
-              hide 
-            />
-            <YAxis 
-              hide 
-              domain={['dataMin - 100', 'dataMax + 100']} 
-            />
-            <RechartsTooltip 
-              contentStyle={{ backgroundColor: '#000', border: '1px solid #fde04744', borderRadius: '8px', fontSize: '10px' }}
-              itemStyle={{ color: '#fde047', fontWeight: 'bold' }}
-              labelStyle={{ display: 'none' }}
-            />
-            <Area 
-              type="monotone" 
-              dataKey="calories" 
-              stroke="#fde047" 
-              strokeWidth={3}
-              fillOpacity={1} 
-              fill="url(#colorCal)" 
-              animationDuration={1500}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+      <div className="cyber-card-yellow p-4 mb-8 h-[250px] bg-black/40 border-primary/20 flex flex-col justify-center items-center">
+        {!hasData ? (
+          <div className="flex flex-col items-center gap-4 animate-pulse">
+            <AlertTriangle className="text-primary" size={32} />
+            <p className="text-[10px] font-black text-primary uppercase tracking-[0.4em] text-center">
+              AUCUNE DONNÉE BIOMÉTRIQUE DÉTECTÉE
+            </p>
+            <p className="text-[8px] text-muted-foreground uppercase text-center">
+              Enregistrez vos repas pour générer la courbe de flux.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="flex justify-between items-center mb-4 w-full px-2">
+              <span className="text-[8px] font-black text-primary/80 uppercase tracking-widest">Projection Energétique (KCAL)</span>
+              <Activity size={12} className="text-primary animate-pulse" />
+            </div>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={filteredData}>
+                <defs>
+                  <linearGradient id="colorCal" x1="0" y1="0" x2="0" y2="1">
+                    <span className="sr-only">Gradient</span>
+                    <stop offset="5%" stopColor="#fde047" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#fde047" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
+                <XAxis 
+                  dataKey="date" 
+                  hide 
+                />
+                <YAxis 
+                  hide 
+                  domain={['dataMin - 100', 'dataMax + 100']} 
+                />
+                <RechartsTooltip 
+                  contentStyle={{ backgroundColor: '#000', border: '1px solid #fde04744', borderRadius: '8px', fontSize: '10px' }}
+                  itemStyle={{ color: '#fde047', fontWeight: 'bold' }}
+                  labelStyle={{ display: 'none' }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="calories" 
+                  stroke="#fde047" 
+                  strokeWidth={3}
+                  fillOpacity={1} 
+                  fill="url(#colorCal)" 
+                  animationDuration={1500}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 mb-12">
@@ -166,18 +164,22 @@ export default function AnalysisPage() {
 
       <div className="space-y-4 mb-12">
         <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground px-1">Liaisons récentes</h2>
-        {filteredData.slice(-5).reverse().map((item, i) => (
-          <div key={i} className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl">
-             <div className="flex items-center gap-3">
-               <div className="w-2 h-2 rounded-full bg-primary neon-glow-yellow" />
-               <span className="text-[10px] font-black uppercase tracking-wider">{new Date(item.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
-             </div>
-             <div className="text-right">
-               <span className="text-xs font-black text-white">{item.calories} KCAL</span>
-               <span className="text-[8px] text-muted-foreground block uppercase font-black">{item.scans || 0} SCANS OPTIQUES</span>
-             </div>
-          </div>
-        ))}
+        {!hasData ? (
+          <p className="text-[8px] text-muted-foreground uppercase text-center py-8">Aucune archive détectée</p>
+        ) : (
+          filteredData.slice(-5).reverse().map((item, i) => (
+            <div key={i} className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl">
+               <div className="flex items-center gap-3">
+                 <div className="w-2 h-2 rounded-full bg-primary neon-glow-yellow" />
+                 <span className="text-[10px] font-black uppercase tracking-wider">{new Date(item.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
+               </div>
+               <div className="text-right">
+                 <span className="text-xs font-black text-white">{item.calories} KCAL</span>
+                 <span className="text-[8px] text-muted-foreground block uppercase font-black">{item.scans || 0} SCANS OPTIQUES</span>
+               </div>
+            </div>
+          ))
+        )}
       </div>
 
       <BottomNav />
