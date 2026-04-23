@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { BottomNav } from '@/components/bottom-nav';
@@ -9,11 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, Search, Coffee, Utensils, Moon, Apple, Zap, Sparkles, Loader2, Info } from 'lucide-react';
+import { Plus, Trash2, Search, Coffee, Utensils, Moon, Apple, Zap, Sparkles, Loader2, Camera, Upload, X, Check } from 'lucide-react';
 import { collection, addDoc, query, where, deleteDoc, doc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import foodDb from '@/lib/food-db.json';
 import { estimateDish } from '@/ai/flows/estimate-dish-flow';
+import { scanDish } from '@/ai/flows/scan-dish-flow';
 
 type MealType = 'petit-déjeuner' | 'déjeuner' | 'dîner' | 'snack';
 
@@ -24,8 +25,16 @@ export default function JournalPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<MealType>('petit-déjeuner');
   const [isCustomOpen, setIsCustomOpen] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  
   const [aiEstimating, setAiEstimating] = useState(false);
   const [aiResult, setAiResult] = useState<any>(null);
+  const [scanningImage, setScanningImage] = useState<string | null>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+  
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [customFood, setCustomFood] = useState({
     name: '',
@@ -50,6 +59,74 @@ export default function JournalPage() {
       .filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()))
       .slice(0, 8);
   }, [searchTerm]);
+
+  // Camera Access
+  const startCamera = async () => {
+    setIsCapturing(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      toast({ variant: "destructive", title: "ACCÈS CAMÉRA REFUSÉ", description: "Veuillez autoriser la caméra dans vos réglages." });
+      setIsCapturing(false);
+    }
+  };
+
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach(track => track.stop());
+    }
+    setIsCapturing(false);
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUri = canvas.toDataURL('image/jpeg');
+      setScanningImage(dataUri);
+      stopCamera();
+      handleScanImage(dataUri);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const dataUri = event.target?.result as string;
+        setScanningImage(dataUri);
+        handleScanImage(dataUri);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleScanImage = async (dataUri: string) => {
+    setAiEstimating(true);
+    setAiResult(null);
+    try {
+      // Haptic feedback if supported
+      if ('vibrate' in navigator) navigator.vibrate(50);
+      
+      const result = await scanDish({ photoDataUri: dataUri });
+      setAiResult(result);
+      
+      if ('vibrate' in navigator) navigator.vibrate([100, 50, 100]);
+    } catch (e) {
+      toast({ variant: "destructive", title: "LIAISON NEURALE ÉCHOUÉE", description: "Impossible d'analyser l'image." });
+    } finally {
+      setAiEstimating(false);
+    }
+  };
 
   const handleAiEstimate = async () => {
     if (!searchTerm || searchTerm.length < 3) return;
@@ -76,6 +153,8 @@ export default function JournalPage() {
       });
       setSearchTerm('');
       setAiResult(null);
+      setScanningImage(null);
+      setIsScannerOpen(false);
       toast({ 
         title: "SYSTÈME MIS À JOUR", 
         description: food.aiAnalysis ? food.aiAnalysis.toUpperCase() : `${food.name} AJOUTÉ AU PROTOCOLE.` 
@@ -149,66 +228,161 @@ export default function JournalPage() {
             ))}
           </div>
           
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/40" size={18} />
-              <Input 
-                className="bg-white/5 border-primary/20 h-14 pl-12 font-black uppercase tracking-widest focus:border-primary/60 transition-all rounded-[12px]" 
-                placeholder="RECHERCHER PROTOCOLE..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            
-            <Dialog open={isCustomOpen} onOpenChange={setIsCustomOpen}>
-              <DialogTrigger asChild>
-                <Button className="h-14 w-14 sm:w-auto sm:px-4 border-primary neon-glow-yellow bg-black rounded-[12px]">
-                  <Plus size={20} className="sm:mr-2" />
-                  <span className="hidden sm:inline font-black text-[10px] tracking-widest">CUSTOM +</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-black border-primary/40 text-white rounded-[20px] max-w-[90vw] sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle className="text-xl font-black uppercase tracking-tighter neon-text-yellow">Saisie Manuelle</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={addCustomMeal} className="space-y-4 pt-4">
-                  <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Désignation</Label>
-                    <Input 
-                      placeholder="EX: BARRE PROTÉINÉE" 
-                      className="bg-white/5 border-white/10 font-black"
-                      value={customFood.name}
-                      onChange={(e) => setCustomFood({...customFood, name: e.target.value})}
-                      required
-                    />
+          <div className="flex flex-col gap-4">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/40" size={18} />
+                <Input 
+                  className="bg-white/5 border-primary/20 h-14 pl-12 font-black uppercase tracking-widest focus:border-primary/60 transition-all rounded-[12px]" 
+                  placeholder="RECHERCHER ALIMENT..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              
+              <Dialog open={isScannerOpen} onOpenChange={(open) => {
+                setIsScannerOpen(open);
+                if (!open) {
+                  stopCamera();
+                  setScanningImage(null);
+                  setAiResult(null);
+                }
+              }}>
+                <DialogTrigger asChild>
+                  <Button 
+                    className="h-14 w-14 border-accent bg-black text-accent neon-glow-blue rounded-[12px]"
+                    onClick={startCamera}
+                  >
+                    <Camera size={20} />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-black border-accent/40 text-white rounded-[20px] max-w-[95vw] sm:max-w-md p-0 overflow-hidden">
+                  <div className="relative h-[60vh] bg-black">
+                    {!scanningImage ? (
+                      <>
+                        <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 pointer-events-none border-[20px] border-black/40">
+                          <div className="w-full h-full border border-accent/30 flex items-center justify-center">
+                            <div className="w-48 h-48 border-2 border-dashed border-accent/50 rounded-2xl" />
+                          </div>
+                        </div>
+                        <div className="absolute bottom-6 left-0 right-0 flex justify-around items-center px-10">
+                           <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
+                           <Button variant="ghost" className="text-white/40" onClick={() => fileInputRef.current?.click()}>
+                              <Upload size={24} />
+                           </Button>
+                           <Button className="w-16 h-16 rounded-full border-4 border-accent bg-transparent" onClick={capturePhoto} />
+                           <Button variant="ghost" className="text-white/40" onClick={() => setIsScannerOpen(false)}>
+                              <X size={24} />
+                           </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="w-full h-full relative">
+                        <img src={scanningImage} className="w-full h-full object-cover" alt="Captured" />
+                        {aiEstimating && (
+                          <div className="absolute inset-0 bg-black/40">
+                             <div className="absolute top-0 left-0 w-full h-[2px] bg-accent shadow-[0_0_15px_rgba(0,242,255,1)] animate-[bounce_2s_infinite]" />
+                             <div className="flex flex-col items-center justify-center h-full gap-4">
+                               <Loader2 className="animate-spin text-accent" size={48} />
+                               <p className="text-[10px] font-black tracking-[0.5em] text-accent uppercase animate-pulse">Scanning Bio-Signal...</p>
+                             </div>
+                          </div>
+                        )}
+                        {!aiEstimating && aiResult && (
+                          <div className="absolute bottom-0 left-0 right-0 p-6 bg-black/90 backdrop-blur-xl border-t border-accent/40 animate-in slide-in-from-bottom-full duration-500">
+                            <div className="flex justify-between items-start mb-4">
+                              <div>
+                                <span className="text-[8px] font-black text-accent uppercase tracking-[0.3em] block mb-1">ANALYSE OPTIQUE TERMINÉE</span>
+                                <h3 className="text-xl font-black text-white uppercase tracking-tighter">{aiResult.name}</h3>
+                              </div>
+                              <Button className="border-accent neon-glow-blue h-12 w-12" onClick={() => addMeal(aiResult)}>
+                                <Check size={24} />
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-4 gap-2 mb-4">
+                              <div className="text-center bg-white/5 p-2 rounded-lg">
+                                <p className="text-[14px] font-black text-primary">{aiResult.calories}</p>
+                                <p className="text-[7px] text-muted-foreground uppercase font-black">KCAL</p>
+                              </div>
+                              <div className="text-center bg-white/5 p-2 rounded-lg">
+                                <p className="text-[14px] font-black text-white">{aiResult.protein}g</p>
+                                <p className="text-[7px] text-muted-foreground uppercase font-black">PROT</p>
+                              </div>
+                              <div className="text-center bg-white/5 p-2 rounded-lg">
+                                <p className="text-[14px] font-black text-white">{aiResult.carbs}g</p>
+                                <p className="text-[7px] text-muted-foreground uppercase font-black">GLUC</p>
+                              </div>
+                              <div className="text-center bg-white/5 p-2 rounded-lg">
+                                <p className="text-[14px] font-black text-white">{aiResult.fat}g</p>
+                                <p className="text-[7px] text-muted-foreground uppercase font-black">LIPID</p>
+                              </div>
+                            </div>
+                            <p className="text-[9px] italic text-accent/80 font-black uppercase tracking-wider mb-4">
+                              "{aiResult.aiAnalysis}"
+                            </p>
+                            <Button variant="outline" className="w-full text-[10px] font-black tracking-widest" onClick={() => setScanningImage(null)}>RESCANNER</Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <canvas ref={canvasRef} className="hidden" />
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            <div className="flex gap-2">
+              <Dialog open={isCustomOpen} onOpenChange={setIsCustomOpen}>
+                <DialogTrigger asChild>
+                  <Button className="h-14 flex-1 border-primary neon-glow-yellow bg-black rounded-[12px]">
+                    <Plus size={20} className="mr-2" />
+                    <span className="font-black text-[10px] tracking-widest uppercase">Custom +</span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-black border-primary/40 text-white rounded-[20px] max-w-[90vw] sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="text-xl font-black uppercase tracking-tighter neon-text-yellow">Saisie Manuelle</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={addCustomMeal} className="space-y-4 pt-4">
                     <div className="space-y-2">
-                      <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Énergie (KCAL)</Label>
+                      <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Désignation</Label>
                       <Input 
-                        type="number" 
-                        className="bg-white/5 border-white/10 font-black"
-                        value={customFood.calories}
-                        onChange={(e) => setCustomFood({...customFood, calories: e.target.value})}
+                        placeholder="EX: BARRE PROTÉINÉE" 
+                        className="bg-white/5 border-white/10 font-black h-12"
+                        value={customFood.name}
+                        onChange={(e) => setCustomFood({...customFood, name: e.target.value})}
                         required
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Prot (G)</Label>
-                      <Input 
-                        type="number" 
-                        className="bg-white/5 border-white/10 font-black"
-                        value={customFood.protein}
-                        onChange={(e) => setCustomFood({...customFood, protein: e.target.value})}
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Énergie (KCAL)</Label>
+                        <Input 
+                          type="number" 
+                          className="bg-white/5 border-white/10 font-black h-12"
+                          value={customFood.calories}
+                          onChange={(e) => setCustomFood({...customFood, calories: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Prot (G)</Label>
+                        <Input 
+                          type="number" 
+                          className="bg-white/5 border-white/10 font-black h-12"
+                          value={customFood.protein}
+                          onChange={(e) => setCustomFood({...customFood, protein: e.target.value})}
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <Button type="submit" className="w-full h-14 border-primary neon-glow-yellow mt-4">
-                    VALIDER L'ARCHIVE
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
+                    <Button type="submit" className="w-full h-14 border-primary neon-glow-yellow mt-4">
+                      VALIDER L'ARCHIVE
+                    </Button>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
 
           {(filteredFood.length > 0 || searchTerm.length > 2) && (
@@ -252,7 +426,7 @@ export default function JournalPage() {
                 </Tooltip>
               )}
 
-              {aiResult && (
+              {aiResult && !scanningImage && (
                 <div className="cyber-card-blue p-5 bg-black/90 border-[#a855f7] shadow-[0_0_30px_rgba(168,85,247,0.4)] rounded-[12px] animate-in zoom-in-95 duration-500">
                   <div className="flex justify-between items-start mb-4">
                     <div>
