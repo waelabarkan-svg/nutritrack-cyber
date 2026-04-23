@@ -71,8 +71,8 @@ export default function HistoryPage() {
   return (
     <main className="px-6 pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white">
       <div className="space-y-1 mb-12">
-        <p className="text-primary/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-red">Timeline Index</p>
-        <h1 className="text-3xl font-black tracking-tighter uppercase neon-text-red">Archived Data</h1>
+        <p className="text-primary/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-red">Index Temporel</p>
+        <h1 className="text-3xl font-black tracking-tighter uppercase neon-text-red">Archives</h1>
       </div>
 
       <div className="cyber-card-red mb-12 p-2 bg-black border border-primary/20 shadow-[0_0_10px_rgba(255,0,0,0.1)]">
@@ -85,26 +85,24 @@ export default function HistoryPage() {
       </div>
 
       <div className="space-y-6">
-        <h2 className="text-[9px] font-black uppercase tracking-[0.4em] text-muted-foreground px-1">Selected Phase Summary</h2>
+        <h2 className="text-[9px] font-black uppercase tracking-[0.4em] text-muted-foreground px-1">Résumé de la Phase</h2>
         <div className="grid grid-cols-2 gap-6">
           <div className="cyber-card-red p-8 flex flex-col items-center bg-black border border-primary/20 shadow-[0_0_15px_rgba(255,0,0,0.2)]">
             <div className="w-12 h-12 border border-primary/30 flex items-center justify-center bg-black mb-4">
                <Flame className="text-primary" size={24} />
             </div>
             <span className="text-3xl font-black neon-text-red tracking-tighter">{dailyData.calories}</span>
-            <span className="text-[9px] text-muted-foreground uppercase font-black tracking-widest mt-2">Energy Flux</span>
+            <span className="text-[9px] text-muted-foreground uppercase font-black tracking-widest mt-2">Flux Énergie</span>
           </div>
           <div className="cyber-card-blue p-8 flex flex-col items-center bg-black border border-accent/20 shadow-[0_0_15px_rgba(0,212,255,0.2)]">
             <div className="w-12 h-12 border border-accent/30 flex items-center justify-center bg-black mb-4">
                <Droplets className="text-accent" size={24} />
             </div>
             <span className="text-3xl font-black neon-text-blue tracking-tighter">{dailyData.hydration}</span>
-            <span className="text-[9px] text-muted-foreground uppercase font-black tracking-widest mt-2">Fluid Units</span>
+            <span className="text-[9px] text-muted-foreground uppercase font-black tracking-widest mt-2">Unités Fluide</span>
           </div>
         </div>
       </div>
-
-      <div className="laser-line-h mt-12" />
 
       <BottomNav />
     </main>

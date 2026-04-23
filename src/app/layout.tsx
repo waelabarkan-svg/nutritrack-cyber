@@ -5,7 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
   title: 'NutriTrack - Cyber Edition',
-  description: 'Track your nutrition with neon precision.',
+  description: 'Suivez votre nutrition avec une précision néon.',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',

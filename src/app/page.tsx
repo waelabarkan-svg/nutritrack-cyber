@@ -21,9 +21,8 @@ export default function Home() {
   
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  // Accès aux données même si non connecté pour le prototype
   const profileRef = useMemo(() => user ? doc(db, 'users', user.uid) : null, [db, user]);
-  const { data: stats, loading: statsLoading } = useDoc<UserStats>(profileRef as any);
+  const { data: stats } = useDoc<UserStats>(profileRef as any);
 
   const mealsQuery = useMemo(() => {
     if (!user) return null;
@@ -48,15 +47,6 @@ export default function Home() {
     setMounted(true);
   }, []);
 
-  // Login désactivé pour accès direct au Dashboard
-  /* 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
-    }
-  }, [user, authLoading, router]);
-  */
-
   if (!mounted) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-black">
@@ -76,18 +66,17 @@ export default function Home() {
     <main className="px-4 sm:px-6 pt-12 sm:pt-16 max-w-md mx-auto min-h-screen bg-black text-white pb-32">
       <header className="flex justify-between items-start mb-12 sm:mb-16">
         <div className="space-y-1">
-          <p className="text-accent/60 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.4em] sm:tracking-[0.5em] neon-text-blue">System Online</p>
+          <p className="text-accent/60 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.4em] sm:tracking-[0.5em] neon-text-blue">Système en ligne</p>
           <h1 className="text-lg sm:text-xl font-black tracking-[0.15em] sm:tracking-[0.2em] neon-text-blue uppercase">NutriTrack</h1>
         </div>
         <div className="flex flex-col items-end">
           <div className="w-9 h-9 sm:w-11 sm:h-11 border border-primary/50 bg-black flex items-center justify-center shadow-[0_0_15px_rgba(253,224,71,0.4)] rounded-[10px] sm:rounded-[12px]">
             <span className="font-black text-primary text-xs sm:text-sm neon-text-yellow">{user?.displayName?.[0] || 'A'}</span>
           </div>
-          <span className="text-[7px] sm:text-[8px] font-black text-muted-foreground mt-2 uppercase tracking-widest">UID: {user?.uid.substring(0, 8) || 'GUEST-ID'}</span>
+          <span className="text-[7px] sm:text-[8px] font-black text-muted-foreground mt-2 uppercase tracking-widest">ID: {user?.uid.substring(0, 8) || 'GUEST'}</span>
         </div>
       </header>
 
-      {/* AI Coach Feedback Section - Priorité haute sur le Dashboard */}
       <CoachFeedback stats={displayStats} dailyLog={dailyLog} />
 
       <section className="flex flex-col items-center mb-12 sm:mb-16 relative py-4">
@@ -98,10 +87,10 @@ export default function Home() {
           color="#ff0055"
         >
           <div className="flex flex-col items-center">
-            <span className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-black tracking-[0.4em] sm:tracking-[0.5em] mb-1 sm:mb-2 text-center">Energy Flux</span>
+            <span className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-black tracking-[0.4em] sm:tracking-[0.5em] mb-1 sm:mb-2 text-center">Flux Énergie</span>
             <span className="text-4xl sm:text-6xl font-black tracking-tighter neon-text-red">{dailyLog.calories}</span>
             <div className="w-16 sm:w-20 h-[1px] bg-destructive/50 my-4 sm:my-5 shadow-[0_0_20px_rgba(255,0,85,0.8)]" />
-            <span className="text-[8px] sm:text-[9px] text-primary uppercase font-black tracking-[0.3em] sm:tracking-[0.4em] neon-text-yellow">Target {goals.calories}</span>
+            <span className="text-[8px] sm:text-[9px] text-primary uppercase font-black tracking-[0.3em] sm:tracking-[0.4em] neon-text-yellow">Objectif {goals.calories}</span>
           </div>
         </CircularProgress>
       </section>
@@ -115,7 +104,7 @@ export default function Home() {
           </div>
           <div className="space-y-1">
             <span className="text-base sm:text-xl font-black block neon-text-yellow tracking-tight">{dailyLog.protein}g</span>
-            <span className="text-[7px] sm:text-[8px] text-muted-foreground uppercase font-black tracking-widest block">Protein</span>
+            <span className="text-[7px] sm:text-[8px] text-muted-foreground uppercase font-black tracking-widest block">Protéines</span>
           </div>
         </div>
         <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4 border-x border-white/5 px-1">
@@ -124,7 +113,7 @@ export default function Home() {
           </div>
           <div className="space-y-1">
             <span className="text-base sm:text-xl font-black block neon-text-blue tracking-tight">{dailyLog.carbs}g</span>
-            <span className="text-[7px] sm:text-[8px] text-muted-foreground uppercase font-black tracking-widest block">Carbs</span>
+            <span className="text-[7px] sm:text-[8px] text-muted-foreground uppercase font-black tracking-widest block">Glucides</span>
           </div>
         </div>
         <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4">
@@ -133,7 +122,7 @@ export default function Home() {
           </div>
           <div className="space-y-1">
             <span className="text-base sm:text-xl font-black block neon-text-blue tracking-tight">{dailyLog.fat}g</span>
-            <span className="text-[7px] sm:text-[8px] text-muted-foreground uppercase font-black tracking-widest block">Lipids</span>
+            <span className="text-[7px] sm:text-[8px] text-muted-foreground uppercase font-black tracking-widest block">Lipides</span>
           </div>
         </div>
       </section>

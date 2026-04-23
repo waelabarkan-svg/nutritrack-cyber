@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -15,19 +14,18 @@ import { toast } from '@/hooks/use-toast';
 import foodDb from '@/lib/food-db.json';
 import { estimateDish } from '@/ai/flows/estimate-dish-flow';
 
-type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+type MealType = 'petit-déjeuner' | 'déjeuner' | 'dîner' | 'snack';
 
 export default function JournalPage() {
   const { user, loading } = useUser();
   const db = useFirestore();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState<MealType>('breakfast');
+  const [selectedType, setSelectedType] = useState<MealType>('petit-déjeuner');
   const [isCustomOpen, setIsCustomOpen] = useState(false);
   const [aiEstimating, setAiEstimating] = useState(false);
   const [aiResult, setAiResult] = useState<any>(null);
 
-  // Custom food form state
   const [customFood, setCustomFood] = useState({
     name: '',
     calories: '',
@@ -60,7 +58,7 @@ export default function JournalPage() {
       const result = await estimateDish({ dishName: searchTerm });
       setAiResult(result);
     } catch (e) {
-      toast({ variant: "destructive", title: "CONNECTION ERROR", description: "AI LINK FAILURE." });
+      toast({ variant: "destructive", title: "ERREUR RÉSEAU", description: "ÉCHEC DE LA LIAISON IA." });
     } finally {
       setAiEstimating(false);
     }
@@ -78,11 +76,11 @@ export default function JournalPage() {
       setSearchTerm('');
       setAiResult(null);
       toast({ 
-        title: "SYSTEM UPDATED", 
-        description: food.aiAnalysis ? food.aiAnalysis.toUpperCase() : `${food.name} ADDED TO PROTOCOL.` 
+        title: "SYSTÈME MIS À JOUR", 
+        description: food.aiAnalysis ? food.aiAnalysis.toUpperCase() : `${food.name} AJOUTÉ AU PROTOCOLE.` 
       });
     } catch (e) {
-      toast({ variant: "destructive", title: "ERROR", description: "FAILED TO COMMIT LOG." });
+      toast({ variant: "destructive", title: "ERREUR", description: "ÉCHEC DE L'ENREGISTREMENT." });
     }
   };
 
@@ -107,9 +105,9 @@ export default function JournalPage() {
       });
       setIsCustomOpen(false);
       setCustomFood({ name: '', calories: '', protein: '', carbs: '', fat: '' });
-      toast({ title: "CUSTOM COMMITTED", description: "EXTERNAL DATA SYNCHRONIZED." });
+      toast({ title: "SAISIE VALIDÉE", description: "DONNÉES SYNCHRONISÉES." });
     } catch (e) {
-      toast({ variant: "destructive", title: "ERROR", description: "MANUAL OVERRIDE FAILED." });
+      toast({ variant: "destructive", title: "ERREUR", description: "ÉCHEC DE LA SAISIE MANUELLE." });
     }
   };
 
@@ -119,23 +117,22 @@ export default function JournalPage() {
   };
 
   const mealSections: { type: MealType; label: string; icon: any }[] = [
-    { type: 'breakfast', label: 'Breakfast Protocol', icon: Coffee },
-    { type: 'lunch', label: 'Lunch Protocol', icon: Utensils },
-    { type: 'dinner', label: 'Dinner Protocol', icon: Moon },
-    { type: 'snack', label: 'Snack Protocol', icon: Apple },
+    { type: 'petit-déjeuner', label: 'Protocole Petit-Déj', icon: Coffee },
+    { type: 'déjeuner', label: 'Protocole Déjeuner', icon: Utensils },
+    { type: 'dîner', label: 'Protocole Dîner', icon: Moon },
+    { type: 'snack', label: 'Protocole Snack', icon: Apple },
   ];
 
   return (
     <main className="px-4 sm:px-6 pt-12 sm:pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white">
       <div className="space-y-1 mb-8 sm:mb-12">
-        <p className="text-primary/60 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.5em] neon-text-yellow">Log Interface</p>
-        <h1 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase neon-text-yellow">Journal Logs</h1>
+        <p className="text-primary/60 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.5em] neon-text-yellow">Interface Log</p>
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase neon-text-yellow">Journal de Bord</h1>
       </div>
 
-      {/* Control Section */}
       <section className="mb-12 space-y-6">
         <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
-          {['breakfast', 'lunch', 'dinner', 'snack'].map((type) => (
+          {['petit-déjeuner', 'déjeuner', 'dîner', 'snack'].map((type) => (
             <button
               key={type}
               onClick={() => setSelectedType(type as MealType)}
@@ -155,7 +152,7 @@ export default function JournalPage() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/40" size={18} />
             <Input 
               className="bg-white/5 border-primary/20 h-14 pl-12 font-black uppercase tracking-widest focus:border-primary/60 transition-all rounded-[12px]" 
-              placeholder="SEARCH PROTOCOLS..."
+              placeholder="RECHERCHER PROTOCOLE..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -170,13 +167,13 @@ export default function JournalPage() {
             </DialogTrigger>
             <DialogContent className="bg-black border-primary/40 text-white rounded-[20px] max-w-[90vw] sm:max-w-md">
               <DialogHeader>
-                <DialogTitle className="text-xl font-black uppercase tracking-tighter neon-text-yellow">Custom Input Override</DialogTitle>
+                <DialogTitle className="text-xl font-black uppercase tracking-tighter neon-text-yellow">Saisie Manuelle</DialogTitle>
               </DialogHeader>
               <form onSubmit={addCustomMeal} className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Item Designation</Label>
+                  <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Désignation</Label>
                   <Input 
-                    placeholder="E.G. PROTEIN BAR" 
+                    placeholder="EX: BARRE PROTÉINÉE" 
                     className="bg-white/5 border-white/10 font-black"
                     value={customFood.name}
                     onChange={(e) => setCustomFood({...customFood, name: e.target.value})}
@@ -185,7 +182,7 @@ export default function JournalPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Energy (KCAL)</Label>
+                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Énergie (KCAL)</Label>
                     <Input 
                       type="number" 
                       className="bg-white/5 border-white/10 font-black"
@@ -195,7 +192,7 @@ export default function JournalPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Protein (G)</Label>
+                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Prot (G)</Label>
                     <Input 
                       type="number" 
                       className="bg-white/5 border-white/10 font-black"
@@ -205,25 +202,23 @@ export default function JournalPage() {
                   </div>
                 </div>
                 <Button type="submit" className="w-full h-14 border-primary neon-glow-yellow mt-4">
-                  COMMIT TO ARCHIVE
+                  VALIDER L'ARCHIVE
                 </Button>
               </form>
             </DialogContent>
           </Dialog>
         </div>
 
-        {/* Search Results */}
         {(filteredFood.length > 0 || searchTerm.length > 2) && (
           <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-            {/* Database Results */}
             {filteredFood.map((food, idx) => (
               <div key={idx} className="cyber-card-yellow p-4 flex justify-between items-center bg-black/90 border-primary/40 rounded-[12px]">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <p className="font-black text-xs tracking-wider uppercase">{food.name}</p>
-                    {food.isDish && <span className="text-[7px] bg-primary/20 text-primary px-1 font-black rounded">PLATE</span>}
+                    {food.isDish && <span className="text-[7px] bg-primary/20 text-primary px-1 font-black rounded">PLAT</span>}
                   </div>
-                  <p className="text-[9px] text-muted-foreground uppercase">{food.calories} KCAL | P: {food.protein}G | C: {food.carbs}G</p>
+                  <p className="text-[9px] text-muted-foreground uppercase">{food.calories} KCAL | P: {food.protein}G | G: {food.carbs}G</p>
                 </div>
                 <Button 
                   size="icon" 
@@ -235,7 +230,6 @@ export default function JournalPage() {
               </div>
             ))}
 
-            {/* Smart Dish AI Estimation Trigger */}
             {!aiResult && (
               <Button 
                 onClick={handleAiEstimate}
@@ -244,17 +238,16 @@ export default function JournalPage() {
               >
                 {aiEstimating ? <Loader2 className="animate-spin mr-2" size={16} /> : <Sparkles className="mr-2" size={16} />}
                 <span className="font-black text-[10px] tracking-[0.2em] uppercase">
-                  {aiEstimating ? "ANALYZING..." : "SMART DISH ANALYSIS [AI]"}
+                  {aiEstimating ? "ANALYSE EN COURS..." : "ANALYSE SMART DISH [IA]"}
                 </span>
               </Button>
             )}
 
-            {/* AI Estimation Result */}
             {aiResult && (
               <div className="cyber-card-blue p-5 bg-black/90 border-[#a855f7] shadow-[0_0_30px_rgba(168,85,247,0.4)] rounded-[12px] animate-in zoom-in-95 duration-500">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <span className="text-[8px] font-black text-[#a855f7] uppercase tracking-[0.3em] block mb-1">IA ESTIMATE [EXPERIMENTAL]</span>
+                    <span className="text-[8px] font-black text-[#a855f7] uppercase tracking-[0.3em] block mb-1">ESTIMATION IA [EXPÉRIMENTAL]</span>
                     <h3 className="text-sm font-black text-white uppercase tracking-wider">{aiResult.name}</h3>
                   </div>
                   <Button 
@@ -276,11 +269,11 @@ export default function JournalPage() {
                   </div>
                   <div className="text-center">
                     <p className="text-[12px] font-black text-white">{aiResult.carbs}g</p>
-                    <p className="text-[7px] text-muted-foreground uppercase font-black">CARB</p>
+                    <p className="text-[7px] text-muted-foreground uppercase font-black">GLUC</p>
                   </div>
                   <div className="text-center">
                     <p className="text-[12px] font-black text-white">{aiResult.fat}g</p>
-                    <p className="text-[7px] text-muted-foreground uppercase font-black">FAT</p>
+                    <p className="text-[7px] text-muted-foreground uppercase font-black">LIPID</p>
                   </div>
                 </div>
                 <p className="text-[9px] italic text-[#a855f7]/80 font-black uppercase tracking-wider border-t border-[#a855f7]/20 pt-2">
@@ -292,7 +285,6 @@ export default function JournalPage() {
         )}
       </section>
 
-      {/* Daily Logs List */}
       <div className="space-y-12">
         {mealSections.map((section) => {
           const sectionMeals = (meals || []).filter((m: any) => m.type === section.type);
@@ -313,7 +305,7 @@ export default function JournalPage() {
                         <span className="text-primary">{meal.calories} KCAL</span>
                         <span className="opacity-20">|</span>
                         <span>P: {meal.protein}G</span>
-                        <span>C: {meal.carbs}G</span>
+                        <span>G: {meal.carbs}G</span>
                       </div>
                     </div>
                     <Button 

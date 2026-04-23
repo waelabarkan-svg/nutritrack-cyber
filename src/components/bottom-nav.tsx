@@ -9,10 +9,10 @@ export function BottomNav() {
   const pathname = usePathname();
 
   const navItems = [
-    { label: 'Core', href: '/', icon: Home },
-    { label: 'Logs', href: '/journal', icon: ClipboardList },
-    { label: 'Archive', href: '/history', icon: Calendar },
-    { label: 'Agent', href: '/profile', icon: User },
+    { label: 'Accueil', href: '/', icon: Home },
+    { label: 'Journal', href: '/journal', icon: ClipboardList },
+    { label: 'Archives', href: '/history', icon: Calendar },
+    { label: 'Profil', href: '/profile', icon: User },
   ];
 
   return (
@@ -38,7 +38,7 @@ export function BottomNav() {
                   "sm:w-[22px] sm:h-[22px]"
                 )} 
               />
-              <span className="text-[7px] sm:text-[9px] md:text-sm font-black uppercase tracking-[0.2em] sm:tracking-[0.4em]">{item.label}</span>
+              <span className="text-[7px] sm:text-[9px] font-black uppercase tracking-[0.2em] sm:tracking-[0.4em]">{item.label}</span>
             </Link>
           );
         })}

@@ -1,7 +1,6 @@
-
 'use server';
 /**
- * @fileOverview AI Flow for personalized nutritional coaching.
+ * @fileOverview Flux IA pour un coaching nutritionnel personnalisé en français.
  */
 
 import { ai } from '@/ai/genkit';
@@ -24,8 +23,8 @@ const CoachFeedbackInputSchema = z.object({
 export type CoachFeedbackInput = z.infer<typeof CoachFeedbackInputSchema>;
 
 const CoachFeedbackOutputSchema = z.object({
-  feedback: z.string().describe('The personalized coaching message.'),
-  status: z.enum(['urgent', 'encouragement']).describe('The urgency level of the advice.'),
+  feedback: z.string().describe('Le message de coaching personnalisé.'),
+  status: z.enum(['urgent', 'encouragement']).describe('Le niveau d\'urgence du conseil.'),
 });
 export type CoachFeedbackOutput = z.infer<typeof CoachFeedbackOutputSchema>;
 
@@ -37,24 +36,24 @@ const prompt = ai.definePrompt({
   name: 'coachFeedbackPrompt',
   input: { schema: CoachFeedbackInputSchema },
   output: { schema: CoachFeedbackOutputSchema },
-  prompt: `You are a Cyberpunk Nutritional Coach expert. Analyze the following data for the user.
+  prompt: `Tu es un Coach Nutritionnel expert dans un futur Cyberpunk. Analyse les données suivantes pour l'utilisateur.
   
-  User Profile:
-  - Current Weight: {{{stats.weight}}} kg
-  - Target: {{{stats.targetWeight}}} kg
-  - Goal: {{{stats.goal}}}
-  - Activity: {{{stats.activityLevel}}}
+  Profil Utilisateur:
+  - Poids actuel: {{{stats.weight}}} kg
+  - Cible: {{{stats.targetWeight}}} kg
+  - Objectif: {{{stats.goal}}}
+  - Activité: {{{stats.activityLevel}}}
   
-  Daily Consumption:
+  Consommation du jour:
   - Calories: {{{dailyLog.calories}}} kcal
-  - Protein: {{{dailyLog.protein}}} g
-  - Carbs: {{{dailyLog.carbs}}} g
-  - Fat: {{{dailyLog.fat}}} g
+  - Protéines: {{{dailyLog.protein}}} g
+  - Glucides: {{{dailyLog.carbs}}} g
+  - Lipides: {{{dailyLog.fat}}} g
   
-  Provide a short (max 2 sentences), punchy, and cyberpunk-styled advice. 
-  If they added a complex dish (high calories in one go), comment on how it impacts their energy flux.
-  If the user exceeds their calories or is severely lacking protein, use "urgent" status.
-  Otherwise, use "encouragement".`,
+  Réponds EXCLUSIVEMENT en français.
+  Donne un conseil court (max 2 phrases), percutant et stylé cyberpunk. 
+  Si les calories sont dépassées ou si les protéines manquent gravement, utilise le statut "urgent".
+  Sinon, utilise "encouragement".`,
 });
 
 const coachFeedbackFlow = ai.defineFlow(
@@ -66,10 +65,10 @@ const coachFeedbackFlow = ai.defineFlow(
   async (input) => {
     try {
       const { output } = await prompt(input);
-      if (!output) throw new Error('No output from AI');
+      if (!output) throw new Error('Pas de réponse de l\'IA');
       return output;
     } catch (error) {
-      console.error('Neural Link Failure:', error);
+      console.error('Échec de la liaison neurale:', error);
       return {
         feedback: "Liaison neurale instable. Analyse en attente... continue tes efforts, Agent !",
         status: "encouragement",
