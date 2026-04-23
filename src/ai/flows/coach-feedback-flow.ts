@@ -68,18 +68,14 @@ const coachFeedbackFlow = ai.defineFlow(
     outputSchema: CoachFeedbackOutputSchema,
   },
   async (input) => {
-    const { text } = await prompt(input);
-    
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const rawContent = jsonMatch ? jsonMatch[0] : text;
-    const cleanJson = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
-
     try {
+      const { text } = await prompt(input);
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const cleanJson = jsonMatch ? jsonMatch[0] : text;
       return JSON.parse(cleanJson) as CoachFeedbackOutput;
     } catch (error) {
-      console.error('ERREUR DE PARSING IA [COACH]:', error);
       return {
-        feedback: "Liaison neurale instable. Analyse en attente... continue tes efforts, Agent !",
+        feedback: "Liaison neurale instable. Continue tes efforts, Agent !",
         status: "encouragement",
       };
     }

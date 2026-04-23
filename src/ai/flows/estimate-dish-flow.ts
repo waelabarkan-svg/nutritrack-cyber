@@ -1,7 +1,6 @@
 'use server';
 /**
  * @fileOverview Flux IA pour l'estimation nutritionnelle textuelle.
- * Modèle gemini-1.5-flash sur API v1 stable.
  */
 
 import { ai } from '@/ai/genkit';
@@ -34,8 +33,7 @@ const prompt = ai.definePrompt({
   
   Estime les valeurs pour une portion standard.
   
-  IMPORTANT : Réponds EXCLUSIVEMENT avec un objet JSON brut. 
-  Ne mets aucun texte avant ou après. Pas de balises Markdown. 
+  IMPORTANT : Réponds EXCLUSIVEMENT avec un objet JSON brut sans balises Markdown. 
   Ta réponse doit commencer par { et finir par }.
 
   Structure JSON :
@@ -57,16 +55,8 @@ const estimateDishFlow = ai.defineFlow(
   },
   async (input) => {
     const { text } = await prompt(input);
-    
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const rawContent = jsonMatch ? jsonMatch[0] : text;
-    const cleanJson = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
-
-    try {
-      return JSON.parse(cleanJson) as EstimateDishOutput;
-    } catch (error) {
-      console.error('ERREUR DE PARSING IA [ESTIMATE]:', error);
-      throw new Error("Échec de l'analyse neurale du plat.");
-    }
+    const cleanJson = jsonMatch ? jsonMatch[0] : text;
+    return JSON.parse(cleanJson) as EstimateDishOutput;
   }
 );
