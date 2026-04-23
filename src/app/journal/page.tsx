@@ -119,10 +119,10 @@ export default function JournalPage() {
     setAiEstimating(true);
     setAiResult(null);
     try {
-      if ('vibrate' in navigator) navigator.vibrate(50);
+      if (typeof window !== 'undefined' && 'vibrate' in navigator) navigator.vibrate(50);
       const result = await scanDish({ photoDataUri: scanningImage });
       setAiResult(result);
-      if ('vibrate' in navigator) navigator.vibrate([100, 50, 100]);
+      if (typeof window !== 'undefined' && 'vibrate' in navigator) navigator.vibrate([100, 50, 100]);
     } catch (e: any) {
       console.error('Scan error:', e);
       toast({ 
@@ -157,7 +157,11 @@ export default function JournalPage() {
     if (!user) return;
     try {
       await addDoc(collection(db, 'users', user.uid, 'meals'), {
-        ...food,
+        name: food.name.toUpperCase(),
+        calories: Number(food.calories),
+        protein: Number(food.protein),
+        carbs: Number(food.carbs),
+        fat: Number(food.fat),
         type: selectedType,
         date: today,
         createdAt: new Date().toISOString()
@@ -309,7 +313,7 @@ export default function JournalPage() {
                              <div className="flex flex-col items-center justify-center h-full gap-4">
                                <Loader2 className="animate-spin text-accent" size={48} />
                                <p className="text-[12px] font-black tracking-[0.6em] text-accent uppercase animate-pulse neon-text-blue">SCAN EN COURS...</p>
-                               <p className="text-[8px] font-black text-accent/60 uppercase tracking-widest">Liaison Neurale Établie</p>
+                               <p className="text-[8px] font-black text-accent/60 uppercase tracking-widest">Liaison Neurale Établie (GROQ)</p>
                              </div>
                           </div>
                         )}
