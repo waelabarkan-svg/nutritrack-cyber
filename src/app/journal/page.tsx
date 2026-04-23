@@ -153,7 +153,30 @@ export default function JournalPage() {
     }
   };
 
-  const addMeal = async (food: any) => {
+  const saveToBiometricMemory = (food: any) => {
+    const history = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
+    const dateKey = new Date().toISOString().split('T')[0];
+    
+    const index = history.findIndex((item: any) => item.date === dateKey);
+    if (index > -1) {
+      history[index].calories += Number(food.calories);
+      history[index].protein += Number(food.protein);
+      history[index].scans = (history[index].scans || 0) + 1;
+    } else {
+      history.push({
+        date: dateKey,
+        calories: Number(food.calories),
+        protein: Number(food.protein),
+        scans: 1
+      });
+    }
+    
+    // Garder les 30 derniers jours pour l'analyse locale
+    const limitedHistory = history.slice(-30);
+    localStorage.setItem('biometric_memory', JSON.stringify(limitedHistory));
+  };
+
+  const addMeal = async (food: any, isScan = false) => {
     if (!user) return;
     try {
       await addDoc(collection(db, 'users', user.uid, 'meals'), {
@@ -166,6 +189,11 @@ export default function JournalPage() {
         date: today,
         createdAt: new Date().toISOString()
       });
+
+      if (isScan) {
+        saveToBiometricMemory(food);
+      }
+
       setSearchTerm('');
       setAiResult(null);
       setScanningImage(null);
@@ -344,7 +372,7 @@ export default function JournalPage() {
                                 <span className="text-[8px] font-black text-accent uppercase tracking-[0.3em] block mb-1">ANALYSE OPTIQUE TERMINÉE</span>
                                 <h3 className="text-xl font-black text-white uppercase tracking-tighter">{aiResult.name}</h3>
                               </div>
-                              <Button className="border-accent neon-glow-blue h-12 w-12" onClick={() => addMeal(aiResult)}>
+                              <Button className="border-accent neon-glow-blue h-12 w-12" onClick={() => addMeal(aiResult, true)}>
                                 <Check size={24} />
                               </Button>
                             </div>
@@ -494,7 +522,7 @@ export default function JournalPage() {
                     <Button 
                       size="icon" 
                       className="w-12 h-12 border-[#a855f7] bg-black text-[#a855f7] neon-glow-blue"
-                      onClick={() => addMeal(aiResult)}
+                      onClick={() => addMeal(aiResult, true)}
                     >
                       <Plus size={24} />
                     </Button>
