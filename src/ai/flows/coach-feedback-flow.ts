@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview Flux IA pour un coaching nutritionnel personnalisé en français.
+ * @fileOverview Flux IA pour un coaching nutritionnel personnalisé en français avec suivi d'hydratation.
  */
 
 import { ai } from '@/ai/genkit';
@@ -19,6 +19,7 @@ const CoachFeedbackInputSchema = z.object({
     carbs: z.number(),
     fat: z.number(),
   }),
+  hydration: z.number().describe('Quantité d\'eau bue en verres (1 verre = 250ml)'),
 });
 export type CoachFeedbackInput = z.infer<typeof CoachFeedbackInputSchema>;
 
@@ -40,9 +41,7 @@ const prompt = ai.definePrompt({
   
   Profil Utilisateur:
   - Poids actuel: {{{stats.weight}}} kg
-  - Cible: {{{stats.targetWeight}}} kg
   - Objectif: {{{stats.goal}}}
-  - Activité: {{{stats.activityLevel}}}
   
   Consommation du jour:
   - Calories: {{{dailyLog.calories}}} kcal
@@ -50,10 +49,16 @@ const prompt = ai.definePrompt({
   - Glucides: {{{dailyLog.carbs}}} g
   - Lipides: {{{dailyLog.fat}}} g
   
+  Hydratation (Refroidissement):
+  - Verres bus: {{{hydration}}} / 10 (Cible: 2.5L)
+  
   Réponds EXCLUSIVEMENT en français.
-  Donne un conseil court (max 2 phrases), percutant et stylé cyberpunk. 
-  Si les calories sont dépassées ou si les protéines manquent gravement, utilise le statut "urgent".
-  Sinon, utilise "encouragement".`,
+  Donne un conseil court (max 2 phrases), percutant et stylé cyberpunk.
+  
+  Priorité absolue: 
+  1. Si l'hydratation est inférieure à 4 verres alors que la journée avance, signale un risque de "surchauffe du système".
+  2. Si les calories sont dépassées ou les protéines manquent, utilise le statut "urgent".
+  3. Sinon, encourage l'Agent.`,
 });
 
 const coachFeedbackFlow = ai.defineFlow(
@@ -68,7 +73,6 @@ const coachFeedbackFlow = ai.defineFlow(
       if (!output) throw new Error('Pas de réponse de l\'IA');
       return output;
     } catch (error) {
-      console.error('Échec de la liaison neurale:', error);
       return {
         feedback: "Liaison neurale instable. Analyse en attente... continue tes efforts, Agent !",
         status: "encouragement",

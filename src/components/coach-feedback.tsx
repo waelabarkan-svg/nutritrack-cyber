@@ -1,9 +1,11 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Sparkles, AlertTriangle, Zap } from 'lucide-react';
 import { getCoachFeedback, CoachFeedbackOutput } from '@/ai/flows/coach-feedback-flow';
 import { UserStats } from '@/lib/nutrition-utils';
+import { useFirestore, useUser } from '@/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 interface CoachFeedbackProps {
   stats: UserStats;
@@ -16,12 +18,29 @@ interface CoachFeedbackProps {
 }
 
 export function CoachFeedback({ stats, dailyLog }: CoachFeedbackProps) {
+  const { user } = useUser();
+  const db = useFirestore();
   const [feedback, setFeedback] = useState<CoachFeedbackOutput | null>(null);
   const [loading, setLoading] = useState(false);
+  const [hydration, setHydration] = useState(0);
+
+  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+
+  useEffect(() => {
+    if (!user) return;
+    const docRef = doc(db, 'users', user.uid, 'hydration', today);
+    const unsubscribe = onSnapshot(docRef, (snap) => {
+      if (snap.exists()) {
+        setHydration(snap.data().amount || 0);
+      } else {
+        setHydration(0);
+      }
+    });
+    return () => unsubscribe();
+  }, [user, db, today]);
 
   useEffect(() => {
     async function fetchFeedback() {
-      // On déclenche le feedback si au moins un log existe ou pour souhaiter la bienvenue
       setLoading(true);
       try {
         const result = await getCoachFeedback({
@@ -31,7 +50,8 @@ export function CoachFeedback({ stats, dailyLog }: CoachFeedbackProps) {
             goal: stats.goal,
             activityLevel: stats.activityLevel,
           },
-          dailyLog
+          dailyLog,
+          hydration
         });
         setFeedback(result);
       } catch (error) {
@@ -41,9 +61,9 @@ export function CoachFeedback({ stats, dailyLog }: CoachFeedbackProps) {
       }
     }
 
-    const timer = setTimeout(fetchFeedback, 1000);
+    const timer = setTimeout(fetchFeedback, 1500);
     return () => clearTimeout(timer);
-  }, [dailyLog, stats]);
+  }, [dailyLog, stats, hydration]);
 
   const isUrgent = feedback?.status === 'urgent';
 
@@ -64,9 +84,9 @@ export function CoachFeedback({ stats, dailyLog }: CoachFeedbackProps) {
       
       <p className="text-xs font-black leading-relaxed tracking-wide text-white/90 uppercase">
         {loading ? (
-          <span className="opacity-50 italic">Analyzing biometric data...</span>
+          <span className="opacity-50 italic">Analyse des données biométriques...</span>
         ) : (
-          feedback?.feedback || "System standby. Awaiting caloric input."
+          feedback?.feedback || "Système en veille. En attente de données métaboliques."
         )}
       </p>
     </div>

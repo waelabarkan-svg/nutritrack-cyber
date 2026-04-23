@@ -4,81 +4,108 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Droplets, Plus, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFirestore, useUser } from '@/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
 export function HydrationCard() {
   const { user } = useUser();
   const db = useFirestore();
   const [glasses, setGlasses] = useState(0);
-  const target = 8;
+  const target = 10; // 10 verres * 250ml = 2.5L
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   useEffect(() => {
     if (!user) return;
-    const fetchHydration = async () => {
-      const docRef = doc(db, 'users', user.uid, 'hydration', today);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        setGlasses(docSnap.data().amount || 0);
+    const docRef = doc(db, 'users', user.uid, 'hydration', today);
+    
+    const unsubscribe = onSnapshot(docRef, (snap) => {
+      if (snap.exists()) {
+        setGlasses(snap.data().amount || 0);
+      } else {
+        setGlasses(0);
       }
-    };
-    fetchHydration();
+    });
+
+    return () => unsubscribe();
   }, [user, today, db]);
 
   const updateHydration = async (newAmount: number) => {
     if (!user) return;
     const amount = Math.max(0, newAmount);
-    setGlasses(amount);
     const docRef = doc(db, 'users', user.uid, 'hydration', today);
     setDoc(docRef, { amount }, { merge: true });
   };
 
   const progress = Math.min(glasses / target, 1);
+  const isComplete = glasses >= target;
 
   return (
-    <div className="cyber-card-blue p-8 bg-black relative overflow-hidden rounded-[20px] border-accent/40 shadow-[0_0_30px_rgba(0,242,255,0.2)]">
+    <div className={`cyber-card-blue p-8 bg-black relative overflow-hidden rounded-[20px] transition-all duration-1000 ${
+      isComplete 
+      ? 'border-accent shadow-[0_0_50px_rgba(0,242,255,0.6)]' 
+      : 'border-accent/40 shadow-[0_0_30px_rgba(0,242,255,0.2)]'
+    }`}>
       <div className="relative z-10">
-        <div className="flex justify-between items-center mb-12">
-          <div className="flex items-center gap-5">
-            <div className="w-12 h-12 border-2 border-accent/50 flex items-center justify-center bg-black rounded-[12px] shadow-[0_0_15px_rgba(0,242,255,0.3)]">
-              <Droplets className="text-accent" size={20} />
+        <div className="flex justify-between items-center mb-10">
+          <div className="flex items-center gap-4">
+            <div className={`w-12 h-12 border-2 flex items-center justify-center bg-black rounded-[12px] transition-all duration-500 ${
+              isComplete ? 'border-accent neon-glow-blue' : 'border-accent/50'
+            }`}>
+              <Droplets className={isComplete ? "text-accent animate-pulse" : "text-accent/60"} size={20} />
             </div>
             <div>
-              <h3 className="font-black text-[10px] uppercase tracking-[0.4em] text-accent neon-text-blue">Fluid Integrity</h3>
-              <p className="text-[8px] text-muted-foreground font-black uppercase tracking-widest mt-2">Nominal Capacity: {target} Units</p>
+              <h3 className="font-black text-[10px] uppercase tracking-[0.4em] text-accent neon-text-blue">Liquide de Refroidissement</h3>
+              <p className="text-[8px] text-muted-foreground font-black uppercase tracking-widest mt-2">Intégrité : {glasses * 250}ml / 2500ml</p>
             </div>
           </div>
           <div className="text-right">
-            <span className="text-accent font-black text-5xl tracking-tighter neon-text-blue">
+            <span className={`font-black text-5xl tracking-tighter transition-all duration-500 ${isComplete ? 'text-accent neon-text-blue' : 'text-accent/80'}`}>
               {glasses}
             </span>
+            <span className="text-[10px] text-muted-foreground block font-black uppercase tracking-widest">UNITÉS</span>
           </div>
         </div>
 
-        <div className="flex justify-center items-center gap-12">
+        <div className="flex justify-center items-center gap-8">
           <Button 
             variant="ghost" 
             size="icon" 
-            className="text-accent h-12 w-12 hover:bg-accent/10 border-none"
+            className="text-white/20 h-10 w-10 hover:bg-accent/10 border-none"
             onClick={() => updateHydration(glasses - 1)}
           >
-            <Minus size={20} />
+            <Minus size={18} />
           </Button>
-          <div className="flex-1 max-w-[160px] h-[2px] bg-white/10 relative rounded-full overflow-hidden">
+
+          <div className="flex-1 h-2 bg-white/5 relative rounded-full overflow-hidden border border-white/5">
             <div 
-              className="bg-accent h-full transition-all duration-1000 shadow-[0_0_20px_rgba(0,242,255,1)]"
+              className={`h-full transition-all duration-1000 ${
+                isComplete 
+                ? 'bg-accent shadow-[0_0_25px_rgba(0,242,255,1)]' 
+                : 'bg-accent/60'
+              }`}
               style={{ width: `${progress * 100}%` }}
             />
           </div>
+
           <Button 
             variant="ghost" 
             size="icon" 
-            className="border-2 border-primary text-primary h-16 w-16 shadow-[0_0_25px_rgba(253,224,71,0.4)] hover:bg-primary/10 rounded-[12px]"
+            className={`h-16 w-16 border-2 transition-all duration-500 rounded-[12px] flex flex-col items-center justify-center gap-1 ${
+              isComplete 
+              ? 'border-accent text-accent shadow-[0_0_30px_rgba(0,242,255,0.5)]' 
+              : 'border-primary text-primary shadow-[0_0_20px_rgba(253,224,71,0.3)]'
+            }`}
             onClick={() => updateHydration(glasses + 1)}
           >
-            <Plus size={28} />
+            <Plus size={24} strokeWidth={3} />
+            <span className="text-[7px] font-black uppercase tracking-tighter">250ML</span>
           </Button>
         </div>
+
+        {isComplete && (
+          <p className="text-center text-[8px] font-black text-accent uppercase tracking-[0.5em] mt-6 animate-pulse neon-text-blue">
+            SYSTÈME OPTIMAL - TEMPÉRATURE STABLE
+          </p>
+        )}
       </div>
     </div>
   );
