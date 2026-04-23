@@ -6,7 +6,7 @@ import { useUser, useFirestore, useCollection } from '@/firebase';
 import { BottomNav } from '@/components/bottom-nav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Label } from '@/components/ui/label';
 import { Plus, Trash2, Search, Coffee, Utensils, Moon, Apple, Zap, Sparkles, Loader2, Camera, Upload, X, Check } from 'lucide-react';
@@ -114,12 +114,9 @@ export default function JournalPage() {
     setAiEstimating(true);
     setAiResult(null);
     try {
-      // Haptic feedback if supported
       if ('vibrate' in navigator) navigator.vibrate(50);
-      
       const result = await scanDish({ photoDataUri: dataUri });
       setAiResult(result);
-      
       if ('vibrate' in navigator) navigator.vibrate([100, 50, 100]);
     } catch (e) {
       toast({ variant: "destructive", title: "LIAISON NEURALE ÉCHOUÉE", description: "Impossible d'analyser l'image." });
@@ -257,6 +254,10 @@ export default function JournalPage() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="bg-black border-accent/40 text-white rounded-[20px] max-w-[95vw] sm:max-w-md p-0 overflow-hidden">
+                  <DialogHeader className="sr-only">
+                    <DialogTitle>Scan Optique</DialogTitle>
+                    <DialogDescription>Analyse de la composition moléculaire des aliments par vision artificielle.</DialogDescription>
+                  </DialogHeader>
                   <div className="relative h-[60vh] bg-black">
                     {!scanningImage ? (
                       <>
@@ -343,6 +344,7 @@ export default function JournalPage() {
                 <DialogContent className="bg-black border-primary/40 text-white rounded-[20px] max-w-[90vw] sm:max-w-md">
                   <DialogHeader>
                     <DialogTitle className="text-xl font-black uppercase tracking-tighter neon-text-yellow">Saisie Manuelle</DialogTitle>
+                    <DialogDescription className="sr-only">Entrez manuellement les informations nutritionnelles de votre aliment.</DialogDescription>
                   </DialogHeader>
                   <form onSubmit={addCustomMeal} className="space-y-4 pt-4">
                     <div className="space-y-2">
