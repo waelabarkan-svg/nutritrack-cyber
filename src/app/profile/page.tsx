@@ -12,7 +12,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { UserStats, calculateNutritionGoals } from '@/lib/nutrition-utils';
-import { Database, Info, Zap } from 'lucide-react';
+import { Database, Info, Zap, Shield, Trophy, Cpu } from 'lucide-react';
+import { getUserGamification, getRank, getXpProgress, getXpForLevel } from '@/lib/gamification-utils';
 
 export default function ProfilePage() {
   const { user, loading } = useUser();
@@ -28,6 +29,8 @@ export default function ProfilePage() {
     goal: 'maintain'
   });
 
+  const [gamification, setGamification] = useState({ xp: 0, level: 1 });
+
   useEffect(() => {
     if (user) {
       const fetchStats = async () => {
@@ -39,10 +42,14 @@ export default function ProfilePage() {
         }
       };
       fetchStats();
+      setGamification(getUserGamification());
     }
   }, [user, db]);
 
   const goals = useMemo(() => calculateNutritionGoals(stats), [stats]);
+  const rank = useMemo(() => getRank(gamification.level), [gamification.level]);
+  const xpProgress = useMemo(() => getXpProgress(gamification.xp), [gamification.xp]);
+  const nextLevelXp = useMemo(() => getXpForLevel(gamification.level + 1), [gamification.level]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,9 +67,52 @@ export default function ProfilePage() {
   return (
     <TooltipProvider delayDuration={0}>
       <main className="px-6 pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white">
-        <div className="space-y-1 mb-12">
-          <p className="text-primary/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-yellow">Protocole: Identité</p>
-          <h1 className="text-3xl font-black tracking-tighter uppercase neon-text-yellow">Paramètres</h1>
+        <div className="space-y-1 mb-8">
+          <p className="text-primary/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-yellow">Interface: Archiviste</p>
+          <h1 className="text-3xl font-black tracking-tighter uppercase neon-text-yellow">Citoyen Bio</h1>
+        </div>
+
+        {/* Section Gamification RPG */}
+        <div className="cyber-card-blue p-6 mb-10 bg-black/40 border-accent/40 relative overflow-hidden group">
+          <div className="absolute -right-4 -top-4 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Cpu size={120} className="text-accent" />
+          </div>
+          <div className="relative z-10">
+            <div className="flex justify-between items-center mb-6">
+              <div className="space-y-1">
+                <span className="text-[8px] font-black text-accent uppercase tracking-[0.4em] block neon-text-blue">{rank}</span>
+                <h2 className="text-2xl font-black tracking-tighter uppercase">{user.displayName || 'AGENT'}</h2>
+              </div>
+              <div className="w-14 h-14 border-2 border-accent/50 flex flex-col items-center justify-center bg-black rounded-xl shadow-[0_0_15px_rgba(0,242,255,0.3)]">
+                <span className="text-[8px] font-black text-accent/60 uppercase">NIV</span>
+                <span className="text-xl font-black neon-text-blue">{gamification.level}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between items-end">
+                <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Progression Neurale</span>
+                <span className="text-[9px] font-black text-accent uppercase tracking-widest">{gamification.xp} / {nextLevelXp} XP</span>
+              </div>
+              <div className="h-3 w-full bg-white/5 border border-white/10 rounded-full overflow-hidden p-[2px]">
+                <div 
+                  className="h-full bg-gradient-to-r from-accent via-primary to-accent rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(0,242,255,0.8)]"
+                  style={{ width: `${xpProgress}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-white/5">
+              <div className="flex items-center gap-2">
+                <Shield size={14} className="text-accent" />
+                <span className="text-[8px] font-black text-muted-foreground uppercase">Système Intègre</span>
+              </div>
+              <div className="flex items-center gap-2 justify-end">
+                <Trophy size={14} className="text-primary" />
+                <span className="text-[8px] font-black text-muted-foreground uppercase">Mérite : {gamification.level * 10}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="cyber-card-yellow p-6 mb-10 bg-black/40 border-primary/30 relative overflow-hidden group">
@@ -98,33 +148,6 @@ export default function ProfilePage() {
               <div className="text-center">
                 <p className="text-[7px] font-black text-muted-foreground uppercase tracking-widest mb-1">LIPIDES</p>
                 <p className="text-xs font-black text-white">{goals.fat}G</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-white/5">
-              <div>
-                <div className="flex items-center gap-1">
-                  <span className="text-[7px] font-black text-muted-foreground uppercase tracking-widest">BMR</span>
-                  <Tooltip>
-                    <TooltipTrigger asChild><Info size={8} className="text-muted-foreground/40 cursor-help" /></TooltipTrigger>
-                    <TooltipContent className="max-w-[180px]">
-                      MÉTABOLISME DE BASE : ÉNERGIE BRÛLÉE AU REPOS TOTAL.
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <p className="text-xs font-black text-white">{goals.bmr} KCAL</p>
-              </div>
-              <div>
-                <div className="flex items-center gap-1">
-                  <span className="text-[7px] font-black text-muted-foreground uppercase tracking-widest">TDEE</span>
-                  <Tooltip>
-                    <TooltipTrigger asChild><Info size={8} className="text-muted-foreground/40 cursor-help" /></TooltipTrigger>
-                    <TooltipContent className="max-w-[180px]">
-                      DÉPENSE TOTALE INCLUANT TES ACTIVITÉS ET TON SPORT.
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <p className="text-xs font-black text-white">{goals.tdee} KCAL</p>
               </div>
             </div>
           </div>
@@ -180,37 +203,6 @@ export default function ProfilePage() {
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center gap-2 mb-1">
-              <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Protocole d'Activité</Label>
-              <Tooltip>
-                <TooltipTrigger asChild><Info size={12} className="text-muted-foreground/40 cursor-help" /></TooltipTrigger>
-                <TooltipContent className="max-w-[250px] space-y-3">
-                  <p><span className="text-primary">SÉDENTAIRE :</span> BUREAU, PEU DE SPORT.</p>
-                  <p><span className="text-primary">LÉGER :</span> 1-2 SÉANCES / SEMAINE.</p>
-                  <p><span className="text-primary">MODÉRÉ :</span> 3-5 SÉANCES / SEMAINE.</p>
-                  <p><span className="text-primary">INTENSE :</span> 6-7 SÉANCES INTENSIVES.</p>
-                  <p><span className="text-primary">ATHLÈTE :</span> + DE 10H DE SPORT INTENSIF / SEMAINE.</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <Select 
-              value={stats.activityLevel} 
-              onValueChange={(v: any) => setStats({...stats, activityLevel: v})}
-            >
-              <SelectTrigger className="bg-white/5 border-primary/20 h-12 font-black uppercase text-[10px] tracking-widest focus:border-primary transition-all rounded-[10px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-black border-primary/20 text-white">
-                <SelectItem value="sedentary">01_SÉDENTAIRE</SelectItem>
-                <SelectItem value="light">02_LÉGER</SelectItem>
-                <SelectItem value="moderate">03_MODÉRÉ</SelectItem>
-                <SelectItem value="active">04_INTENSE</SelectItem>
-                <SelectItem value="very_active">05_ATHLÈTE</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
             <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Objectif Primaire</Label>
             <Select 
               value={stats.goal} 
@@ -229,7 +221,6 @@ export default function ProfilePage() {
 
           <Button type="submit" className="w-full h-16 font-black text-xs tracking-[0.4em] border-primary neon-glow-yellow mt-6 rounded-[12px] group relative overflow-hidden">
             <span className="relative z-10 group-hover:neon-text-yellow transition-all">MISE_À_JOUR_DES_PARAMÈTRES</span>
-            <div className="absolute inset-0 bg-primary/10 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
           </Button>
         </form>
 

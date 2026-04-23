@@ -15,6 +15,7 @@ import { toast } from '@/hooks/use-toast';
 import foodDb from '@/lib/food-db.json';
 import { estimateDish } from '@/ai/flows/estimate-dish-flow';
 import { scanDish } from '@/ai/flows/scan-dish-flow';
+import { addXp } from '@/lib/gamification-utils';
 
 type MealType = 'petit-déjeuner' | 'déjeuner' | 'dîner' | 'snack';
 
@@ -191,6 +192,18 @@ export default function JournalPage() {
 
       // Toujours enregistrer en mémoire biométrique locale pour le graphique
       saveToBiometricMemory(food, isScan);
+
+      // Gain d'XP si scan
+      if (isScan) {
+        const result = addXp(50);
+        if (result?.leveledUp) {
+          toast({
+            title: "LEVEL UP!",
+            description: `VOUS AVEZ ATTEINT LE NIVEAU ${result.level} !`,
+            className: "bg-accent text-black font-black"
+          });
+        }
+      }
 
       setSearchTerm('');
       setAiResult(null);

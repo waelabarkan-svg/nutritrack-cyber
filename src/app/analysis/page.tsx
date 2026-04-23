@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase';
 import { BottomNav } from '@/components/bottom-nav';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
-import { Activity, Flame, Beef, Zap, AlertTriangle } from 'lucide-react';
+import { Activity, Flame, Beef, Zap, AlertTriangle, Cpu } from 'lucide-react';
+import { getUserGamification, getRank } from '@/lib/gamification-utils';
 
 type TimeRange = '7J' | '1M' | '6M';
 
@@ -14,13 +15,14 @@ export default function AnalysisPage() {
   const router = useRouter();
   const [timeRange, setTimeRange] = useState<TimeRange>('7J');
   const [history, setHistory] = useState<any[]>([]);
+  const [gamification, setGamification] = useState({ xp: 0, level: 1 });
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
     
-    // Charger la mémoire biométrique réelle depuis le localStorage
     const storedHistory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
     setHistory(storedHistory);
+    setGamification(getUserGamification());
   }, [user, loading, router]);
 
   const filteredData = useMemo(() => {
@@ -54,12 +56,30 @@ export default function AnalysisPage() {
   if (loading || !user) return null;
 
   const hasData = filteredData.length > 0;
+  const rank = getRank(gamification.level);
 
   return (
     <main className="px-6 pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white selection:bg-primary/20">
       <div className="space-y-1 mb-8">
         <p className="text-primary/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-yellow">Index: Biométrie</p>
         <h1 className="text-3xl font-black tracking-tighter uppercase neon-text-yellow">Analyse</h1>
+      </div>
+
+      {/* Résumé Gamification */}
+      <div className="cyber-card-blue p-4 mb-8 bg-black/40 border-accent/40 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 border border-accent/40 flex items-center justify-center rounded-lg bg-accent/5">
+            <Cpu size={20} className="text-accent" />
+          </div>
+          <div>
+            <span className="text-[7px] font-black text-accent/60 uppercase tracking-widest block">{rank}</span>
+            <span className="text-xs font-black uppercase tracking-tighter">NIVEAU {gamification.level}</span>
+          </div>
+        </div>
+        <div className="text-right">
+          <span className="text-[10px] font-black neon-text-blue">{gamification.xp} XP</span>
+          <span className="text-[7px] text-muted-foreground block uppercase font-black">TOTAL ACCUMULÉ</span>
+        </div>
       </div>
 
       <div className="flex gap-2 mb-8">
@@ -85,9 +105,6 @@ export default function AnalysisPage() {
             <p className="text-[10px] font-black text-primary uppercase tracking-[0.4em] text-center">
               AUCUNE DONNÉE BIOMÉTRIQUE DÉTECTÉE
             </p>
-            <p className="text-[8px] text-muted-foreground uppercase text-center">
-              Enregistrez vos repas pour générer la courbe de flux.
-            </p>
           </div>
         ) : (
           <>
@@ -99,20 +116,13 @@ export default function AnalysisPage() {
               <AreaChart data={filteredData}>
                 <defs>
                   <linearGradient id="colorCal" x1="0" y1="0" x2="0" y2="1">
-                    <span className="sr-only">Gradient</span>
                     <stop offset="5%" stopColor="#fde047" stopOpacity={0.3}/>
                     <stop offset="95%" stopColor="#fde047" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-                <XAxis 
-                  dataKey="date" 
-                  hide 
-                />
-                <YAxis 
-                  hide 
-                  domain={['dataMin - 100', 'dataMax + 100']} 
-                />
+                <XAxis dataKey="date" hide />
+                <YAxis hide domain={['dataMin - 100', 'dataMax + 100']} />
                 <RechartsTooltip 
                   contentStyle={{ backgroundColor: '#000', border: '1px solid #fde04744', borderRadius: '8px', fontSize: '10px' }}
                   itemStyle={{ color: '#fde047', fontWeight: 'bold' }}
@@ -160,26 +170,6 @@ export default function AnalysisPage() {
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="space-y-4 mb-12">
-        <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground px-1">Liaisons récentes</h2>
-        {!hasData ? (
-          <p className="text-[8px] text-muted-foreground uppercase text-center py-8">Aucune archive détectée</p>
-        ) : (
-          filteredData.slice(-5).reverse().map((item, i) => (
-            <div key={i} className="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl">
-               <div className="flex items-center gap-3">
-                 <div className="w-2 h-2 rounded-full bg-primary neon-glow-yellow" />
-                 <span className="text-[10px] font-black uppercase tracking-wider">{new Date(item.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</span>
-               </div>
-               <div className="text-right">
-                 <span className="text-xs font-black text-white">{item.calories} KCAL</span>
-                 <span className="text-[8px] text-muted-foreground block uppercase font-black">{item.scans || 0} SCANS OPTIQUES</span>
-               </div>
-            </div>
-          ))
-        )}
       </div>
 
       <BottomNav />
