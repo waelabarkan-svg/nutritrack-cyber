@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * @fileOverview Flux de scan optique utilisant GROQ (Llama 3.2 Vision) pour une performance maximale.
+ * @fileOverview Flux de scan optique utilisant GROQ avec le modèle Llama 4 Scout.
  */
 
 export async function scanDish(input: { photoDataUri: string }) {
@@ -19,7 +19,7 @@ export async function scanDish(input: { photoDataUri: string }) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "llama-3.2-11b-vision-preview",
+        model: "meta-llama/llama-4-scout-17b-16e-instruct",
         messages: [
           {
             role: "user",
@@ -35,7 +35,7 @@ export async function scanDish(input: { photoDataUri: string }) {
                   "carbs": nombre,
                   "fat": nombre,
                   "aiAnalysis": "courte phrase style cyberpunk (max 10 mots)",
-                  "healthAdvice": "un conseil nutritionnel humain, varié et avec du caractère (sois sarcastique si c'est de la malbouffe, ou encourageant si c'est sain)"
+                  "healthAdvice": "ton conseil nutritionnel avec du caractère (sarcastique pour le gras, encourageant pour le sain)"
                 }`
               },
               {
