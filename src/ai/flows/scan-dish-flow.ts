@@ -1,14 +1,14 @@
 'use server';
 /**
  * @fileOverview Flux IA pour l'analyse visuelle des plats (Vision Engine).
- * Utilise un parsing JSON manuel pour éviter l'erreur Unknown name "responseMimeType".
+ * Utilise un parsing JSON manuel ultra-robuste.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const ScanDishInputSchema = z.object({
-  photoDataUri: z.string(),
+  photoDataUri: z.string().describe("Photo du plat en data URI base64."),
 });
 export type ScanDishInput = z.infer<typeof ScanDishInputSchema>;
 
@@ -36,7 +36,12 @@ const prompt = ai.definePrompt({
   Image: {{media url=photoDataUri}}
   
   Identifie le plat, estime les portions et les macros.
-  Réponds UNIQUEMENT au format JSON brut suivant sans balises Markdown :
+  
+  IMPORTANT : Réponds EXCLUSIVEMENT avec un objet JSON brut. 
+  Ne mets aucun texte avant ou après. Pas de balises Markdown. 
+  Ta réponse doit commencer par { et finir par }.
+  
+  Format attendu :
   {
     "name": "nom du plat",
     "calories": nombre,
@@ -55,14 +60,19 @@ const scanDishFlow = ai.defineFlow(
     outputSchema: ScanDishOutputSchema,
   },
   async (input) => {
+    const { text } = await prompt(input);
+    
+    // Extraction sécurisée de l'objet JSON
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const rawContent = jsonMatch ? jsonMatch[0] : text;
+    const cleanJson = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
+
     try {
-      const { text } = await prompt(input);
-      // Nettoyage rigoureux du JSON pour éviter les erreurs de parsing
-      const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
       return JSON.parse(cleanJson) as ScanDishOutput;
-    } catch (error: any) {
-      console.error('Genkit Vision Flow Error:', error);
-      throw new Error("Échec de la liaison neurale : format de données invalide.");
+    } catch (error) {
+      console.error('ERREUR DE PARSING IA [SCAN]:', error);
+      console.error('CONTENU BRUT REÇU:', text);
+      throw new Error("Échec de la liaison neurale : format de données corrompu.");
     }
   }
 );

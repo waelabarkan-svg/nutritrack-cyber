@@ -1,7 +1,7 @@
 'use server';
 /**
  * @fileOverview Flux IA pour un coaching nutritionnel personnalisé en français.
- * Utilise un parsing JSON manuel pour éviter les erreurs de configuration d'API.
+ * Version stabilisée avec parsing JSON robuste.
  */
 
 import { ai } from '@/ai/genkit';
@@ -46,7 +46,11 @@ const prompt = ai.definePrompt({
   
   Réponds EXCLUSIVEMENT en français avec un style cyberpunk percutant.
   
-  IMPORTANT: Réponds UNIQUEMENT au format JSON brut suivant sans balises Markdown :
+  IMPORTANT : Réponds EXCLUSIVEMENT avec un objet JSON brut. 
+  Ne mets aucun texte avant ou après. Pas de balises Markdown. 
+  Ta réponse doit commencer par { et finir par }.
+
+  Structure JSON :
   {
     "feedback": "ton conseil ici",
     "status": "urgent" ou "encouragement"
@@ -64,12 +68,17 @@ const coachFeedbackFlow = ai.defineFlow(
     outputSchema: CoachFeedbackOutputSchema,
   },
   async (input) => {
+    const { text } = await prompt(input);
+    
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const rawContent = jsonMatch ? jsonMatch[0] : text;
+    const cleanJson = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
+
     try {
-      const { text } = await prompt(input);
-      const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
       return JSON.parse(cleanJson) as CoachFeedbackOutput;
     } catch (error) {
-      console.error('Coach Feedback Parsing Error:', error);
+      console.error('ERREUR DE PARSING IA [COACH]:', error);
+      console.error('CONTENU BRUT REÇU:', text);
       return {
         feedback: "Liaison neurale instable. Analyse en attente... continue tes efforts, Agent !",
         status: "encouragement",

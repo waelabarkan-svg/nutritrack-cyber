@@ -1,7 +1,7 @@
 'use server';
 /**
  * @fileOverview Flux IA pour l'estimation nutritionnelle textuelle.
- * Utilise un parsing JSON manuel.
+ * Version stabilisée avec parsing JSON robuste.
  */
 
 import { ai } from '@/ai/genkit';
@@ -33,7 +33,12 @@ const prompt = ai.definePrompt({
   prompt: `Tu es un Expert Nutritionniste Cyberpunk. Analyse le plat : "{{{dishName}}}".
   
   Estime les valeurs pour une portion standard.
-  Réponds UNIQUEMENT au format JSON brut suivant sans balises Markdown :
+  
+  IMPORTANT : Réponds EXCLUSIVEMENT avec un objet JSON brut. 
+  Ne mets aucun texte avant ou après. Pas de balises Markdown. 
+  Ta réponse doit commencer par { et finir par }.
+
+  Structure JSON :
   {
     "name": "nom standardisé",
     "calories": nombre,
@@ -52,7 +57,17 @@ const estimateDishFlow = ai.defineFlow(
   },
   async (input) => {
     const { text } = await prompt(input);
-    const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    return JSON.parse(cleanJson) as EstimateDishOutput;
+    
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    const rawContent = jsonMatch ? jsonMatch[0] : text;
+    const cleanJson = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
+
+    try {
+      return JSON.parse(cleanJson) as EstimateDishOutput;
+    } catch (error) {
+      console.error('ERREUR DE PARSING IA [ESTIMATE]:', error);
+      console.error('CONTENU BRUT REÇU:', text);
+      throw new Error("Échec de l'analyse neurale du plat.");
+    }
   }
 );
