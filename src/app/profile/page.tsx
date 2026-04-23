@@ -2,18 +2,18 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useCollection } from '@/firebase';
 import { BottomNav } from '@/components/bottom-nav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { UserStats, calculateNutritionGoals } from '@/lib/nutrition-utils';
-import { Database, Info, Zap, Shield, Trophy, Cpu } from 'lucide-react';
-import { getUserGamification, getRank, getXpProgress, getXpForLevel } from '@/lib/gamification-utils';
+import { Database, Info, Zap, Shield, Trophy, Cpu, Target, CheckCircle2, Circle } from 'lucide-react';
+import { getUserGamification, getRank, getXpProgress, getXpForLevel, addXp } from '@/lib/gamification-utils';
 
 export default function ProfilePage() {
   const { user, loading } = useUser();
@@ -29,7 +29,10 @@ export default function ProfilePage() {
     goal: 'maintain'
   });
 
-  const [gamification, setGamification] = useState({ xp: 0, level: 1 });
+  const [gamification, setGamification] = useState(getUserGamification());
+  const [dailyProgress, setDailyProgress] = useState({ calories: 0, protein: 0, hydration: 0 });
+
+  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   useEffect(() => {
     if (user) {
@@ -37,19 +40,69 @@ export default function ProfilePage() {
         const docRef = doc(db, 'users', user.uid);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-          const data = docSnap.data();
-          setStats(prev => ({ ...prev, ...data }));
+          setStats(prev => ({ ...prev, ...docSnap.data() }));
         }
       };
       fetchStats();
-      setGamification(getUserGamification());
+
+      // Listener Temps Réel pour les bonus de macros
+      const mealsQuery = query(collection(db, 'users', user.uid, 'meals'), where('date', '==', today));
+      const unsubMeals = onSnapshot(mealsQuery, (snap) => {
+        let cal = 0, prot = 0;
+        snap.forEach(d => {
+          cal += d.data().calories || 0;
+          prot += d.data().protein || 0;
+        });
+        setDailyProgress(prev => ({ ...prev, calories: cal, protein: prot }));
+      });
+
+      const hydRef = doc(db, 'users', user.uid, 'hydration', today);
+      const unsubHyd = onSnapshot(hydRef, (snap) => {
+        setDailyProgress(prev => ({ ...prev, hydration: snap.exists() ? snap.data().amount : 0 }));
+      });
+
+      return () => { unsubMeals(); unsubHyd(); };
     }
-  }, [user, db]);
+  }, [user, db, today]);
 
   const goals = useMemo(() => calculateNutritionGoals(stats), [stats]);
   const rank = useMemo(() => getRank(gamification.level), [gamification.level]);
   const xpProgress = useMemo(() => getXpProgress(gamification.xp), [gamification.xp]);
   const nextLevelXp = useMemo(() => getXpForLevel(gamification.level + 1), [gamification.level]);
+
+  // Vérification et attribution des bonus XP
+  useEffect(() => {
+    if (!user) return;
+    const targetHydrationGlasses = Math.ceil(goals.hydrationMl / 250);
+    
+    // Bonus Eau
+    if (dailyProgress.hydration >= targetHydrationGlasses) {
+      const res = addXp(100, 'water');
+      if (res && res.xp > gamification.xp) {
+        setGamification(getUserGamification());
+        toast({ title: "OBJECTIF FLUIDE ATTEINT", description: "+100 XP", className: "bg-accent text-black font-black" });
+      }
+    }
+
+    // Bonus Protéines
+    if (dailyProgress.protein >= goals.protein) {
+      const res = addXp(150, 'protein');
+      if (res && res.xp > gamification.xp) {
+        setGamification(getUserGamification());
+        toast({ title: "SYNTHÈSE PROTÉIQUE OK", description: "+150 XP", className: "bg-primary text-black font-black" });
+      }
+    }
+
+    // Bonus Calories (+/- 10% de l'objectif)
+    const calMargin = goals.calories * 0.1;
+    if (dailyProgress.calories >= goals.calories - calMargin && dailyProgress.calories <= goals.calories + calMargin) {
+      const res = addXp(100, 'calories');
+      if (res && res.xp > gamification.xp) {
+        setGamification(getUserGamification());
+        toast({ title: "FLUX ÉNERGÉTIQUE STABLE", description: "+100 XP", className: "bg-primary text-black font-black shadow-[0_0_20px_rgba(253,224,71,0.5)]" });
+      }
+    }
+  }, [dailyProgress, goals, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,6 +117,8 @@ export default function ProfilePage() {
 
   if (loading || !user) return null;
 
+  const currentBonuses = gamification.dailyBonuses?.[today] || [];
+
   return (
     <TooltipProvider delayDuration={0}>
       <main className="px-6 pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white">
@@ -72,8 +127,7 @@ export default function ProfilePage() {
           <h1 className="text-3xl font-black tracking-tighter uppercase neon-text-yellow">Citoyen Bio</h1>
         </div>
 
-        {/* Section Gamification RPG */}
-        <div className="cyber-card-blue p-6 mb-10 bg-black/40 border-accent/40 relative overflow-hidden group">
+        <div className="cyber-card-blue p-6 mb-8 bg-black/40 border-accent/40 relative overflow-hidden group">
           <div className="absolute -right-4 -top-4 opacity-10 group-hover:opacity-20 transition-opacity">
             <Cpu size={120} className="text-accent" />
           </div>
@@ -92,7 +146,7 @@ export default function ProfilePage() {
             <div className="space-y-2">
               <div className="flex justify-between items-end">
                 <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Progression Neurale</span>
-                <span className="text-[9px] font-black text-accent uppercase tracking-widest">{gamification.xp} / {nextLevelXp} XP</span>
+                <span className="text-[9px] font-black text-accent uppercase tracking-widest">{Math.floor(gamification.xp)} / {nextLevelXp} XP</span>
               </div>
               <div className="h-3 w-full bg-white/5 border border-white/10 rounded-full overflow-hidden p-[2px]">
                 <div 
@@ -101,55 +155,35 @@ export default function ProfilePage() {
                 />
               </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-white/5">
-              <div className="flex items-center gap-2">
-                <Shield size={14} className="text-accent" />
-                <span className="text-[8px] font-black text-muted-foreground uppercase">Système Intègre</span>
-              </div>
-              <div className="flex items-center gap-2 justify-end">
-                <Trophy size={14} className="text-primary" />
-                <span className="text-[8px] font-black text-muted-foreground uppercase">Mérite : {gamification.level * 10}</span>
-              </div>
-            </div>
           </div>
         </div>
 
-        <div className="cyber-card-yellow p-6 mb-10 bg-black/40 border-primary/30 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-2 opacity-20">
-            <Database size={40} className="text-primary" />
+        {/* Quêtes Journalières */}
+        <div className="cyber-card-yellow p-6 mb-10 bg-black border-primary/20">
+          <div className="flex items-center gap-2 mb-4">
+            <Target size={16} className="text-primary" />
+            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Contrats du Cycle</h3>
           </div>
-          <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-2">
-              <p className="text-[8px] font-black uppercase tracking-[0.3em] text-primary/80">Projection Énergétique</p>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Info size={12} className="text-primary/40 cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-[220px]">
-                  CALCULÉ SELON LA FORMULE DE MIFFLIN-ST JEOR.
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <div className="flex items-baseline gap-2 mb-6">
-              <span className="text-4xl font-black neon-text-yellow">{goals.calories}</span>
-              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">KCAL / JOUR</span>
-            </div>
-            
-            <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/5">
-              <div className="text-center">
-                <p className="text-[7px] font-black text-muted-foreground uppercase tracking-widest mb-1">PROTÉINES</p>
-                <p className="text-xs font-black text-white">{goals.protein}G</p>
-              </div>
-              <div className="text-center">
-                <p className="text-[7px] font-black text-muted-foreground uppercase tracking-widest mb-1">GLUCIDES</p>
-                <p className="text-xs font-black text-white">{goals.carbs}G</p>
-              </div>
-              <div className="text-center">
-                <p className="text-[7px] font-black text-muted-foreground uppercase tracking-widest mb-1">LIPIDES</p>
-                <p className="text-xs font-black text-white">{goals.fat}G</p>
-              </div>
-            </div>
+          <div className="space-y-3">
+            {[
+              { type: 'water', label: 'Hydratation Optimale', xp: 100, current: dailyProgress.hydration, target: Math.ceil(goals.hydrationMl / 250), unit: 'verres' },
+              { type: 'protein', label: 'Synthèse Protéique', xp: 150, current: dailyProgress.protein, target: goals.protein, unit: 'g' },
+              { type: 'calories', label: 'Flux Énergétique', xp: 100, current: dailyProgress.calories, target: goals.calories, unit: 'kcal' }
+            ].map((quest) => {
+              const isDone = currentBonuses.includes(quest.type);
+              return (
+                <div key={quest.type} className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${isDone ? 'bg-primary/10 border-primary/40' : 'bg-white/5 border-white/5'}`}>
+                  <div className="space-y-1">
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${isDone ? 'text-primary' : 'text-white/60'}`}>{quest.label}</p>
+                    <p className="text-[8px] text-muted-foreground font-black uppercase">{quest.current} / {quest.target} {quest.unit}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[9px] font-black text-primary">+{quest.xp} XP</span>
+                    {isDone ? <CheckCircle2 size={16} className="text-primary" /> : <Circle size={16} className="text-white/20" />}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
         
@@ -157,10 +191,7 @@ export default function ProfilePage() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Génotype</Label>
-              <Select 
-                value={stats.gender} 
-                onValueChange={(v: any) => setStats({...stats, gender: v})}
-              >
+              <Select value={stats.gender} onValueChange={(v: any) => setStats({...stats, gender: v})}>
                 <SelectTrigger className="bg-white/5 border-primary/20 h-12 font-black uppercase text-[10px] tracking-widest focus:border-primary transition-all rounded-[10px]">
                   <SelectValue />
                 </SelectTrigger>
@@ -172,42 +203,24 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-2">
               <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Âge Chrono</Label>
-              <Input 
-                type="number" 
-                className="bg-white/5 border-primary/20 h-12 font-black uppercase text-[10px] tracking-widest focus:border-primary transition-all rounded-[10px]" 
-                value={stats.age}
-                onChange={(e) => setStats({...stats, age: parseInt(e.target.value) || 0})}
-              />
+              <Input type="number" className="bg-white/5 border-primary/20 h-12 font-black uppercase text-[10px] tracking-widest focus:border-primary transition-all rounded-[10px]" value={stats.age} onChange={(e) => setStats({...stats, age: parseInt(e.target.value) || 0})} />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Altitude (CM)</Label>
-              <Input 
-                type="number" 
-                className="bg-white/5 border-primary/20 h-12 font-black uppercase text-[10px] tracking-widest focus:border-primary transition-all rounded-[10px]" 
-                value={stats.height}
-                onChange={(e) => setStats({...stats, height: parseInt(e.target.value) || 0})}
-              />
+              <Input type="number" className="bg-white/5 border-primary/20 h-12 font-black uppercase text-[10px] tracking-widest focus:border-primary transition-all rounded-[10px]" value={stats.height} onChange={(e) => setStats({...stats, height: parseInt(e.target.value) || 0})} />
             </div>
             <div className="space-y-2">
               <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Masse (KG)</Label>
-              <Input 
-                type="number" 
-                className="bg-white/5 border-primary/20 h-12 font-black uppercase text-[10px] tracking-widest focus:border-primary transition-all rounded-[10px]" 
-                value={stats.weight}
-                onChange={(e) => setStats({...stats, weight: parseInt(e.target.value) || 0})}
-              />
+              <Input type="number" className="bg-white/5 border-primary/20 h-12 font-black uppercase text-[10px] tracking-widest focus:border-primary transition-all rounded-[10px]" value={stats.weight} onChange={(e) => setStats({...stats, weight: parseInt(e.target.value) || 0})} />
             </div>
           </div>
 
           <div className="space-y-2">
             <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Objectif Primaire</Label>
-            <Select 
-              value={stats.goal} 
-              onValueChange={(v: any) => setStats({...stats, goal: v})}
-            >
+            <Select value={stats.goal} onValueChange={(v: any) => setStats({...stats, goal: v})}>
               <SelectTrigger className="bg-white/5 border-primary/20 h-12 font-black uppercase text-[10px] tracking-widest focus:border-primary transition-all rounded-[10px]">
                 <SelectValue />
               </SelectTrigger>
