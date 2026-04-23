@@ -6,6 +6,7 @@ import { useUser, useFirestore, useCollection, useDoc } from '@/firebase';
 import { BottomNav } from '@/components/bottom-nav';
 import { CircularProgress } from '@/components/circular-progress';
 import { HydrationCard } from '@/components/hydration-card';
+import { CoachFeedback } from '@/components/coach-feedback';
 import { Plus, Flame, Beef, Wheat, Droplet } from 'lucide-react';
 import { collection, query, where, doc } from 'firebase/firestore';
 import { calculateNutritionGoals, UserStats } from '@/lib/nutrition-utils';
@@ -101,6 +102,9 @@ export default function Home() {
       </section>
 
       <div className="laser-line-blue mb-12" />
+
+      {/* AI Coach Feedback Section */}
+      <CoachFeedback stats={displayStats} dailyLog={dailyLog} />
 
       <section className="grid grid-cols-3 gap-2 sm:gap-6 mb-12">
         <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4">
