@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, Search, Coffee, Utensils, Moon, Apple, Zap, Sparkles, Loader2, Camera, Upload, X, Check, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Search, Coffee, Utensils, Moon, Apple, Zap, Sparkles, Loader2, Camera, Upload, X, Check, AlertCircle, Scan } from 'lucide-react';
 import { collection, addDoc, query, where, deleteDoc, doc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import foodDb from '@/lib/food-db.json';
@@ -63,6 +63,8 @@ export default function JournalPage() {
 
   const startCamera = async () => {
     setIsCapturing(true);
+    setAiResult(null);
+    setScanningImage(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
       setHasCameraPermission(true);
@@ -75,7 +77,7 @@ export default function JournalPage() {
       toast({ 
         variant: "destructive", 
         title: "ACCÈS CAMÉRA REFUSÉ", 
-        description: "Veuillez autoriser l'accès à la caméra pour utiliser le scanner." 
+        description: "Veuillez autoriser l'accès à la caméra." 
       });
       setIsCapturing(false);
     }
@@ -100,7 +102,6 @@ export default function JournalPage() {
       const dataUri = canvas.toDataURL('image/jpeg');
       setScanningImage(dataUri);
       stopCamera();
-      handleScanImage(dataUri);
     }
   };
 
@@ -111,42 +112,49 @@ export default function JournalPage() {
       reader.onload = (event) => {
         const dataUri = event.target?.result as string;
         setScanningImage(dataUri);
-        handleScanImage(dataUri);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleScanImage = async (dataUri: string) => {
+  const runImageAnalysis = async () => {
+    if (!scanningImage || aiEstimating) return;
+    
     setAiEstimating(true);
     setAiResult(null);
     try {
       if ('vibrate' in navigator) navigator.vibrate(50);
-      const result = await scanDish({ photoDataUri: dataUri });
+      const result = await scanDish({ photoDataUri: scanningImage });
       setAiResult(result);
       if ('vibrate' in navigator) navigator.vibrate([100, 50, 100]);
-    } catch (e) {
+    } catch (e: any) {
       console.error('Scan error:', e);
+      const isRateLimit = e.message?.includes('429') || e.message?.includes('RESOURCE_EXHAUSTED');
       toast({ 
         variant: "destructive", 
-        title: "ERREUR DE LECTURE OPTIQUE", 
-        description: "L'IA n'a pas pu identifier le plat. Essayez une saisie manuelle." 
+        title: isRateLimit ? "SERVEUR SATURÉ" : "ERREUR DE LECTURE", 
+        description: isRateLimit ? "Réessaie dans 60s, la liaison neurale est surchargée." : "L'IA n'a pas pu identifier le plat." 
       });
-      setScanningImage(null);
+      if (!isRateLimit) setScanningImage(null);
     } finally {
       setAiEstimating(false);
     }
   };
 
   const handleAiEstimate = async () => {
-    if (!searchTerm || searchTerm.length < 3) return;
+    if (!searchTerm || searchTerm.length < 3 || aiEstimating) return;
     setAiEstimating(true);
     setAiResult(null);
     try {
       const result = await estimateDish({ dishName: searchTerm });
       setAiResult(result);
-    } catch (e) {
-      toast({ variant: "destructive", title: "ERREUR RÉSEAU", description: "ÉCHEC DE LA LIAISON IA." });
+    } catch (e: any) {
+      const isRateLimit = e.message?.includes('429') || e.message?.includes('RESOURCE_EXHAUSTED');
+      toast({ 
+        variant: "destructive", 
+        title: isRateLimit ? "SERVEUR SATURÉ" : "ERREUR RÉSEAU", 
+        description: isRateLimit ? "Liaison IA interrompue. Patiente 60s." : "Échec de la liaison IA." 
+      });
     } finally {
       setAiEstimating(false);
     }
@@ -167,10 +175,10 @@ export default function JournalPage() {
       setIsScannerOpen(false);
       toast({ 
         title: "SYSTÈME MIS À JOUR", 
-        description: food.aiAnalysis ? food.aiAnalysis.toUpperCase() : `${food.name} AJOUTÉ AU PROTOCOLE.` 
+        description: food.aiAnalysis ? food.aiAnalysis.toUpperCase() : `${food.name} AJOUTÉ.` 
       });
     } catch (e) {
-      toast({ variant: "destructive", title: "ERREUR", description: "ÉCHEC DE L'ENREGISTREMENT." });
+      toast({ variant: "destructive", title: "ERREUR", description: "Échec de l'enregistrement." });
     }
   };
 
@@ -197,7 +205,7 @@ export default function JournalPage() {
       setCustomFood({ name: '', calories: '', protein: '', carbs: '', fat: '' });
       toast({ title: "SAISIE VALIDÉE", description: "DONNÉES SYNCHRONISÉES." });
     } catch (e) {
-      toast({ variant: "destructive", title: "ERREUR", description: "ÉCHEC DE LA SAISIE MANUELLE." });
+      toast({ variant: "destructive", title: "ERREUR", description: "Échec de la saisie manuelle." });
     }
   };
 
@@ -301,6 +309,7 @@ export default function JournalPage() {
                     ) : (
                       <div className="w-full h-full relative">
                         <img src={scanningImage} className="w-full h-full object-cover" alt="Captured" />
+                        
                         {aiEstimating && (
                           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm">
                              <div className="absolute top-0 left-0 w-full h-[2px] bg-accent shadow-[0_0_20px_rgba(0,242,255,1)] animate-[bounce_2s_infinite]" />
@@ -311,6 +320,26 @@ export default function JournalPage() {
                              </div>
                           </div>
                         )}
+
+                        {!aiEstimating && !aiResult && (
+                          <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center gap-4 px-6">
+                            <Button 
+                              className="w-full h-14 bg-accent text-black font-black uppercase tracking-[0.2em] rounded-xl neon-glow-blue"
+                              onClick={runImageAnalysis}
+                            >
+                              <Scan className="mr-2" size={20} />
+                              Lancer l'Analyse
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              className="w-full border-white/20 text-[10px] font-black tracking-widest uppercase"
+                              onClick={() => setScanningImage(null)}
+                            >
+                              Prendre une autre photo
+                            </Button>
+                          </div>
+                        )}
+
                         {!aiEstimating && aiResult && (
                           <div className="absolute bottom-0 left-0 right-0 p-6 bg-black/90 backdrop-blur-xl border-t border-accent/40 animate-in slide-in-from-bottom-full duration-500">
                             <div className="flex justify-between items-start mb-4">
@@ -343,7 +372,7 @@ export default function JournalPage() {
                             <p className="text-[9px] italic text-accent/80 font-black uppercase tracking-wider mb-4">
                               "{aiResult.aiAnalysis}"
                             </p>
-                            <Button variant="outline" className="w-full text-[10px] font-black tracking-widest" onClick={() => setScanningImage(null)}>RESCANNER</Button>
+                            <Button variant="outline" className="w-full text-[10px] font-black tracking-widest" onClick={() => { setScanningImage(null); setAiResult(null); }}>RESCANNER</Button>
                           </div>
                         )}
                       </div>
