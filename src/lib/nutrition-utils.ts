@@ -44,10 +44,19 @@ export function calculateNutritionGoals(stats: UserStats) {
   if (goal === 'lose') targetCalories -= 500;
   if (goal === 'gain') targetCalories += 500;
 
-  // Macros par défaut : 40% Glucides, 30% Protéines, 30% Lipides
-  const carbs = (targetCalories * 0.4) / 4;
-  const protein = (targetCalories * 0.3) / 4;
-  const fat = (targetCalories * 0.3) / 9;
+  // Calcul des macros précis
+  // Protéines : 2g/kg (prise), 1.8g/kg (perte), 1.5g/kg (maintien)
+  let proteinPerKg = 1.5;
+  if (goal === 'gain') proteinPerKg = 2.0;
+  if (goal === 'lose') proteinPerKg = 1.8;
+  
+  const protein = weight * proteinPerKg;
+  
+  // Lipides : ~25% des calories totales
+  const fat = (targetCalories * 0.25) / 9;
+  
+  // Glucides : le reste des calories
+  const carbs = (targetCalories - (protein * 4) - (fat * 9)) / 4;
 
   // Calcul personnalisé de l'hydratation : 35ml par kg + bonus activité
   let hydrationMl = weight * 35;

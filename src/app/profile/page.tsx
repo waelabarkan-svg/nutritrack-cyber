@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { UserStats, calculateNutritionGoals } from '@/lib/nutrition-utils';
-import { Database, Info } from 'lucide-react';
+import { Database, Info, Zap } from 'lucide-react';
 
 export default function ProfilePage() {
   const { user, loading } = useUser();
@@ -58,7 +58,7 @@ export default function ProfilePage() {
   if (loading || !user) return null;
 
   return (
-    <TooltipProvider>
+    <TooltipProvider delayDuration={0}>
       <main className="px-6 pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white">
         <div className="space-y-1 mb-12">
           <p className="text-primary/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-yellow">Protocole: Identité</p>
@@ -73,26 +73,41 @@ export default function ProfilePage() {
             <div className="flex items-center gap-2 mb-2">
               <p className="text-[8px] font-black uppercase tracking-[0.3em] text-primary/80">Projection Énergétique</p>
               <Tooltip>
-                <TooltipTrigger>
-                  <Info size={10} className="text-primary/40" />
+                <TooltipTrigger asChild>
+                  <Info size={12} className="text-primary/40 cursor-help" />
                 </TooltipTrigger>
-                <TooltipContent className="bg-black/90 border-primary/40 text-[9px] uppercase font-black tracking-widest p-2">
-                  CALCULÉ SELON LA FORMULE DE MIFFLIN-ST JEOR
+                <TooltipContent className="bg-black/95 border-primary/40 text-[10px] font-black uppercase tracking-widest p-3 max-w-[220px] z-[100]">
+                  CALCULÉ SELON LA FORMULE DE MIFFLIN-ST JEOR.
                 </TooltipContent>
               </Tooltip>
             </div>
-            <div className="flex items-baseline gap-2">
+            <div className="flex items-baseline gap-2 mb-6">
               <span className="text-4xl font-black neon-text-yellow">{goals.calories}</span>
               <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">KCAL / JOUR</span>
             </div>
             
+            <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/5">
+              <div className="text-center">
+                <p className="text-[7px] font-black text-muted-foreground uppercase tracking-widest mb-1">PROTÉINES</p>
+                <p className="text-xs font-black text-white">{goals.protein}G</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[7px] font-black text-muted-foreground uppercase tracking-widest mb-1">GLUCIDES</p>
+                <p className="text-xs font-black text-white">{goals.carbs}G</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[7px] font-black text-muted-foreground uppercase tracking-widest mb-1">LIPIDES</p>
+                <p className="text-xs font-black text-white">{goals.fat}G</p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-white/5">
               <div>
                 <div className="flex items-center gap-1">
                   <span className="text-[7px] font-black text-muted-foreground uppercase tracking-widest">BMR</span>
                   <Tooltip>
-                    <TooltipTrigger><Info size={8} className="text-muted-foreground/40" /></TooltipTrigger>
-                    <TooltipContent className="bg-black border-primary/40 text-[8px] p-2 max-w-[150px]">
+                    <TooltipTrigger asChild><Info size={8} className="text-muted-foreground/40 cursor-help" /></TooltipTrigger>
+                    <TooltipContent className="bg-black border-primary/40 text-[9px] p-2 max-w-[180px] z-[100]">
                       MÉTABOLISME DE BASE : ÉNERGIE BRÛLÉE AU REPOS TOTAL.
                     </TooltipContent>
                   </Tooltip>
@@ -103,8 +118,8 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-1">
                   <span className="text-[7px] font-black text-muted-foreground uppercase tracking-widest">TDEE</span>
                   <Tooltip>
-                    <TooltipTrigger><Info size={8} className="text-muted-foreground/40" /></TooltipTrigger>
-                    <TooltipContent className="bg-black border-primary/40 text-[8px] p-2 max-w-[150px]">
+                    <TooltipTrigger asChild><Info size={8} className="text-muted-foreground/40 cursor-help" /></TooltipTrigger>
+                    <TooltipContent className="bg-black border-primary/40 text-[9px] p-2 max-w-[180px] z-[100]">
                       DÉPENSE TOTALE INCLUANT TES ACTIVITÉS ET TON SPORT.
                     </TooltipContent>
                   </Tooltip>
@@ -168,8 +183,8 @@ export default function ProfilePage() {
             <div className="flex items-center gap-2 mb-1">
               <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Protocole d'Activité</Label>
               <Tooltip>
-                <TooltipTrigger><Info size={10} className="text-muted-foreground/40" /></TooltipTrigger>
-                <TooltipContent className="bg-black border-primary/40 text-[8px] p-3 max-w-[200px] space-y-2">
+                <TooltipTrigger asChild><Info size={12} className="text-muted-foreground/40 cursor-help" /></TooltipTrigger>
+                <TooltipContent className="bg-black/95 border-primary/40 text-[10px] p-4 max-w-[250px] space-y-3 z-[100] font-black uppercase tracking-widest">
                   <p><span className="text-primary">SÉDENTAIRE :</span> BUREAU, PEU DE SPORT.</p>
                   <p><span className="text-primary">LÉGER :</span> 1-2 SÉANCES / SEMAINE.</p>
                   <p><span className="text-primary">MODÉRÉ :</span> 3-5 SÉANCES / SEMAINE.</p>

@@ -52,7 +52,7 @@ export function HydrationCard() {
   const isComplete = glasses >= targetGlasses;
 
   return (
-    <TooltipProvider>
+    <TooltipProvider delayDuration={0}>
       <div className={`cyber-card-blue p-8 bg-black relative overflow-hidden rounded-[20px] transition-all duration-1000 ${
         isComplete 
         ? 'border-accent shadow-[0_0_50px_rgba(0,242,255,0.6)]' 
@@ -70,9 +70,11 @@ export function HydrationCard() {
                 <div className="flex items-center gap-2">
                   <h3 className="font-black text-[10px] uppercase tracking-[0.4em] text-accent neon-text-blue">Liquide de Refroidissement</h3>
                   <Tooltip>
-                    <TooltipTrigger><Info size={10} className="text-accent/40" /></TooltipTrigger>
-                    <TooltipContent className="bg-black border-accent/40 text-[8px] p-2 max-w-[180px]">
-                      CALCULÉ SELON TON POIDS ET TA SUDATION ESTIMÉE VIA TON NIVEAU DE SPORT.
+                    <TooltipTrigger asChild>
+                      <Info size={12} className="text-accent/40 cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-black/95 border-accent/40 text-[10px] font-black uppercase tracking-widest p-4 max-w-[220px] z-[100]">
+                      SYSTÈME DE REFROIDISSEMENT : ({displayStats.weight}KG * 35ML) + BONUS ACTIVITÉ ({goals.hydrationMl - (displayStats.weight * 35)}ML).
                     </TooltipContent>
                   </Tooltip>
                 </div>

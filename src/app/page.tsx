@@ -8,7 +8,7 @@ import { CircularProgress } from '@/components/circular-progress';
 import { HydrationCard } from '@/components/hydration-card';
 import { CoachFeedback } from '@/components/coach-feedback';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Plus, Flame, Beef, Wheat, Droplet, Info } from 'lucide-react';
+import { Plus, Flame, Beef, Wheat, Droplet } from 'lucide-react';
 import { collection, query, where, doc } from 'firebase/firestore';
 import { calculateNutritionGoals, UserStats } from '@/lib/nutrition-utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -64,7 +64,7 @@ export default function Home() {
   const calProgress = goals.calories > 0 ? dailyLog.calories / goals.calories : 0;
 
   return (
-    <TooltipProvider>
+    <TooltipProvider delayDuration={0}>
       <main className="px-4 sm:px-6 pt-12 sm:pt-16 max-w-md mx-auto min-h-screen bg-black text-white pb-32">
         <header className="flex justify-between items-start mb-12 sm:mb-16">
           <div className="space-y-1">
@@ -84,7 +84,7 @@ export default function Home() {
         <section className="flex flex-col items-center mb-12 sm:mb-16 relative py-4">
           <Tooltip>
             <TooltipTrigger asChild>
-              <div>
+              <div className="cursor-help">
                 <CircularProgress 
                   size={isMobile ? 220 : 260} 
                   strokeWidth={4} 
@@ -92,7 +92,7 @@ export default function Home() {
                   color="#ff0055"
                 >
                   <div className="flex flex-col items-center">
-                    <span className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-black tracking-[0.4em] sm:tracking-[0.5em] mb-1 sm:mb-2 text-center">Flux Énergie</span>
+                    <span className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-black tracking-[0.5em] mb-1 sm:mb-2 text-center">Flux Énergie</span>
                     <span className="text-4xl sm:text-6xl font-black tracking-tighter neon-text-red">{dailyLog.calories}</span>
                     <div className="w-16 sm:w-20 h-[1px] bg-destructive/50 my-4 sm:my-5 shadow-[0_0_20px_rgba(255,0,85,0.8)]" />
                     <span className="text-[8px] sm:text-[9px] text-primary uppercase font-black tracking-[0.3em] sm:tracking-[0.4em] neon-text-yellow">Objectif {goals.calories}</span>
@@ -100,8 +100,8 @@ export default function Home() {
                 </CircularProgress>
               </div>
             </TooltipTrigger>
-            <TooltipContent className="bg-black/90 border-destructive/40 text-[9px] p-2 font-black uppercase tracking-widest">
-              FLUX ÉNERGÉTIQUE CALCULÉ SELON TON TDEE
+            <TooltipContent className="bg-black/95 border-destructive/40 text-[10px] p-3 font-black uppercase tracking-widest max-w-[200px] z-[100]">
+              FLUX ÉNERGÉTIQUE CALCULÉ SELON TON TDEE (DÉPENSE QUOTIDIENNE TOTALE).
             </TooltipContent>
           </Tooltip>
         </section>
@@ -109,33 +109,56 @@ export default function Home() {
         <div className="laser-line-blue mb-12" />
 
         <section className="grid grid-cols-3 gap-2 sm:gap-6 mb-12">
-          <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 border border-primary/40 flex items-center justify-center bg-black shadow-[0_0_15px_rgba(253,224,71,0.2)] rounded-[10px] sm:rounded-[12px]">
-               <Beef className="text-primary" size={16} />
-            </div>
-            <div className="space-y-1">
-              <span className="text-base sm:text-xl font-black block neon-text-yellow tracking-tight">{dailyLog.protein}g</span>
-              <span className="text-[7px] sm:text-[8px] text-muted-foreground uppercase font-black tracking-widest block">Protéines</span>
-            </div>
-          </div>
-          <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4 border-x border-white/5 px-1">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 border border-accent/40 flex items-center justify-center bg-black shadow-[0_0_15px_rgba(0,242,255,0.2)] rounded-[10px] sm:rounded-[12px]">
-               <Wheat className="text-accent" size={16} />
-            </div>
-            <div className="space-y-1">
-              <span className="text-base sm:text-xl font-black block neon-text-blue tracking-tight">{dailyLog.carbs}g</span>
-              <span className="text-[7px] sm:text-[8px] text-muted-foreground uppercase font-black tracking-widest block">Glucides</span>
-            </div>
-          </div>
-          <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 border border-accent/40 flex items-center justify-center bg-black shadow-[0_0_15px_rgba(0,242,255,0.2)] rounded-[10px] sm:rounded-[12px]">
-               <Droplet className="text-accent" size={16} />
-            </div>
-            <div className="space-y-1">
-              <span className="text-base sm:text-xl font-black block neon-text-blue tracking-tight">{dailyLog.fat}g</span>
-              <span className="text-[7px] sm:text-[8px] text-muted-foreground uppercase font-black tracking-widest block">Lipides</span>
-            </div>
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4 cursor-help">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 border border-primary/40 flex items-center justify-center bg-black shadow-[0_0_15px_rgba(253,224,71,0.2)] rounded-[10px] sm:rounded-[12px]">
+                   <Beef className="text-primary" size={16} />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] sm:text-xs font-black block neon-text-yellow tracking-tight">{dailyLog.protein}g / {goals.protein}g</span>
+                  <span className="text-[7px] sm:text-[8px] text-muted-foreground uppercase font-black tracking-widest block">Protéines</span>
+                </div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent className="bg-black/95 border-primary/40 text-[10px] p-3 font-black uppercase tracking-widest z-[100]">
+              CIBLE : {goals.protein}G. ESSENTIEL POUR LA RÉPARATION TISSULAIRE.
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4 border-x border-white/5 px-1 cursor-help">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 border border-accent/40 flex items-center justify-center bg-black shadow-[0_0_15px_rgba(0,242,255,0.2)] rounded-[10px] sm:rounded-[12px]">
+                   <Wheat className="text-accent" size={16} />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] sm:text-xs font-black block neon-text-blue tracking-tight">{dailyLog.carbs}g / {goals.carbs}g</span>
+                  <span className="text-[7px] sm:text-[8px] text-muted-foreground uppercase font-black tracking-widest block">Glucides</span>
+                </div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent className="bg-black/95 border-accent/40 text-[10px] p-3 font-black uppercase tracking-widest z-[100]">
+              CIBLE : {goals.carbs}G. TON CARBURANT PRINCIPAL.
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4 cursor-help">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 border border-accent/40 flex items-center justify-center bg-black shadow-[0_0_15px_rgba(0,242,255,0.2)] rounded-[10px] sm:rounded-[12px]">
+                   <Droplet className="text-accent" size={16} />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] sm:text-xs font-black block neon-text-blue tracking-tight">{dailyLog.fat}g / {goals.fat}g</span>
+                  <span className="text-[7px] sm:text-[8px] text-muted-foreground uppercase font-black tracking-widest block">Lipides</span>
+                </div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent className="bg-black/95 border-accent/40 text-[10px] p-3 font-black uppercase tracking-widest z-[100]">
+              CIBLE : {goals.fat}G. RÉGULATION HORMONALE ET ÉNERGIE DURABLE.
+            </TooltipContent>
+          </Tooltip>
         </section>
 
         <div className="laser-line-red mb-12" />
