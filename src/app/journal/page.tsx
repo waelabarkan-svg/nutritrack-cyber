@@ -9,10 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, Search, Coffee, Utensils, Moon, Apple, Zap, Activity } from 'lucide-react';
+import { Plus, Trash2, Search, Coffee, Utensils, Moon, Apple, Zap, Sparkles, Loader2 } from 'lucide-react';
 import { collection, addDoc, query, where, deleteDoc, doc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import foodDb from '@/lib/food-db.json';
+import { estimateDish } from '@/ai/flows/estimate-dish-flow';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
@@ -23,6 +24,8 @@ export default function JournalPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<MealType>('breakfast');
   const [isCustomOpen, setIsCustomOpen] = useState(false);
+  const [aiEstimating, setAiEstimating] = useState(false);
+  const [aiResult, setAiResult] = useState<any>(null);
 
   // Custom food form state
   const [customFood, setCustomFood] = useState({
@@ -49,6 +52,20 @@ export default function JournalPage() {
       .slice(0, 8);
   }, [searchTerm]);
 
+  const handleAiEstimate = async () => {
+    if (!searchTerm || searchTerm.length < 3) return;
+    setAiEstimating(true);
+    setAiResult(null);
+    try {
+      const result = await estimateDish({ dishName: searchTerm });
+      setAiResult(result);
+    } catch (e) {
+      toast({ variant: "destructive", title: "CONNECTION ERROR", description: "AI LINK FAILURE." });
+    } finally {
+      setAiEstimating(false);
+    }
+  };
+
   const addMeal = async (food: any) => {
     if (!user) return;
     try {
@@ -59,7 +76,11 @@ export default function JournalPage() {
         createdAt: new Date().toISOString()
       });
       setSearchTerm('');
-      toast({ title: "SYSTEM UPDATED", description: `${food.name} ADDED TO PROTOCOL.` });
+      setAiResult(null);
+      toast({ 
+        title: "SYSTEM UPDATED", 
+        description: food.aiAnalysis ? food.aiAnalysis.toUpperCase() : `${food.name} ADDED TO PROTOCOL.` 
+      });
     } catch (e) {
       toast({ variant: "destructive", title: "ERROR", description: "FAILED TO COMMIT LOG." });
     }
@@ -183,26 +204,6 @@ export default function JournalPage() {
                     />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Carbs (G)</Label>
-                    <Input 
-                      type="number" 
-                      className="bg-white/5 border-white/10 font-black"
-                      value={customFood.carbs}
-                      onChange={(e) => setCustomFood({...customFood, carbs: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Lipids (G)</Label>
-                    <Input 
-                      type="number" 
-                      className="bg-white/5 border-white/10 font-black"
-                      value={customFood.fat}
-                      onChange={(e) => setCustomFood({...customFood, fat: e.target.value})}
-                    />
-                  </div>
-                </div>
                 <Button type="submit" className="w-full h-14 border-primary neon-glow-yellow mt-4">
                   COMMIT TO ARCHIVE
                 </Button>
@@ -212,12 +213,16 @@ export default function JournalPage() {
         </div>
 
         {/* Search Results */}
-        {filteredFood.length > 0 && (
-          <div className="cyber-card-yellow p-2 bg-black/90 border-primary/40 animate-in fade-in slide-in-from-top-2 duration-300">
+        {(filteredFood.length > 0 || searchTerm.length > 2) && (
+          <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+            {/* Database Results */}
             {filteredFood.map((food, idx) => (
-              <div key={idx} className="flex justify-between items-center p-4 hover:bg-primary/5 rounded-[8px] transition-colors border-b border-white/5 last:border-none">
+              <div key={idx} className="cyber-card-yellow p-4 flex justify-between items-center bg-black/90 border-primary/40 rounded-[12px]">
                 <div className="space-y-1">
-                  <p className="font-black text-xs tracking-wider uppercase">{food.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-black text-xs tracking-wider uppercase">{food.name}</p>
+                    {food.isDish && <span className="text-[7px] bg-primary/20 text-primary px-1 font-black rounded">PLATE</span>}
+                  </div>
                   <p className="text-[9px] text-muted-foreground uppercase">{food.calories} KCAL | P: {food.protein}G | C: {food.carbs}G</p>
                 </div>
                 <Button 
@@ -229,6 +234,60 @@ export default function JournalPage() {
                 </Button>
               </div>
             ))}
+
+            {/* Smart Dish AI Estimation Trigger */}
+            {!aiResult && (
+              <Button 
+                onClick={handleAiEstimate}
+                disabled={aiEstimating}
+                className="w-full h-14 border-[#a855f7] bg-black/80 text-[#a855f7] shadow-[0_0_20px_rgba(168,85,247,0.3)] hover:bg-[#a855f7]/10"
+              >
+                {aiEstimating ? <Loader2 className="animate-spin mr-2" size={16} /> : <Sparkles className="mr-2" size={16} />}
+                <span className="font-black text-[10px] tracking-[0.2em] uppercase">
+                  {aiEstimating ? "ANALYZING..." : "SMART DISH ANALYSIS [AI]"}
+                </span>
+              </Button>
+            )}
+
+            {/* AI Estimation Result */}
+            {aiResult && (
+              <div className="cyber-card-blue p-5 bg-black/90 border-[#a855f7] shadow-[0_0_30px_rgba(168,85,247,0.4)] rounded-[12px] animate-in zoom-in-95 duration-500">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <span className="text-[8px] font-black text-[#a855f7] uppercase tracking-[0.3em] block mb-1">IA ESTIMATE [EXPERIMENTAL]</span>
+                    <h3 className="text-sm font-black text-white uppercase tracking-wider">{aiResult.name}</h3>
+                  </div>
+                  <Button 
+                    size="icon" 
+                    className="w-12 h-12 border-[#a855f7] bg-black text-[#a855f7] neon-glow-blue"
+                    onClick={() => addMeal(aiResult)}
+                  >
+                    <Plus size={24} />
+                  </Button>
+                </div>
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                  <div className="text-center">
+                    <p className="text-[12px] font-black text-primary">{aiResult.calories}</p>
+                    <p className="text-[7px] text-muted-foreground uppercase font-black">KCAL</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[12px] font-black text-white">{aiResult.protein}g</p>
+                    <p className="text-[7px] text-muted-foreground uppercase font-black">PROT</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[12px] font-black text-white">{aiResult.carbs}g</p>
+                    <p className="text-[7px] text-muted-foreground uppercase font-black">CARB</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[12px] font-black text-white">{aiResult.fat}g</p>
+                    <p className="text-[7px] text-muted-foreground uppercase font-black">FAT</p>
+                  </div>
+                </div>
+                <p className="text-[9px] italic text-[#a855f7]/80 font-black uppercase tracking-wider border-t border-[#a855f7]/20 pt-2">
+                  "{aiResult.aiAnalysis}"
+                </p>
+              </div>
+            )}
           </div>
         )}
       </section>

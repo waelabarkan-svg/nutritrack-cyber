@@ -1,7 +1,7 @@
+
 'use server';
 /**
  * @fileOverview AI Flow for personalized nutritional coaching.
- * handles the feedback generation and provides a fallback if the GenAI service is unavailable.
  */
 
 import { ai } from '@/ai/genkit';
@@ -45,15 +45,16 @@ const prompt = ai.definePrompt({
   - Goal: {{{stats.goal}}}
   - Activity: {{{stats.activityLevel}}}
   
-  Daily Consumption (Current Index):
+  Daily Consumption:
   - Calories: {{{dailyLog.calories}}} kcal
   - Protein: {{{dailyLog.protein}}} g
   - Carbs: {{{dailyLog.carbs}}} g
   - Fat: {{{dailyLog.fat}}} g
   
   Provide a short (max 2 sentences), punchy, and cyberpunk-styled advice. 
+  If they added a complex dish (high calories in one go), comment on how it impacts their energy flux.
   If the user exceeds their calories or is severely lacking protein, use "urgent" status.
-  Otherwise, use "encouragement". Keep it in English as the app is mostly in English.`,
+  Otherwise, use "encouragement".`,
 });
 
 const coachFeedbackFlow = ai.defineFlow(
@@ -68,8 +69,7 @@ const coachFeedbackFlow = ai.defineFlow(
       if (!output) throw new Error('No output from AI');
       return output;
     } catch (error) {
-      console.error('Neural Link Failure (503/API Error):', error);
-      // Fallback message when the API is unavailable
+      console.error('Neural Link Failure:', error);
       return {
         feedback: "Liaison neurale instable. Analyse en attente... continue tes efforts, Agent !",
         status: "encouragement",
