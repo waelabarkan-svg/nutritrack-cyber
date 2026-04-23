@@ -1,8 +1,9 @@
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Droplets, Plus, Minus } from 'lucide-react';
+import { Droplets, Plus, Minus, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useFirestore, useUser, useDoc } from '@/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { calculateNutritionGoals, UserStats } from '@/lib/nutrition-utils';
@@ -51,75 +52,85 @@ export function HydrationCard() {
   const isComplete = glasses >= targetGlasses;
 
   return (
-    <div className={`cyber-card-blue p-8 bg-black relative overflow-hidden rounded-[20px] transition-all duration-1000 ${
-      isComplete 
-      ? 'border-accent shadow-[0_0_50px_rgba(0,242,255,0.6)]' 
-      : 'border-accent/40 shadow-[0_0_30px_rgba(0,242,255,0.2)]'
-    }`}>
-      <div className="relative z-10">
-        <div className="flex justify-between items-center mb-10">
-          <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 border-2 flex items-center justify-center bg-black rounded-[12px] transition-all duration-500 ${
-              isComplete ? 'border-accent neon-glow-blue' : 'border-accent/50'
-            }`}>
-              <Droplets className={isComplete ? "text-accent animate-pulse" : "text-accent/60"} size={20} />
+    <TooltipProvider>
+      <div className={`cyber-card-blue p-8 bg-black relative overflow-hidden rounded-[20px] transition-all duration-1000 ${
+        isComplete 
+        ? 'border-accent shadow-[0_0_50px_rgba(0,242,255,0.6)]' 
+        : 'border-accent/40 shadow-[0_0_30px_rgba(0,242,255,0.2)]'
+      }`}>
+        <div className="relative z-10">
+          <div className="flex justify-between items-center mb-10">
+            <div className="flex items-center gap-4">
+              <div className={`w-12 h-12 border-2 flex items-center justify-center bg-black rounded-[12px] transition-all duration-500 ${
+                isComplete ? 'border-accent neon-glow-blue' : 'border-accent/50'
+              }`}>
+                <Droplets className={isComplete ? "text-accent animate-pulse" : "text-accent/60"} size={20} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-black text-[10px] uppercase tracking-[0.4em] text-accent neon-text-blue">Liquide de Refroidissement</h3>
+                  <Tooltip>
+                    <TooltipTrigger><Info size={10} className="text-accent/40" /></TooltipTrigger>
+                    <TooltipContent className="bg-black border-accent/40 text-[8px] p-2 max-w-[180px]">
+                      CALCULÉ SELON TON POIDS ET TA SUDATION ESTIMÉE VIA TON NIVEAU DE SPORT.
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+                <p className="text-[8px] text-muted-foreground font-black uppercase tracking-widest mt-2">Intégrité : {glasses * 250}ml / {targetMl}ml</p>
+                <p className="text-[9px] text-primary font-black uppercase tracking-widest mt-1 neon-text-yellow">Objectif : {(targetMl / 1000).toFixed(1)}L</p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-black text-[10px] uppercase tracking-[0.4em] text-accent neon-text-blue">Liquide de Refroidissement</h3>
-              <p className="text-[8px] text-muted-foreground font-black uppercase tracking-widest mt-2">Intégrité : {glasses * 250}ml / {targetMl}ml</p>
-              <p className="text-[9px] text-primary font-black uppercase tracking-widest mt-1 neon-text-yellow">Objectif : {(targetMl / 1000).toFixed(1)}L</p>
+            <div className="text-right">
+              <span className={`font-black text-5xl tracking-tighter transition-all duration-500 ${isComplete ? 'text-accent neon-text-blue' : 'text-accent/80'}`}>
+                {glasses}
+              </span>
+              <span className="text-[10px] text-muted-foreground block font-black uppercase tracking-widest">UNITÉS</span>
             </div>
           </div>
-          <div className="text-right">
-            <span className={`font-black text-5xl tracking-tighter transition-all duration-500 ${isComplete ? 'text-accent neon-text-blue' : 'text-accent/80'}`}>
-              {glasses}
-            </span>
-            <span className="text-[10px] text-muted-foreground block font-black uppercase tracking-widest">UNITÉS</span>
-          </div>
-        </div>
 
-        <div className="flex justify-center items-center gap-8">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="text-white/20 h-10 w-10 hover:bg-accent/10 border-none"
-            onClick={() => updateHydration(glasses - 1)}
-          >
-            <Minus size={18} />
-          </Button>
+          <div className="flex justify-center items-center gap-8">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-white/20 h-10 w-10 hover:bg-accent/10 border-none"
+              onClick={() => updateHydration(glasses - 1)}
+            >
+              <Minus size={18} />
+            </Button>
 
-          <div className="flex-1 h-2 bg-white/5 relative rounded-full overflow-hidden border border-white/5">
-            <div 
-              className={`h-full transition-all duration-1000 ${
+            <div className="flex-1 h-2 bg-white/5 relative rounded-full overflow-hidden border border-white/5">
+              <div 
+                className={`h-full transition-all duration-1000 ${
+                  isComplete 
+                  ? 'bg-accent shadow-[0_0_25px_rgba(0,242,255,1)]' 
+                  : 'bg-accent/60'
+                }`}
+                style={{ width: `${progress * 100}%` }}
+              />
+            </div>
+
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className={`h-16 w-16 border-2 transition-all duration-500 rounded-[12px] flex flex-col items-center justify-center gap-1 ${
                 isComplete 
-                ? 'bg-accent shadow-[0_0_25px_rgba(0,242,255,1)]' 
-                : 'bg-accent/60'
+                ? 'border-accent text-accent shadow-[0_0_30px_rgba(0,242,255,0.5)]' 
+                : 'border-primary text-primary shadow-[0_0_20px_rgba(253,224,71,0.3)]'
               }`}
-              style={{ width: `${progress * 100}%` }}
-            />
+              onClick={() => updateHydration(glasses + 1)}
+            >
+              <Plus size={24} strokeWidth={3} />
+              <span className="text-[7px] font-black uppercase tracking-tighter">250ML</span>
+            </Button>
           </div>
 
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className={`h-16 w-16 border-2 transition-all duration-500 rounded-[12px] flex flex-col items-center justify-center gap-1 ${
-              isComplete 
-              ? 'border-accent text-accent shadow-[0_0_30px_rgba(0,242,255,0.5)]' 
-              : 'border-primary text-primary shadow-[0_0_20px_rgba(253,224,71,0.3)]'
-            }`}
-            onClick={() => updateHydration(glasses + 1)}
-          >
-            <Plus size={24} strokeWidth={3} />
-            <span className="text-[7px] font-black uppercase tracking-tighter">250ML</span>
-          </Button>
+          {isComplete && (
+            <p className="text-center text-[8px] font-black text-accent uppercase tracking-[0.5em] mt-6 animate-pulse neon-text-blue">
+              SYSTÈME OPTIMAL - TEMPÉRATURE STABLE
+            </p>
+          )}
         </div>
-
-        {isComplete && (
-          <p className="text-center text-[8px] font-black text-accent uppercase tracking-[0.5em] mt-6 animate-pulse neon-text-blue">
-            SYSTÈME OPTIMAL - TEMPÉRATURE STABLE
-          </p>
-        )}
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
