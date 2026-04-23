@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -6,12 +7,10 @@ import { useUser, useFirestore, useCollection } from '@/firebase';
 import { BottomNav } from '@/components/bottom-nav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Trash2, Coffee, Utensils, Moon, Apple } from 'lucide-react';
+import { Plus, Trash2, Search, Coffee, Utensils, Moon, Apple, Zap } from 'lucide-react';
 import { collection, addDoc, query, where, deleteDoc, doc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import foodDb from '@/lib/food-db.json';
 
 type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
 
@@ -19,15 +18,8 @@ export default function JournalPage() {
   const { user, loading } = useUser();
   const db = useFirestore();
   const router = useRouter();
-  const [isAdding, setIsAdding] = useState(false);
-  const [newMeal, setNewMeal] = useState({
-    name: '',
-    calories: '',
-    protein: '',
-    carbs: '',
-    fat: '',
-    type: 'breakfast' as MealType
-  });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedType, setSelectedType] = useState<MealType>('breakfast');
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
@@ -38,25 +30,25 @@ export default function JournalPage() {
 
   const { data: meals } = useCollection(mealsQuery);
 
-  useEffect(() => {
-    if (!loading && !user) router.push('/login');
-  }, [user, loading, router]);
+  const filteredFood = useMemo(() => {
+    if (!searchTerm) return [];
+    return foodDb.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 5);
+  }, [searchTerm]);
 
-  const addMeal = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const addMeal = async (food: any) => {
     if (!user) return;
-    addDoc(collection(db, 'users', user.uid, 'meals'), {
-      ...newMeal,
-      calories: parseInt(newMeal.calories) || 0,
-      protein: parseInt(newMeal.protein) || 0,
-      carbs: parseInt(newMeal.carbs) || 0,
-      fat: parseInt(newMeal.fat) || 0,
-      date: today,
-      createdAt: new Date().toISOString()
-    });
-    setIsAdding(false);
-    setNewMeal({ name: '', calories: '', protein: '', carbs: '', fat: '', type: 'breakfast' });
-    toast({ title: "System Updated", description: "Log entry finalized." });
+    try {
+      await addDoc(collection(db, 'users', user.uid, 'meals'), {
+        ...food,
+        type: selectedType,
+        date: today,
+        createdAt: new Date().toISOString()
+      });
+      setSearchTerm('');
+      toast({ title: "SYSTEM UPDATED", description: `${food.name} ADDED TO PROTOCOL.` });
+    } catch (e) {
+      toast({ variant: "destructive", title: "ERROR", description: "FAILED TO COMMIT LOG." });
+    }
   };
 
   const deleteMeal = async (id: string) => {
@@ -71,102 +63,94 @@ export default function JournalPage() {
     { type: 'snack', label: 'Snack Protocol', icon: Apple },
   ];
 
-  if (loading || !user) return null;
-
   return (
-    <main className="px-6 pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white">
-      <div className="flex justify-between items-end mb-16">
-        <div className="space-y-1">
-          <p className="text-primary/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-red">Archive Access</p>
-          <h1 className="text-3xl font-black tracking-tighter uppercase neon-text-red">Journal Logs</h1>
-        </div>
-        <Dialog open={isAdding} onOpenChange={setIsAdding}>
-          <DialogTrigger asChild>
-            <Button size="icon" className="w-14 h-14 border border-primary shadow-[0_0_15px_rgba(253,224,71,0.3)]">
-              <Plus size={24} />
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-black border border-primary/50 text-white max-w-[95vw]">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-black uppercase tracking-widest text-primary neon-text-red">Create Log Entry</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={addMeal} className="space-y-8 mt-4">
-              <div className="space-y-2">
-                <Label className="text-[9px] uppercase font-black tracking-[0.3em] text-muted-foreground">Identification</Label>
-                <Input 
-                  className="bg-white/5 border-white/10 h-14 font-black uppercase tracking-wider text-white" 
-                  placeholder="ITEM DESCRIPTION"
-                  value={newMeal.name}
-                  onChange={(e) => setNewMeal({...newMeal, name: e.target.value.toUpperCase()})}
-                  required 
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label className="text-[9px] uppercase font-black tracking-[0.3em] text-muted-foreground">Calories (KCAL)</Label>
-                  <Input 
-                    type="number" 
-                    className="bg-white/5 border-white/10 h-14 font-black text-white"
-                    value={newMeal.calories}
-                    onChange={(e) => setNewMeal({...newMeal, calories: e.target.value})}
-                    required 
-                  />
-                </div>
-                <div className="space-y-2">
-                   <Label className="text-[9px] uppercase font-black tracking-[0.3em] text-muted-foreground">Sector</Label>
-                  <Select 
-                    value={newMeal.type} 
-                    onValueChange={(v: any) => setNewMeal({...newMeal, type: v})}
-                  >
-                    <SelectTrigger className="bg-white/5 border-white/10 h-14 font-black text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-black border-white/10 text-white">
-                      <SelectItem value="breakfast">Breakfast</SelectItem>
-                      <SelectItem value="lunch">Lunch</SelectItem>
-                      <SelectItem value="dinner">Dinner</SelectItem>
-                      <SelectItem value="snack">Snack</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <Button type="submit" className="w-full h-16 font-black tracking-[0.2em] border-primary">COMMIT TO SYSTEM</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+    <main className="px-4 sm:px-6 pt-12 sm:pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white">
+      <div className="space-y-1 mb-12">
+        <p className="text-primary/60 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.5em] neon-text-yellow">Log Interface</p>
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase neon-text-yellow">Journal Logs</h1>
       </div>
 
-      <div className="space-y-16">
+      {/* Search Bar Section */}
+      <section className="mb-12 space-y-4">
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
+          {['breakfast', 'lunch', 'dinner', 'snack'].map((type) => (
+            <button
+              key={type}
+              onClick={() => setSelectedType(type as MealType)}
+              className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest border rounded-full transition-all whitespace-nowrap ${
+                selectedType === type 
+                ? 'bg-primary text-black border-primary shadow-[0_0_15px_rgba(253,224,71,0.5)]' 
+                : 'border-white/10 text-muted-foreground'
+              }`}
+            >
+              {type}
+            </button>
+          ))}
+        </div>
+        
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/40" size={18} />
+          <Input 
+            className="bg-white/5 border-primary/20 h-14 pl-12 font-black uppercase tracking-widest focus:border-primary/60 transition-all rounded-[12px]" 
+            placeholder="SEARCH FOOD DATABASE..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
+        {/* Search Results */}
+        {filteredFood.length > 0 && (
+          <div className="cyber-card-yellow p-2 bg-black/90 border-primary/40 animate-in fade-in slide-in-from-top-2 duration-300">
+            {filteredFood.map((food, idx) => (
+              <div key={idx} className="flex justify-between items-center p-4 hover:bg-primary/5 rounded-[8px] transition-colors border-b border-white/5 last:border-none">
+                <div className="space-y-1">
+                  <p className="font-black text-xs tracking-wider uppercase">{food.name}</p>
+                  <p className="text-[9px] text-muted-foreground uppercase">{food.calories} KCAL | P: {food.protein}G | C: {food.carbs}G</p>
+                </div>
+                <Button 
+                  size="icon" 
+                  className="w-10 h-10 border-primary neon-glow-yellow"
+                  onClick={() => addMeal(food)}
+                >
+                  <Plus size={18} />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Daily Logs List */}
+      <div className="space-y-12">
         {mealSections.map((section) => {
           const sectionMeals = (meals || []).filter((m: any) => m.type === section.type);
           const Icon = section.icon;
           return (
-            <div key={section.type} className="space-y-6">
-              <div className="flex items-center gap-4 text-muted-foreground">
-                <Icon size={16} className="text-primary" />
+            <div key={section.type} className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Icon size={14} className="text-primary" />
                 <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/70">{section.label}</h2>
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {sectionMeals.length > 0 ? sectionMeals.map((meal: any) => (
-                  <div key={meal.id} className="cyber-card-red p-5 flex justify-between items-center bg-black border border-primary/20">
-                    <div className="space-y-2">
-                      <h3 className="font-black text-sm uppercase tracking-wider">{meal.name}</h3>
-                      <div className="flex gap-6 text-[9px] font-black text-muted-foreground uppercase tracking-widest">
-                        <span className="text-primary neon-text-red">{meal.calories} KCAL</span>
+                  <div key={meal.id} className="cyber-card-blue p-4 flex justify-between items-center bg-black/40 border-accent/20">
+                    <div className="space-y-1">
+                      <h3 className="font-black text-xs uppercase tracking-wider">{meal.name}</h3>
+                      <div className="flex gap-3 text-[9px] font-black text-muted-foreground uppercase">
+                        <span className="text-primary">{meal.calories} KCAL</span>
                         <span className="opacity-20">|</span>
                         <span>P: {meal.protein}G</span>
                         <span>C: {meal.carbs}G</span>
-                        <span>F: {meal.fat}G</span>
                       </div>
                     </div>
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="text-white/10 hover:text-primary hover:bg-primary/5 border-none"
+                      className="text-white/10 hover:text-destructive hover:bg-destructive/5 border-none"
                       onClick={() => deleteMeal(meal.id)}
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={14} />
                     </Button>
                   </div>
                 )) : (
