@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, Search, Coffee, Utensils, Moon, Apple, Zap, Sparkles, Loader2, Camera, Upload, X, Check } from 'lucide-react';
+import { Plus, Trash2, Search, Coffee, Utensils, Moon, Apple, Zap, Sparkles, Loader2, Camera, Upload, X, Check, AlertCircle } from 'lucide-react';
 import { collection, addDoc, query, where, deleteDoc, doc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import foodDb from '@/lib/food-db.json';
@@ -31,6 +31,7 @@ export default function JournalPage() {
   const [aiResult, setAiResult] = useState<any>(null);
   const [scanningImage, setScanningImage] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -60,16 +61,22 @@ export default function JournalPage() {
       .slice(0, 8);
   }, [searchTerm]);
 
-  // Camera Access
   const startCamera = async () => {
     setIsCapturing(true);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      setHasCameraPermission(true);
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "ACCÈS CAMÉRA REFUSÉ", description: "Veuillez autoriser la caméra dans vos réglages." });
+      console.error('Error accessing camera:', err);
+      setHasCameraPermission(false);
+      toast({ 
+        variant: "destructive", 
+        title: "ACCÈS CAMÉRA REFUSÉ", 
+        description: "Veuillez autoriser l'accès à la caméra pour utiliser le scanner." 
+      });
       setIsCapturing(false);
     }
   };
@@ -119,7 +126,13 @@ export default function JournalPage() {
       setAiResult(result);
       if ('vibrate' in navigator) navigator.vibrate([100, 50, 100]);
     } catch (e) {
-      toast({ variant: "destructive", title: "LIAISON NEURALE ÉCHOUÉE", description: "Impossible d'analyser l'image." });
+      console.error('Scan error:', e);
+      toast({ 
+        variant: "destructive", 
+        title: "ERREUR DE LECTURE OPTIQUE", 
+        description: "L'IA n'a pas pu identifier le plat. Essayez une saisie manuelle." 
+      });
+      setScanningImage(null);
     } finally {
       setAiEstimating(false);
     }
@@ -258,7 +271,7 @@ export default function JournalPage() {
                     <DialogTitle>Scan Optique</DialogTitle>
                     <DialogDescription>Analyse de la composition moléculaire des aliments par vision artificielle.</DialogDescription>
                   </DialogHeader>
-                  <div className="relative h-[60vh] bg-black">
+                  <div className="relative h-[70vh] bg-black">
                     {!scanningImage ? (
                       <>
                         <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
@@ -267,6 +280,13 @@ export default function JournalPage() {
                             <div className="w-48 h-48 border-2 border-dashed border-accent/50 rounded-2xl" />
                           </div>
                         </div>
+                        {hasCameraPermission === false && (
+                          <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center p-8 text-center gap-4">
+                            <AlertCircle size={48} className="text-destructive" />
+                            <p className="font-black text-xs uppercase tracking-widest">Accès caméra désactivé</p>
+                            <Button onClick={startCamera} variant="outline" className="border-accent text-accent">Réessayer</Button>
+                          </div>
+                        )}
                         <div className="absolute bottom-6 left-0 right-0 flex justify-around items-center px-10">
                            <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
                            <Button variant="ghost" className="text-white/40" onClick={() => fileInputRef.current?.click()}>
@@ -282,11 +302,12 @@ export default function JournalPage() {
                       <div className="w-full h-full relative">
                         <img src={scanningImage} className="w-full h-full object-cover" alt="Captured" />
                         {aiEstimating && (
-                          <div className="absolute inset-0 bg-black/40">
-                             <div className="absolute top-0 left-0 w-full h-[2px] bg-accent shadow-[0_0_15px_rgba(0,242,255,1)] animate-[bounce_2s_infinite]" />
+                          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm">
+                             <div className="absolute top-0 left-0 w-full h-[2px] bg-accent shadow-[0_0_20px_rgba(0,242,255,1)] animate-[bounce_2s_infinite]" />
                              <div className="flex flex-col items-center justify-center h-full gap-4">
                                <Loader2 className="animate-spin text-accent" size={48} />
-                               <p className="text-[10px] font-black tracking-[0.5em] text-accent uppercase animate-pulse">Scanning Bio-Signal...</p>
+                               <p className="text-[12px] font-black tracking-[0.6em] text-accent uppercase animate-pulse neon-text-blue">SCAN EN COURS...</p>
+                               <p className="text-[8px] font-black text-accent/60 uppercase tracking-widest">Liaison Neurale Établie</p>
                              </div>
                           </div>
                         )}

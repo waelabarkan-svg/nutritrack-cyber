@@ -36,15 +36,18 @@ const prompt = ai.definePrompt({
   name: 'scanDishPrompt',
   input: { schema: ScanDishInputSchema },
   output: { schema: ScanDishOutputSchema },
-  prompt: `You are a Cyberpunk Nutritionist AI. 
+  prompt: `Tu es un expert en nutrition cybernétique. Analyse cette image de nourriture. 
+  Identifie les aliments, estime précisément les portions visibles et renvoie les données nutritionnelles.
+
+  Image à analyser: {{media url=photoDataUri}}
   
-  Analyze the provided image of a dish: {{media url=photoDataUri}}
+  Instructions:
+  1. Identifie le plat principal.
+  2. Estime les calories et les macros (Protéines, Glucides, Lipides) pour la portion affichée.
+  3. Liste les ingrédients principaux détectés.
+  4. Donne une analyse courte (max 10 mots) avec un style Cyberpunk/Netrunner en français.
   
-  Estimate the nutritional values based on the visible portion size and ingredients. 
-  Be as precise as a professional nutritionist.
-  
-  Provide a list of ingredients you see and a punchy, cyberpunk-style feedback for the user.
-  Respond in French for the feedback and names.`,
+  Réponds exclusivement au format structuré demandé.`,
 });
 
 const scanDishFlow = ai.defineFlow(
@@ -55,7 +58,7 @@ const scanDishFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await prompt(input);
-    if (!output) throw new Error('AI failed to scan the dish.');
+    if (!output) throw new Error('Échec de l\'analyse optique par l\'IA.');
     return output;
   }
 );
