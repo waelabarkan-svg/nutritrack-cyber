@@ -1,8 +1,8 @@
 'use server';
 /**
- * @fileOverview AI Flow for analyzing dish images and estimating nutritional values.
- *
- * - scanDish - Function to analyze an image and return nutritional data.
+ * @fileOverview Flux IA pour l'analyse visuelle des plats (Vision Engine).
+ * 
+ * - scanDish - Analyse une image et renvoie les données nutritionnelles.
  */
 
 import { ai } from '@/ai/genkit';
@@ -34,6 +34,7 @@ export async function scanDish(input: ScanDishInput): Promise<ScanDishOutput> {
 
 const prompt = ai.definePrompt({
   name: 'scanDishPrompt',
+  model: 'googleai/gemini-1.5-flash',
   input: { schema: ScanDishInputSchema },
   output: { schema: ScanDishOutputSchema },
   prompt: `Tu es un expert en nutrition cybernétique. Analyse cette image de nourriture. 
@@ -57,8 +58,13 @@ const scanDishFlow = ai.defineFlow(
     outputSchema: ScanDishOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
-    if (!output) throw new Error('Échec de l\'analyse optique par l\'IA.');
-    return output;
+    try {
+      const { output } = await prompt(input);
+      if (!output) throw new Error('Échec de l\'analyse optique par l\'IA.');
+      return output;
+    } catch (error: any) {
+      console.error('Genkit Vision Flow Error:', error);
+      throw error;
+    }
   }
 );

@@ -99,7 +99,7 @@ export default function JournalPage() {
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
       ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUri = canvas.toDataURL('image/jpeg');
+      const dataUri = canvas.toDataURL('image/jpeg', 0.8);
       setScanningImage(dataUri);
       stopCamera();
     }
@@ -130,10 +130,16 @@ export default function JournalPage() {
     } catch (e: any) {
       console.error('Scan error:', e);
       const isRateLimit = e.message?.includes('429') || e.message?.includes('RESOURCE_EXHAUSTED');
+      const isNotFound = e.message?.includes('404');
+      
       toast({ 
         variant: "destructive", 
-        title: isRateLimit ? "SERVEUR SATURÉ" : "ERREUR DE LECTURE", 
-        description: isRateLimit ? "Réessaie dans 60s, la liaison neurale est surchargée." : "L'IA n'a pas pu identifier le plat." 
+        title: isRateLimit ? "SERVEUR SATURÉ" : isNotFound ? "ERREUR SYSTÈME" : "ERREUR DE LECTURE", 
+        description: isRateLimit 
+          ? "Réessaie dans 60s, la liaison neurale est surchargée." 
+          : isNotFound 
+            ? "Le module Vision (Gemini) est momentanément indisponible."
+            : "L'IA n'a pas pu identifier le plat." 
       });
       if (!isRateLimit) setScanningImage(null);
     } finally {
