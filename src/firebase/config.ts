@@ -9,7 +9,7 @@ import { getFirestore } from 'firebase/firestore';
  * Source de vérité unique pour toute l'application.
  */
 export const firebaseConfig = {
-  apiKey: 'AIzaSyA4qB0gN6V7L00JhutP1rwSiRLF9sTUXsU',
+  apiKey: "AIzaSyA4qB0gN6V7L00JhutP1rwSiRlF9sTUXsU",
   authDomain: 'studio-7017378573-cff64.firebaseapp.com',
   projectId: 'studio-7017378573-cff64',
   storageBucket: 'studio-7017378573-cff64.firebasestorage.app',
