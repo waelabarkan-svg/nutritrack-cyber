@@ -1,7 +1,7 @@
 'use server';
 /**
  * @fileOverview Flux IA pour l'estimation nutritionnelle textuelle.
- * Modèle gemini-1.5-flash-latest.
+ * Modèle gemini-1.5-flash sur API v1 stable.
  */
 
 import { ai } from '@/ai/genkit';
@@ -28,7 +28,7 @@ export async function estimateDish(input: EstimateDishInput): Promise<EstimateDi
 
 const prompt = ai.definePrompt({
   name: 'estimateDishPrompt',
-  model: 'googleai/gemini-1.5-flash-latest',
+  model: 'googleai/gemini-1.5-flash',
   input: { schema: EstimateDishInputSchema },
   prompt: `Tu es un Expert Nutritionniste Cyberpunk. Analyse le plat : "{{{dishName}}}".
   
@@ -66,7 +66,6 @@ const estimateDishFlow = ai.defineFlow(
       return JSON.parse(cleanJson) as EstimateDishOutput;
     } catch (error) {
       console.error('ERREUR DE PARSING IA [ESTIMATE]:', error);
-      console.error('CONTENU BRUT REÇU:', text);
       throw new Error("Échec de l'analyse neurale du plat.");
     }
   }

@@ -1,7 +1,7 @@
 'use server';
 /**
  * @fileOverview Flux IA pour l'analyse visuelle des plats (Vision Engine).
- * Utilise un parsing JSON manuel ultra-robuste et le modèle flash-latest.
+ * Modèle gemini-1.5-flash sur API v1 stable.
  */
 
 import { ai } from '@/ai/genkit';
@@ -29,7 +29,7 @@ export async function scanDish(input: ScanDishInput): Promise<ScanDishOutput> {
 
 const prompt = ai.definePrompt({
   name: 'scanDishPrompt',
-  model: 'googleai/gemini-1.5-flash-latest',
+  model: 'googleai/gemini-1.5-flash',
   input: { schema: ScanDishInputSchema },
   prompt: `Tu es un expert en nutrition cybernétique. Analyse cette image. 
   
@@ -62,7 +62,7 @@ const scanDishFlow = ai.defineFlow(
   async (input) => {
     const { text } = await prompt(input);
     
-    // Extraction sécurisée de l'objet JSON (Regex pour isoler le bloc {})
+    // Extraction JSON robuste
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const rawContent = jsonMatch ? jsonMatch[0] : text;
     const cleanJson = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();

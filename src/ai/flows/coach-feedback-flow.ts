@@ -1,7 +1,7 @@
 'use server';
 /**
- * @fileOverview Flux IA pour un coaching nutritionnel personnalisé en français.
- * Modèle gemini-1.5-flash-latest pour une stabilité maximale.
+ * @fileOverview Flux IA pour un coaching nutritionnel personnalisé.
+ * Modèle gemini-1.5-flash sur API v1 stable.
  */
 
 import { ai } from '@/ai/genkit';
@@ -36,7 +36,7 @@ export async function getCoachFeedback(input: CoachFeedbackInput): Promise<Coach
 
 const prompt = ai.definePrompt({
   name: 'coachFeedbackPrompt',
-  model: 'googleai/gemini-1.5-flash-latest',
+  model: 'googleai/gemini-1.5-flash',
   input: { schema: CoachFeedbackInputSchema },
   prompt: `Tu es un Coach Nutritionnel expert dans un futur Cyberpunk. Analyse les données de l'Agent.
   
@@ -78,7 +78,6 @@ const coachFeedbackFlow = ai.defineFlow(
       return JSON.parse(cleanJson) as CoachFeedbackOutput;
     } catch (error) {
       console.error('ERREUR DE PARSING IA [COACH]:', error);
-      console.error('CONTENU BRUT REÇU:', text);
       return {
         feedback: "Liaison neurale instable. Analyse en attente... continue tes efforts, Agent !",
         status: "encouragement",
