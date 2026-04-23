@@ -85,6 +85,40 @@
   .laser-line-yellow {
     @apply h-[1px] w-full bg-gradient-to-r from-transparent via-primary/60 to-transparent my-8;
   }
+
+  /* Animations de Rang */
+  .animate-neon-border {
+    position: relative;
+    overflow: hidden;
+  }
+  .animate-neon-border::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(from 0deg, transparent, hsl(var(--accent)), transparent, hsl(var(--accent)), transparent);
+    animation: rotate-border 4s linear infinite;
+  }
+  .animate-neon-border::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    background: black;
+    border-radius: 14px;
+    z-index: 0;
+  }
+
+  .legend-gold-glow {
+    text-shadow: 0 0 10px #ffcc00, 0 0 20px #ffcc00, 0 0 40px #ffcc00;
+    color: #fff;
+  }
+
+  @keyframes rotate-border {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
 }
 
 .progress-ring-circle {

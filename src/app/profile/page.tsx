@@ -2,18 +2,19 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore, useCollection } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { BottomNav } from '@/components/bottom-nav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { doc, getDoc, setDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { UserStats, calculateNutritionGoals } from '@/lib/nutrition-utils';
-import { Database, Info, Zap, Shield, Trophy, Cpu, Target, CheckCircle2, Circle } from 'lucide-react';
-import { getUserGamification, getRank, getXpProgress, getXpForLevel, addXp } from '@/lib/gamification-utils';
+import { Cpu, Target, CheckCircle2, Circle, Flame, Zap, Award } from 'lucide-react';
+import { getUserGamification, getRank, getXpProgress, getXpForLevel, addXp, getXpMultiplier, Rank } from '@/lib/gamification-utils';
+import { cn } from '@/lib/utils';
 
 export default function ProfilePage() {
   const { user, loading } = useUser();
@@ -45,7 +46,6 @@ export default function ProfilePage() {
       };
       fetchStats();
 
-      // Listener Temps Réel pour les bonus de macros
       const mealsQuery = query(collection(db, 'users', user.uid, 'meals'), where('date', '==', today));
       const unsubMeals = onSnapshot(mealsQuery, (snap) => {
         let cal = 0, prot = 0;
@@ -69,6 +69,7 @@ export default function ProfilePage() {
   const rank = useMemo(() => getRank(gamification.level), [gamification.level]);
   const xpProgress = useMemo(() => getXpProgress(gamification.xp), [gamification.xp]);
   const nextLevelXp = useMemo(() => getXpForLevel(gamification.level + 1), [gamification.level]);
+  const multiplier = useMemo(() => getXpMultiplier(gamification.streak), [gamification.streak]);
 
   // Vérification et attribution des bonus XP
   useEffect(() => {
@@ -80,7 +81,7 @@ export default function ProfilePage() {
       const res = addXp(100, 'water');
       if (res && res.xp > gamification.xp) {
         setGamification(getUserGamification());
-        toast({ title: "OBJECTIF FLUIDE ATTEINT", description: "+100 XP", className: "bg-accent text-black font-black" });
+        toast({ title: "OBJECTIF FLUIDE ATTEINT", description: `+${Math.floor(100 * (res.multiplier || 1))} XP`, className: "bg-accent text-black font-black" });
       }
     }
 
@@ -89,20 +90,19 @@ export default function ProfilePage() {
       const res = addXp(150, 'protein');
       if (res && res.xp > gamification.xp) {
         setGamification(getUserGamification());
-        toast({ title: "SYNTHÈSE PROTÉIQUE OK", description: "+150 XP", className: "bg-primary text-black font-black" });
+        toast({ title: "SYNTHÈSE PROTÉIQUE OK", description: `+${Math.floor(150 * (res.multiplier || 1))} XP`, className: "bg-primary text-black font-black" });
       }
     }
 
-    // Bonus Calories (+/- 10% de l'objectif)
     const calMargin = goals.calories * 0.1;
     if (dailyProgress.calories >= goals.calories - calMargin && dailyProgress.calories <= goals.calories + calMargin) {
       const res = addXp(100, 'calories');
       if (res && res.xp > gamification.xp) {
         setGamification(getUserGamification());
-        toast({ title: "FLUX ÉNERGÉTIQUE STABLE", description: "+100 XP", className: "bg-primary text-black font-black shadow-[0_0_20px_rgba(253,224,71,0.5)]" });
+        toast({ title: "FLUX ÉNERGÉTIQUE STABLE", description: `+${Math.floor(100 * (res.multiplier || 1))} XP`, className: "bg-primary text-black font-black shadow-[0_0_20px_rgba(253,224,71,0.5)]" });
       }
     }
-  }, [dailyProgress, goals, user]);
+  }, [dailyProgress, goals, user, gamification.xp]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,6 +119,49 @@ export default function ProfilePage() {
 
   const currentBonuses = gamification.dailyBonuses?.[today] || [];
 
+  // Configuration Visuelle par Rang
+  const getRankStyles = (r: Rank) => {
+    switch (r) {
+      case "LEGEND":
+        return {
+          font: "font-['Orbitron']",
+          cardClass: "border-primary neon-glow-yellow",
+          nameClass: "legend-gold-glow uppercase tracking-[0.2em] font-black",
+          badge: <Award size={24} className="text-primary neon-glow-yellow" />
+        };
+      case "NETRUNNER ELITE":
+        return {
+          font: "font-['Orbitron']",
+          cardClass: "animate-neon-border",
+          nameClass: "text-accent neon-text-blue uppercase tracking-widest font-bold",
+          badge: <Zap size={20} className="text-accent" />
+        };
+      case "BIO-CYBORG":
+        return {
+          font: "font-['Orbitron']",
+          cardClass: "border-accent shadow-[0_0_15px_rgba(0,242,255,0.4)]",
+          nameClass: "text-white uppercase font-bold",
+          badge: <Cpu size={20} className="text-accent/60" />
+        };
+      case "TECH-SPECIALIST":
+        return {
+          font: "font-['JetBrains_Mono']",
+          cardClass: "border-white/20",
+          nameClass: "text-white/90 uppercase font-bold",
+          badge: null
+        };
+      default:
+        return {
+          font: "font-body",
+          cardClass: "border-white/10",
+          nameClass: "text-white/70 uppercase",
+          badge: null
+        };
+    }
+  };
+
+  const rankStyles = getRankStyles(rank);
+
   return (
     <TooltipProvider delayDuration={0}>
       <main className="px-6 pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white">
@@ -127,25 +170,48 @@ export default function ProfilePage() {
           <h1 className="text-3xl font-black tracking-tighter uppercase neon-text-yellow">Citoyen Bio</h1>
         </div>
 
-        <div className="cyber-card-blue p-6 mb-8 bg-black/40 border-accent/40 relative overflow-hidden group">
-          <div className="absolute -right-4 -top-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <Cpu size={120} className="text-accent" />
-          </div>
+        {/* Carte de Profil Évolutive */}
+        <div className={cn(
+          "p-6 mb-8 relative rounded-[16px] transition-all duration-700 bg-black/40 border",
+          rankStyles.cardClass
+        )}>
           <div className="relative z-10">
-            <div className="flex justify-between items-center mb-6">
-              <div className="space-y-1">
-                <span className="text-[8px] font-black text-accent uppercase tracking-[0.4em] block neon-text-blue">{rank}</span>
-                <h2 className="text-2xl font-black tracking-tighter uppercase">{user.displayName || 'AGENT'}</h2>
+            <div className="flex justify-between items-start mb-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                   <span className={cn("text-[9px] font-black tracking-[0.4em] block", rank === "LEGEND" ? "text-primary neon-text-yellow" : "text-accent neon-text-blue")}>
+                    {rank}
+                  </span>
+                  {rankStyles.badge}
+                </div>
+                <h2 className={cn("text-2xl tracking-tighter", rankStyles.nameClass, rankStyles.font)}>
+                  {user.displayName || 'AGENT'}
+                </h2>
+                
+                {/* Système de Streak */}
+                <div className="flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 w-fit">
+                   <div className="flex items-center gap-1.5">
+                     <Flame size={14} className={cn(gamification.streak > 0 ? "text-primary animate-pulse" : "text-white/20")} />
+                     <span className="text-[10px] font-black text-white">{gamification.streak}D SERIE</span>
+                   </div>
+                   {multiplier > 1 && (
+                     <div className="h-3 w-[1px] bg-white/10" />
+                   )}
+                   {multiplier > 1 && (
+                     <span className="text-[10px] font-black text-primary">x{multiplier} XP</span>
+                   )}
+                </div>
               </div>
-              <div className="w-14 h-14 border-2 border-accent/50 flex flex-col items-center justify-center bg-black rounded-xl shadow-[0_0_15px_rgba(0,242,255,0.3)]">
+              
+              <div className="w-16 h-16 border-2 border-accent/30 flex flex-col items-center justify-center bg-black rounded-xl shadow-[0_0_15px_rgba(0,242,255,0.2)]">
                 <span className="text-[8px] font-black text-accent/60 uppercase">NIV</span>
-                <span className="text-xl font-black neon-text-blue">{gamification.level}</span>
+                <span className="text-2xl font-black neon-text-blue">{gamification.level}</span>
               </div>
             </div>
 
             <div className="space-y-2">
               <div className="flex justify-between items-end">
-                <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Progression Neurale</span>
+                <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Évolution Neurale</span>
                 <span className="text-[9px] font-black text-accent uppercase tracking-widest">{Math.floor(gamification.xp)} / {nextLevelXp} XP</span>
               </div>
               <div className="h-3 w-full bg-white/5 border border-white/10 rounded-full overflow-hidden p-[2px]">
@@ -166,20 +232,24 @@ export default function ProfilePage() {
           </div>
           <div className="space-y-3">
             {[
-              { type: 'water', label: 'Hydratation Optimale', xp: 100, current: dailyProgress.hydration, target: Math.ceil(goals.hydrationMl / 250), unit: 'verres' },
+              { type: 'water', label: 'Refroidissement', xp: 100, current: dailyProgress.hydration, target: Math.ceil(goals.hydrationMl / 250), unit: 'verres' },
               { type: 'protein', label: 'Synthèse Protéique', xp: 150, current: dailyProgress.protein, target: goals.protein, unit: 'g' },
-              { type: 'calories', label: 'Flux Énergétique', xp: 100, current: dailyProgress.calories, target: goals.calories, unit: 'kcal' }
+              { type: 'calories', label: 'Flux Énergie', xp: 100, current: dailyProgress.calories, target: goals.calories, unit: 'kcal' }
             ].map((quest) => {
               const isDone = currentBonuses.includes(quest.type);
+              const bonusXp = Math.floor(quest.xp * multiplier);
               return (
-                <div key={quest.type} className={`flex items-center justify-between p-3 border rounded-lg transition-colors ${isDone ? 'bg-primary/10 border-primary/40' : 'bg-white/5 border-white/5'}`}>
+                <div key={quest.type} className={cn(
+                  "flex items-center justify-between p-3 border rounded-lg transition-all",
+                  isDone ? "bg-primary/10 border-primary/40 shadow-[0_0_10px_rgba(253,224,71,0.1)]" : "bg-white/5 border-white/5"
+                )}>
                   <div className="space-y-1">
-                    <p className={`text-[10px] font-black uppercase tracking-widest ${isDone ? 'text-primary' : 'text-white/60'}`}>{quest.label}</p>
+                    <p className={cn("text-[10px] font-black uppercase tracking-widest", isDone ? "text-primary" : "text-white/60")}>{quest.label}</p>
                     <p className="text-[8px] text-muted-foreground font-black uppercase">{quest.current} / {quest.target} {quest.unit}</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-[9px] font-black text-primary">+{quest.xp} XP</span>
-                    {isDone ? <CheckCircle2 size={16} className="text-primary" /> : <Circle size={16} className="text-white/20" />}
+                    <span className={cn("text-[9px] font-black", isDone ? "text-primary" : "text-white/40")}>+{bonusXp} XP</span>
+                    {isDone ? <CheckCircle2 size={16} className="text-primary" /> : <Circle size={16} className="text-white/10" />}
                   </div>
                 </div>
               );
