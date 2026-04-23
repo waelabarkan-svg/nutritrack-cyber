@@ -69,7 +69,7 @@ export default function Home() {
         <header className="flex justify-between items-start mb-12 sm:mb-16">
           <div className="space-y-1">
             <p className="text-accent/60 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.4em] sm:tracking-[0.5em] neon-text-blue">Système en ligne</p>
-            <h1 className="text-lg sm:text-xl font-black tracking-[0.15em] sm:tracking-[0.2em] neon-text-blue uppercase">NutriTrack</h1>
+            <h1 className="text-lg sm:text-xl font-black tracking-[0.15em] sm:tracking-[0.2em] neon-text-blue uppercase">Accueil</h1>
           </div>
           <div className="flex flex-col items-end">
             <div className="w-9 h-9 sm:w-11 sm:h-11 border border-primary/50 bg-black flex items-center justify-center shadow-[0_0_15px_rgba(253,224,71,0.4)] rounded-[10px] sm:rounded-[12px]">
@@ -100,7 +100,7 @@ export default function Home() {
                 </CircularProgress>
               </div>
             </TooltipTrigger>
-            <TooltipContent className="bg-black/95 border-destructive/40 text-[10px] p-3 font-black uppercase tracking-widest max-w-[200px] z-[100]">
+            <TooltipContent className="max-w-[200px]">
               FLUX ÉNERGÉTIQUE CALCULÉ SELON TON TDEE (DÉPENSE QUOTIDIENNE TOTALE).
             </TooltipContent>
           </Tooltip>
@@ -121,8 +121,8 @@ export default function Home() {
                 </div>
               </div>
             </TooltipTrigger>
-            <TooltipContent className="bg-black/95 border-primary/40 text-[10px] p-3 font-black uppercase tracking-widest z-[100]">
-              CIBLE : {goals.protein}G. ESSENTIEL POUR LA RÉPARATION TISSULAIRE.
+            <TooltipContent>
+              CIBLE : {goals.protein}G. ESSENTIEL POUR LA RÉPARATION TISSULAIRE (2.0G/KG EN PRISE DE MASSE).
             </TooltipContent>
           </Tooltip>
 
@@ -138,8 +138,8 @@ export default function Home() {
                 </div>
               </div>
             </TooltipTrigger>
-            <TooltipContent className="bg-black/95 border-accent/40 text-[10px] p-3 font-black uppercase tracking-widest z-[100]">
-              CIBLE : {goals.carbs}G. TON CARBURANT PRINCIPAL.
+            <TooltipContent>
+              CIBLE : {goals.carbs}G. TON CARBURANT PRINCIPAL POUR LES EFFORTS COGNITIFS ET PHYSIQUES.
             </TooltipContent>
           </Tooltip>
 
@@ -155,7 +155,7 @@ export default function Home() {
                 </div>
               </div>
             </TooltipTrigger>
-            <TooltipContent className="bg-black/95 border-accent/40 text-[10px] p-3 font-black uppercase tracking-widest z-[100]">
+            <TooltipContent>
               CIBLE : {goals.fat}G. RÉGULATION HORMONALE ET ÉNERGIE DURABLE.
             </TooltipContent>
           </Tooltip>
