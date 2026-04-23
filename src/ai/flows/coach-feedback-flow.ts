@@ -35,6 +35,7 @@ export async function getCoachFeedback(input: CoachFeedbackInput): Promise<Coach
 
 const prompt = ai.definePrompt({
   name: 'coachFeedbackPrompt',
+  model: 'googleai/gemini-1.5-flash',
   input: { schema: CoachFeedbackInputSchema },
   output: { schema: CoachFeedbackOutputSchema },
   prompt: `Tu es un Coach Nutritionnel expert dans un futur Cyberpunk. Analyse les données suivantes pour l'utilisateur.

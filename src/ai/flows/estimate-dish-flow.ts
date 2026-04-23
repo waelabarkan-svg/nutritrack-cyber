@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview AI Flow for estimating nutritional values of complex dishes.
@@ -28,6 +27,7 @@ export async function estimateDish(input: EstimateDishInput): Promise<EstimateDi
 
 const prompt = ai.definePrompt({
   name: 'estimateDishPrompt',
+  model: 'googleai/gemini-1.5-flash',
   input: { schema: EstimateDishInputSchema },
   output: { schema: EstimateDishOutputSchema },
   prompt: `You are a Cyberpunk Nutritionist Agent. Analyze the dish: "{{{dishName}}}".
