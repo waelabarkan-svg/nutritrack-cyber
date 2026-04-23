@@ -50,5 +50,11 @@
   { "name": "STEAK DE SOJA", "calories": 180, "protein": 16, "carbs": 8, "fat": 9 },
   { "name": "KEBAB (COMPLET)", "calories": 850, "protein": 35, "carbs": 80, "fat": 42, "isDish": true },
   { "name": "QUICHE LORRAINE (PART)", "calories": 320, "protein": 12, "carbs": 25, "fat": 20, "isDish": true },
-  { "name": "FISH AND CHIPS", "calories": 750, "protein": 28, "carbs": 65, "fat": 40, "isDish": true }
+  { "name": "FISH AND CHIPS", "calories": 750, "protein": 28, "carbs": 65, "fat": 40, "isDish": true },
+  { "name": "PAD THAI CREVETTES", "calories": 550, "protein": 25, "carbs": 80, "fat": 15, "isDish": true },
+  { "name": "RISOTTO CHAMPIGNONS", "calories": 400, "protein": 12, "carbs": 55, "fat": 15, "isDish": true },
+  { "name": "POKE BOWL SAUMON", "calories": 480, "protein": 28, "carbs": 60, "fat": 14, "isDish": true },
+  { "name": "TACOS BOEUF (3 PC)", "calories": 650, "protein": 35, "carbs": 50, "fat": 25, "isDish": true },
+  { "name": "RATATOUILLE", "calories": 80, "protein": 2, "carbs": 12, "fat": 3, "isDish": true },
+  { "name": "BUN BO NAM BO", "calories": 520, "protein": 28, "carbs": 75, "fat": 12, "isDish": true }
 ]
