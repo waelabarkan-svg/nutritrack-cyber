@@ -1,4 +1,3 @@
-
 export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
 export type Goal = 'lose' | 'maintain' | 'gain';
 export type Gender = 'male' | 'female';
@@ -21,10 +20,17 @@ const activityFactors: Record<ActivityLevel, number> = {
   very_active: 1.9,
 };
 
+/**
+ * Calcule les objectifs nutritionnels via la formule de Mifflin-St Jeor.
+ */
 export function calculateNutritionGoals(stats: UserStats) {
   const { gender, age, height, weight, activityLevel, goal } = stats;
 
-  // Mifflin-St Jeor Formula
+  if (!weight || !height || !age) {
+    return { calories: 2000, carbs: 200, protein: 150, fat: 65 };
+  }
+
+  // Formule de Mifflin-St Jeor
   let bmr = (10 * weight) + (6.25 * height) - (5 * age);
   if (gender === 'male') {
     bmr += 5;
@@ -38,7 +44,7 @@ export function calculateNutritionGoals(stats: UserStats) {
   if (goal === 'lose') targetCalories -= 500;
   if (goal === 'gain') targetCalories += 500;
 
-  // Macros: 40% Carbs, 30% Protein, 30% Fat
+  // Macros par défaut : 40% Glucides, 30% Protéines, 30% Lipides
   const carbs = (targetCalories * 0.4) / 4;
   const protein = (targetCalories * 0.3) / 4;
   const fat = (targetCalories * 0.3) / 9;
