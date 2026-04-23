@@ -3,7 +3,7 @@ import { googleAI } from '@genkit-ai/google-genai';
 
 /**
  * Configuration Genkit stabilisée.
- * Force l'utilisation de l'API v1 stable pour éviter les erreurs 404/v1beta.
+ * Utilise l'API v1 stable.
  */
 export const ai = genkit({
   plugins: [

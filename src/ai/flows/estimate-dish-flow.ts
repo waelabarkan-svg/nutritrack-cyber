@@ -1,23 +1,24 @@
 'use server';
 /**
- * @fileOverview AI Flow for estimating nutritional values of complex dishes.
+ * @fileOverview Flux IA pour l'estimation nutritionnelle textuelle.
+ * Utilise un parsing JSON manuel.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
 const EstimateDishInputSchema = z.object({
-  dishName: z.string().describe('The name of the dish to estimate.'),
+  dishName: z.string(),
 });
 export type EstimateDishInput = z.infer<typeof EstimateDishInputSchema>;
 
 const EstimateDishOutputSchema = z.object({
-  name: z.string().describe('Standardized name of the dish.'),
-  calories: z.number().describe('Estimated calories for a standard portion.'),
-  protein: z.number().describe('Estimated protein in grams.'),
-  carbs: z.number().describe('Estimated carbohydrates in grams.'),
-  fat: z.number().describe('Estimated fat in grams.'),
-  aiAnalysis: z.string().describe('A short, punchy cyberpunk-style comment about the dish (max 10 words).'),
+  name: z.string(),
+  calories: z.number(),
+  protein: z.number(),
+  carbs: z.number(),
+  fat: z.number(),
+  aiAnalysis: z.string(),
 });
 export type EstimateDishOutput = z.infer<typeof EstimateDishOutputSchema>;
 
@@ -29,13 +30,18 @@ const prompt = ai.definePrompt({
   name: 'estimateDishPrompt',
   model: 'googleai/gemini-1.5-flash',
   input: { schema: EstimateDishInputSchema },
-  output: { schema: EstimateDishOutputSchema },
-  prompt: `You are a Cyberpunk Nutritionist Agent. Analyze the dish: "{{{dishName}}}".
+  prompt: `Tu es un Expert Nutritionniste Cyberpunk. Analyse le plat : "{{{dishName}}}".
   
-  Provide a realistic estimation of its nutritional values for a single standard portion.
-  Include a punchy comment for the user.
-  
-  Format the name clearly.`,
+  Estime les valeurs pour une portion standard.
+  Réponds UNIQUEMENT au format JSON brut suivant sans balises Markdown :
+  {
+    "name": "nom standardisé",
+    "calories": nombre,
+    "protein": nombre,
+    "carbs": nombre,
+    "fat": nombre,
+    "aiAnalysis": "phrase courte cyberpunk (max 10 mots)"
+  }`,
 });
 
 const estimateDishFlow = ai.defineFlow(
@@ -45,8 +51,8 @@ const estimateDishFlow = ai.defineFlow(
     outputSchema: EstimateDishOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
-    if (!output) throw new Error('AI failed to estimate the dish.');
-    return output;
+    const { text } = await prompt(input);
+    const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleanJson) as EstimateDishOutput;
   }
 );

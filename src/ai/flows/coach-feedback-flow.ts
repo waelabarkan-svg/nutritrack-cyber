@@ -1,6 +1,7 @@
 'use server';
 /**
- * @fileOverview Flux IA pour un coaching nutritionnel personnalisé en français avec suivi d'hydratation.
+ * @fileOverview Flux IA pour un coaching nutritionnel personnalisé en français.
+ * Utilise un parsing JSON manuel pour éviter les erreurs de configuration d'API.
  */
 
 import { ai } from '@/ai/genkit';
@@ -24,8 +25,8 @@ const CoachFeedbackInputSchema = z.object({
 export type CoachFeedbackInput = z.infer<typeof CoachFeedbackInputSchema>;
 
 const CoachFeedbackOutputSchema = z.object({
-  feedback: z.string().describe('Le message de coaching personnalisé.'),
-  status: z.enum(['urgent', 'encouragement']).describe('Le niveau d\'urgence du conseil.'),
+  feedback: z.string(),
+  status: z.enum(['urgent', 'encouragement']),
 });
 export type CoachFeedbackOutput = z.infer<typeof CoachFeedbackOutputSchema>;
 
@@ -37,29 +38,23 @@ const prompt = ai.definePrompt({
   name: 'coachFeedbackPrompt',
   model: 'googleai/gemini-1.5-flash',
   input: { schema: CoachFeedbackInputSchema },
-  output: { schema: CoachFeedbackOutputSchema },
-  prompt: `Tu es un Coach Nutritionnel expert dans un futur Cyberpunk. Analyse les données suivantes pour l'utilisateur.
+  prompt: `Tu es un Coach Nutritionnel expert dans un futur Cyberpunk. Analyse les données de l'Agent.
   
-  Profil Utilisateur:
-  - Poids actuel: {{{stats.weight}}} kg
-  - Objectif: {{{stats.goal}}}
+  Profil: Poids {{{stats.weight}}}kg, Objectif {{{stats.goal}}}.
+  Conso: {{{dailyLog.calories}}}kcal (P:{{{dailyLog.protein}}}g, G:{{{dailyLog.carbs}}}g, L:{{{dailyLog.fat}}}g).
+  Refroidissement: {{{hydration}}}/10 verres.
   
-  Consommation du jour:
-  - Calories: {{{dailyLog.calories}}} kcal
-  - Protéines: {{{dailyLog.protein}}} g
-  - Glucides: {{{dailyLog.carbs}}} g
-  - Lipides: {{{dailyLog.fat}}} g
+  Réponds EXCLUSIVEMENT en français avec un style cyberpunk percutant.
   
-  Hydratation (Refroidissement):
-  - Verres bus: {{{hydration}}} / 10 (Cible: 2.5L)
-  
-  Réponds EXCLUSIVEMENT en français.
-  Donne un conseil court (max 2 phrases), percutant et stylé cyberpunk.
-  
-  Priorité absolue: 
-  1. Si l'hydratation est inférieure à 4 verres alors que la journée avance, signale un risque de "surchauffe du système".
-  2. Si les calories sont dépassées ou les protéines manquent, utilise le statut "urgent".
-  3. Sinon, encourage l'Agent.`,
+  IMPORTANT: Réponds UNIQUEMENT au format JSON brut suivant sans balises Markdown :
+  {
+    "feedback": "ton conseil ici",
+    "status": "urgent" ou "encouragement"
+  }
+
+  Priorité: 
+  - Hydratation < 4 : risque de surchauffe.
+  - Macros hors cible : statut "urgent".`,
 });
 
 const coachFeedbackFlow = ai.defineFlow(
@@ -70,10 +65,11 @@ const coachFeedbackFlow = ai.defineFlow(
   },
   async (input) => {
     try {
-      const { output } = await prompt(input);
-      if (!output) throw new Error('Pas de réponse de l\'IA');
-      return output;
+      const { text } = await prompt(input);
+      const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      return JSON.parse(cleanJson) as CoachFeedbackOutput;
     } catch (error) {
+      console.error('Coach Feedback Parsing Error:', error);
       return {
         feedback: "Liaison neurale instable. Analyse en attente... continue tes efforts, Agent !",
         status: "encouragement",
