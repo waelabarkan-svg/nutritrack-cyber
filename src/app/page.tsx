@@ -21,6 +21,7 @@ export default function Home() {
   
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
+  // Accès aux données même si non connecté pour le prototype
   const profileRef = useMemo(() => user ? doc(db, 'users', user.uid) : null, [db, user]);
   const { data: stats, loading: statsLoading } = useDoc<UserStats>(profileRef as any);
 
@@ -47,15 +48,16 @@ export default function Home() {
     setMounted(true);
   }, []);
 
+  // Login désactivé pour accès direct au Dashboard
+  /* 
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
-    } else if (!authLoading && user && !statsLoading && stats && !stats.weight) {
-      router.push('/profile');
     }
-  }, [user, authLoading, stats, statsLoading, router]);
+  }, [user, authLoading, router]);
+  */
 
-  if (authLoading || statsLoading || !mounted) {
+  if (!mounted) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-black">
         <div className="w-12 h-12 border border-accent border-t-transparent animate-spin shadow-[0_0_25px_rgba(0,242,255,0.7)] rounded-full"></div>
@@ -81,14 +83,17 @@ export default function Home() {
           <div className="w-9 h-9 sm:w-11 sm:h-11 border border-primary/50 bg-black flex items-center justify-center shadow-[0_0_15px_rgba(253,224,71,0.4)] rounded-[10px] sm:rounded-[12px]">
             <span className="font-black text-primary text-xs sm:text-sm neon-text-yellow">{user?.displayName?.[0] || 'A'}</span>
           </div>
-          <span className="text-[7px] sm:text-[8px] font-black text-muted-foreground mt-2 uppercase tracking-widest">UID: {user?.uid.substring(0, 8)}</span>
+          <span className="text-[7px] sm:text-[8px] font-black text-muted-foreground mt-2 uppercase tracking-widest">UID: {user?.uid.substring(0, 8) || 'GUEST-ID'}</span>
         </div>
       </header>
 
+      {/* AI Coach Feedback Section - Priorité haute sur le Dashboard */}
+      <CoachFeedback stats={displayStats} dailyLog={dailyLog} />
+
       <section className="flex flex-col items-center mb-12 sm:mb-16 relative py-4">
         <CircularProgress 
-          size={isMobile ? 200 : 250} 
-          strokeWidth={2} 
+          size={isMobile ? 220 : 260} 
+          strokeWidth={4} 
           progress={calProgress} 
           color="#ff0055"
         >
@@ -102,9 +107,6 @@ export default function Home() {
       </section>
 
       <div className="laser-line-blue mb-12" />
-
-      {/* AI Coach Feedback Section */}
-      <CoachFeedback stats={displayStats} dailyLog={dailyLog} />
 
       <section className="grid grid-cols-3 gap-2 sm:gap-6 mb-12">
         <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4">
@@ -146,7 +148,7 @@ export default function Home() {
         onClick={() => router.push('/journal')}
         className="fixed bottom-32 right-6 sm:right-8 w-14 h-14 sm:w-16 sm:h-16 bg-black text-primary border-2 border-primary shadow-[0_0_30px_rgba(253,224,71,0.6)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-40 rounded-[16px] sm:rounded-[20px] group"
       >
-        <Plus size={24} strokeWidth={3} className="group-hover:neon-text-yellow sm:w-7 sm:h-7" />
+        <Plus size={24} strokeWidth={3} className="group-hover:neon-text-yellow" />
       </button>
 
       <BottomNav />

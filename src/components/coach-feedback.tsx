@@ -21,7 +21,7 @@ export function CoachFeedback({ stats, dailyLog }: CoachFeedbackProps) {
 
   useEffect(() => {
     async function fetchFeedback() {
-      if (dailyLog.calories === 0) return;
+      // On déclenche le feedback si au moins un log existe ou pour souhaiter la bienvenue
       setLoading(true);
       try {
         const result = await getCoachFeedback({
@@ -41,16 +41,14 @@ export function CoachFeedback({ stats, dailyLog }: CoachFeedbackProps) {
       }
     }
 
-    const timer = setTimeout(fetchFeedback, 2000); // Debounce pour éviter trop d'appels
+    const timer = setTimeout(fetchFeedback, 1000);
     return () => clearTimeout(timer);
   }, [dailyLog, stats]);
-
-  if (!feedback && !loading) return null;
 
   const isUrgent = feedback?.status === 'urgent';
 
   return (
-    <div className={isUrgent ? "cyber-card-red p-6 mb-8" : "cyber-card-blue p-6 mb-8"}>
+    <div className={isUrgent ? "cyber-card-red p-6 mb-8 border-destructive/60" : "cyber-card-blue p-6 mb-8 border-accent/60"}>
       <div className="flex items-center gap-3 mb-4">
         {loading ? (
           <Zap className="text-primary animate-pulse" size={18} />
@@ -64,11 +62,11 @@ export function CoachFeedback({ stats, dailyLog }: CoachFeedbackProps) {
         </h3>
       </div>
       
-      <p className="text-xs font-medium leading-relaxed tracking-wide text-white/90">
+      <p className="text-xs font-black leading-relaxed tracking-wide text-white/90 uppercase">
         {loading ? (
-          <span className="opacity-50 italic">Calcul des probabilités nutritionnelles...</span>
+          <span className="opacity-50 italic">Analyzing biometric data...</span>
         ) : (
-          feedback?.feedback
+          feedback?.feedback || "System standby. Awaiting caloric input."
         )}
       </p>
     </div>
