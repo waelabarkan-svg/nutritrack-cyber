@@ -82,7 +82,7 @@ export default function JournalPage() {
         </div>
         <Dialog open={isAdding} onOpenChange={setIsAdding}>
           <DialogTrigger asChild>
-            <Button size="icon" className="w-14 h-14 border border-primary shadow-[0_0_15px_rgba(255,0,0,0.3)]">
+            <Button size="icon" className="w-14 h-14 border border-primary shadow-[0_0_15px_rgba(253,224,71,0.3)]">
               <Plus size={24} />
             </Button>
           </DialogTrigger>

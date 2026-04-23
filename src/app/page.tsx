@@ -68,7 +68,7 @@ export default function Home() {
   const calProgress = goals.calories > 0 ? dailyLog.calories / goals.calories : 0;
 
   return (
-    <main className="px-6 pt-16 max-w-md mx-auto min-h-screen bg-black text-white selection:bg-accent/30">
+    <main className="px-6 pt-16 max-w-md mx-auto min-h-screen bg-black text-white selection:bg-accent/30 pb-32">
       <header className="flex justify-between items-start mb-16">
         <div className="space-y-1">
           <p className="text-accent/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-blue">System Online</p>
@@ -87,12 +87,12 @@ export default function Home() {
           size={250} 
           strokeWidth={2} 
           progress={calProgress} 
-          color="#00f2ff"
+          color="#ff0055"
         >
           <div className="flex flex-col items-center">
             <span className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.5em] mb-2">Energy Flux</span>
-            <span className="text-6xl font-black tracking-tighter neon-text-blue">{dailyLog.calories}</span>
-            <div className="w-20 h-[1px] bg-accent/50 my-5 shadow-[0_0_20px_rgba(0,242,255,0.8)]" />
+            <span className="text-6xl font-black tracking-tighter neon-text-red">{dailyLog.calories}</span>
+            <div className="w-20 h-[1px] bg-destructive/50 my-5 shadow-[0_0_20px_rgba(255,0,85,0.8)]" />
             <span className="text-[9px] text-primary uppercase font-black tracking-[0.4em] neon-text-yellow">Target {goals.calories}</span>
           </div>
         </CircularProgress>
@@ -130,7 +130,7 @@ export default function Home() {
         </div>
       </section>
 
-      <div className="laser-line-yellow" />
+      <div className="laser-line-red" />
 
       <div className="mb-20">
         <HydrationCard />
