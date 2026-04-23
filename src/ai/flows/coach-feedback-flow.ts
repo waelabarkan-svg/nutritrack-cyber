@@ -1,6 +1,7 @@
 'use server';
 /**
  * @fileOverview AI Flow for personalized nutritional coaching.
+ * handles the feedback generation and provides a fallback if the GenAI service is unavailable.
  */
 
 import { ai } from '@/ai/genkit';
@@ -62,7 +63,17 @@ const coachFeedbackFlow = ai.defineFlow(
     outputSchema: CoachFeedbackOutputSchema,
   },
   async (input) => {
-    const { output } = await prompt(input);
-    return output!;
+    try {
+      const { output } = await prompt(input);
+      if (!output) throw new Error('No output from AI');
+      return output;
+    } catch (error) {
+      console.error('Neural Link Failure (503/API Error):', error);
+      // Fallback message when the API is unavailable
+      return {
+        feedback: "Liaison neurale instable. Analyse en attente... continue tes efforts, Agent !",
+        status: "encouragement",
+      };
+    }
   }
 );
