@@ -1,7 +1,7 @@
 'use server';
 /**
  * @fileOverview Flux IA pour l'estimation nutritionnelle textuelle.
- * Version stabilisée avec parsing JSON robuste.
+ * Modèle gemini-1.5-flash-latest.
  */
 
 import { ai } from '@/ai/genkit';
@@ -28,7 +28,7 @@ export async function estimateDish(input: EstimateDishInput): Promise<EstimateDi
 
 const prompt = ai.definePrompt({
   name: 'estimateDishPrompt',
-  model: 'googleai/gemini-1.5-flash',
+  model: 'googleai/gemini-1.5-flash-latest',
   input: { schema: EstimateDishInputSchema },
   prompt: `Tu es un Expert Nutritionniste Cyberpunk. Analyse le plat : "{{{dishName}}}".
   

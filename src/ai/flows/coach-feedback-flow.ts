@@ -1,7 +1,7 @@
 'use server';
 /**
  * @fileOverview Flux IA pour un coaching nutritionnel personnalisé en français.
- * Version stabilisée avec parsing JSON robuste.
+ * Modèle gemini-1.5-flash-latest pour une stabilité maximale.
  */
 
 import { ai } from '@/ai/genkit';
@@ -36,7 +36,7 @@ export async function getCoachFeedback(input: CoachFeedbackInput): Promise<Coach
 
 const prompt = ai.definePrompt({
   name: 'coachFeedbackPrompt',
-  model: 'googleai/gemini-1.5-flash',
+  model: 'googleai/gemini-1.5-flash-latest',
   input: { schema: CoachFeedbackInputSchema },
   prompt: `Tu es un Coach Nutritionnel expert dans un futur Cyberpunk. Analyse les données de l'Agent.
   
