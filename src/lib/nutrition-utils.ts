@@ -27,10 +27,10 @@ export function calculateNutritionGoals(stats: UserStats) {
   const { gender, age, height, weight, activityLevel, goal } = stats;
 
   if (!weight || !height || !age) {
-    return { calories: 2000, carbs: 200, protein: 150, fat: 65 };
+    return { calories: 2000, carbs: 200, protein: 150, fat: 65, hydrationMl: 2500 };
   }
 
-  // Formule de Mifflin-St Jeor
+  // Formule de Mifflin-St Jeor pour les calories
   let bmr = (10 * weight) + (6.25 * height) - (5 * age);
   if (gender === 'male') {
     bmr += 5;
@@ -49,10 +49,16 @@ export function calculateNutritionGoals(stats: UserStats) {
   const protein = (targetCalories * 0.3) / 4;
   const fat = (targetCalories * 0.3) / 9;
 
+  // Calcul personnalisé de l'hydratation : 35ml par kg + bonus activité
+  let hydrationMl = weight * 35;
+  if (activityLevel === 'active') hydrationMl += 500;
+  if (activityLevel === 'very_active') hydrationMl += 1000;
+
   return {
     calories: Math.round(targetCalories),
     carbs: Math.round(carbs),
     protein: Math.round(protein),
     fat: Math.round(fat),
+    hydrationMl: Math.round(hydrationMl),
   };
 }

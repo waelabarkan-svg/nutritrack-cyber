@@ -3,15 +3,27 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Droplets, Plus, Minus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useFirestore, useUser } from '@/firebase';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { useFirestore, useUser, useDoc } from '@/firebase';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { calculateNutritionGoals, UserStats } from '@/lib/nutrition-utils';
 
 export function HydrationCard() {
   const { user } = useUser();
   const db = useFirestore();
   const [glasses, setGlasses] = useState(0);
-  const target = 10; // 10 verres * 250ml = 2.5L
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+
+  // Récupération des stats utilisateur pour l'objectif personnalisé
+  const profileRef = useMemo(() => user ? doc(db, 'users', user.uid) : null, [db, user]);
+  const { data: stats } = useDoc<UserStats>(profileRef as any);
+
+  const displayStats: UserStats = (stats as UserStats) || {
+    gender: 'male', age: 25, height: 175, weight: 70, targetWeight: 70, activityLevel: 'moderate', goal: 'maintain'
+  };
+
+  const goals = calculateNutritionGoals(displayStats);
+  const targetMl = goals.hydrationMl;
+  const targetGlasses = Math.ceil(targetMl / 250);
 
   useEffect(() => {
     if (!user) return;
@@ -35,8 +47,8 @@ export function HydrationCard() {
     setDoc(docRef, { amount }, { merge: true });
   };
 
-  const progress = Math.min(glasses / target, 1);
-  const isComplete = glasses >= target;
+  const progress = Math.min(glasses / targetGlasses, 1);
+  const isComplete = glasses >= targetGlasses;
 
   return (
     <div className={`cyber-card-blue p-8 bg-black relative overflow-hidden rounded-[20px] transition-all duration-1000 ${
@@ -54,7 +66,8 @@ export function HydrationCard() {
             </div>
             <div>
               <h3 className="font-black text-[10px] uppercase tracking-[0.4em] text-accent neon-text-blue">Liquide de Refroidissement</h3>
-              <p className="text-[8px] text-muted-foreground font-black uppercase tracking-widest mt-2">Intégrité : {glasses * 250}ml / 2500ml</p>
+              <p className="text-[8px] text-muted-foreground font-black uppercase tracking-widest mt-2">Intégrité : {glasses * 250}ml / {targetMl}ml</p>
+              <p className="text-[9px] text-primary font-black uppercase tracking-widest mt-1 neon-text-yellow">Objectif : {(targetMl / 1000).toFixed(1)}L</p>
             </div>
           </div>
           <div className="text-right">
