@@ -1,35 +1,11 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  output: 'export', 
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  // Le mode 'export' est désactivé pour permettre les Server Actions et le rendu dynamique
   eslint: {
     ignoreDuringBuilds: true,
   },
-  images: {
-    unoptimized: true, 
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'placeholder.co',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**',
-      },
-    ],
+  typescript: {
+    ignoreBuildErrors: true,
   },
 };
 
