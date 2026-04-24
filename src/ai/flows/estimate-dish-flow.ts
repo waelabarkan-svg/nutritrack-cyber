@@ -22,6 +22,7 @@ const EstimateDishOutputSchema = z.object({
   vitamins: z.string().optional(),
   minerals: z.string().optional(),
   aiAnalysis: z.string(),
+  healthAdvice: z.string().optional(),
 });
 export type EstimateDishOutput = z.infer<typeof EstimateDishOutputSchema>;
 
@@ -35,7 +36,10 @@ const prompt = ai.definePrompt({
   input: { schema: EstimateDishInputSchema },
   prompt: `Tu es un Expert Nutritionniste Cyberpunk. Analyse le plat : "{{{dishName}}}".
   
-  Estime les valeurs pour une portion standard, incluant les fibres (g), les vitamines (priorité A, C, D, B12) et les minéraux (priorité Fer, Magnésium, Zinc).
+  Estime les valeurs pour une portion standard, incluant :
+  - Fibres (g)
+  - Vitamines (A, C, D, B12)
+  - Minéraux (Fer, Magnésium, Zinc)
   
   IMPORTANT : Réponds EXCLUSIVEMENT avec un objet JSON brut sans balises Markdown. 
   Ta réponse doit commencer par { et finir par }.
@@ -48,9 +52,10 @@ const prompt = ai.definePrompt({
     "carbs": nombre,
     "fat": nombre,
     "fiber": nombre,
-    "vitamins": "liste des vitamines estimées",
-    "minerals": "liste des minéraux estimés",
-    "aiAnalysis": "phrase courte cyberpunk (max 10 mots)"
+    "vitamins": "Liste formatée (ex: B12, B6)",
+    "minerals": "Liste formatée (ex: Fer, Zinc)",
+    "aiAnalysis": "phrase courte cyberpunk (max 10 mots)",
+    "healthAdvice": "ton conseil nutritionnel"
   }`,
 });
 
