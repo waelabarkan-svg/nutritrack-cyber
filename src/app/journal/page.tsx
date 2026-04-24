@@ -171,9 +171,8 @@ export default function JournalPage() {
     setAiEstimating(true);
     try {
       const result = await scanDish({ photoDataUri: scanningImage });
-      // Illustration contextuelle précise basée sur le nom exact détecté
-      const illustrationUrl = `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=400&h=300&food=${encodeURIComponent(result.name)}`;
-      const enrichedResult = { ...result, imageUrl: illustrationUrl };
+      // Utilisation exclusive de la photo capturée par l'utilisateur
+      const enrichedResult = { ...result, imageUrl: scanningImage };
       setAiResult(enrichedResult);
       announceResults(enrichedResult);
     } catch (e) {
@@ -219,6 +218,7 @@ export default function JournalPage() {
     setAiEstimating(true);
     try {
       const result = await estimateDish({ dishName: searchTerm });
+      // Pour l'estimation textuelle uniquement, on garde l'illustration car pas de photo utilisateur
       const illustrationUrl = `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=400&h=300&food=${encodeURIComponent(result.name)}`;
       setAiResult({ ...result, imageUrl: illustrationUrl });
     } catch (e) {
@@ -316,7 +316,7 @@ export default function JournalPage() {
                               <div className="flex gap-4 mb-4">
                                 <div className="w-20 h-20 shrink-0 border border-accent/40 rounded-lg overflow-hidden shadow-[0_0_15px_rgba(0,242,255,0.3)] bg-black">
                                   {aiResult.imageUrl ? (
-                                    <img src={aiResult.imageUrl} className="w-full h-full object-cover contrast-125 brightness-90" alt="Illustration" />
+                                    <img src={aiResult.imageUrl} className="w-full h-full object-cover contrast-125 brightness-110" alt="Illustration" />
                                   ) : (
                                     <div className="w-full h-full flex flex-col items-center justify-center gap-1">
                                       <ImageOff size={16} className="text-muted-foreground animate-pulse" />
@@ -375,7 +375,7 @@ export default function JournalPage() {
                          <div className="flex gap-4 mb-4">
                            <div className="w-16 h-16 shrink-0 border border-primary/40 rounded-lg overflow-hidden bg-black">
                              {barcodeResult.imageUrl ? (
-                               <img src={barcodeResult.imageUrl} className="w-full h-full object-cover contrast-125" alt="Product" />
+                               <img src={barcodeResult.imageUrl} className="w-full h-full object-cover contrast-125 brightness-110" alt="Product" />
                              ) : (
                                <div className="w-full h-full flex items-center justify-center"><ImageOff size={16} className="text-white/20" /></div>
                              )}
@@ -430,7 +430,7 @@ export default function JournalPage() {
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 shrink-0 border border-accent/20 rounded-md overflow-hidden bg-black/50">
                           {meal.imageUrl ? (
-                            <img src={meal.imageUrl} className="w-full h-full object-cover contrast-110" alt="" />
+                            <img src={meal.imageUrl} className="w-full h-full object-cover contrast-125 brightness-110" alt="" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center">
                               <ImageOff size={14} className="text-muted-foreground/40" />
