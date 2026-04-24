@@ -1,16 +1,10 @@
 'use server';
 /**
- * @fileOverview Flux IA pour l'estimation nutritionnelle textuelle.
- * Version Cyber-Optimisée avec estimation des micro-nutriments.
+ * @fileOverview Flux de reconstruction moléculaire textuelle via Llama-4 Scout (Groq).
+ * Extraction stricte de données micro-nutritionnelles.
  */
 
-import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-
-const EstimateDishInputSchema = z.object({
-  dishName: z.string(),
-});
-export type EstimateDishInput = z.infer<typeof EstimateDishInputSchema>;
 
 const EstimateDishOutputSchema = z.object({
   name: z.string(),
@@ -18,57 +12,77 @@ const EstimateDishOutputSchema = z.object({
   protein: z.number(),
   carbs: z.number(),
   fat: z.number(),
-  fiber: z.number().optional(),
-  vitamins: z.string().optional(),
-  minerals: z.string().optional(),
+  fiber: z.number(),
+  vitamins: z.string(),
+  minerals: z.string(),
   aiAnalysis: z.string(),
-  healthAdvice: z.string().optional(),
+  healthAdvice: z.string(),
 });
+
 export type EstimateDishOutput = z.infer<typeof EstimateDishOutputSchema>;
 
-export async function estimateDish(input: EstimateDishInput): Promise<EstimateDishOutput> {
-  return estimateDishFlow(input);
-}
+export async function estimateDish(input: { dishName: string }): Promise<EstimateDishOutput> {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) throw new Error("GROQ_API_KEY manquante");
 
-const prompt = ai.definePrompt({
-  name: 'estimateDishPrompt',
-  model: 'googleai/gemini-1.5-flash',
-  input: { schema: EstimateDishInputSchema },
-  prompt: `Tu es un Expert Nutritionniste Cyberpunk. Analyse le plat : "{{{dishName}}}".
-  
-  Estime précisément les valeurs pour une portion standard, incluant :
-  - Fibres (g)
-  - Vitamines (A, C, D, B12)
-  - Minéraux (Fer, Magnésium, Zinc)
-  
-  IMPORTANT : Réponds EXCLUSIVEMENT avec un objet JSON brut sans balises Markdown. 
-  Ta réponse doit commencer par { et finir par }.
+  try {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        messages: [
+          {
+            role: "user",
+            content: `Analyse nutritionnelle textuelle pour : "${input.dishName}".
+            Estime les macros et micros (Vitamines, Minéraux, Fibres).
+            
+            Réponds EXCLUSIVEMENT avec un objet JSON pur sans texte additionnel, respectant cette structure :
+            {
+              "name": "nom",
+              "calories": nombre,
+              "protein": nombre,
+              "carbs": nombre,
+              "fat": nombre,
+              "fiber": nombre,
+              "vitamins": "liste",
+              "minerals": "liste",
+              "aiAnalysis": "phrase courte",
+              "healthAdvice": "conseil"
+            }`
+          }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.1,
+      })
+    });
 
-  Structure JSON :
-  {
-    "name": "nom standardisé",
-    "calories": nombre,
-    "protein": nombre,
-    "carbs": nombre,
-    "fat": nombre,
-    "fiber": nombre,
-    "vitamins": "Liste formatée (ex: Vitamine B12 (élevée), B6)",
-    "minerals": "Liste formatée (ex: Fer, Magnésium, Zinc)",
-    "aiAnalysis": "Analyse moléculaire terminée.",
-    "healthAdvice": "Conseil nutritionnel court et percutant"
-  }`,
-});
+    if (!response.ok) throw new Error("Erreur API Groq");
 
-const estimateDishFlow = ai.defineFlow(
-  {
-    name: 'estimateDishFlow',
-    inputSchema: EstimateDishInputSchema,
-    outputSchema: EstimateDishOutputSchema,
-  },
-  async (input) => {
-    const { text } = await prompt(input);
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const cleanJson = jsonMatch ? jsonMatch[0] : text;
-    return JSON.parse(cleanJson) as EstimateDishOutput;
+    const data = await response.json();
+    const content = data.choices[0].message.content;
+    
+    // Parsing robuste avec Regex pour isoler le JSON
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    const result = JSON.parse(jsonMatch ? jsonMatch[0] : content);
+
+    return {
+      name: result.name || input.dishName,
+      calories: Number(result.calories) || 0,
+      protein: Number(result.protein) || 0,
+      carbs: Number(result.carbs) || 0,
+      fat: Number(result.fat) || 0,
+      fiber: Number(result.fiber) || 0,
+      vitamins: result.vitamins || "Non détecté",
+      minerals: result.minerals || "Non détecté",
+      aiAnalysis: result.aiAnalysis || "Analyse moléculaire terminée.",
+      healthAdvice: result.healthAdvice || "Maintien des paramètres conseillé."
+    };
+  } catch (error) {
+    console.error("Erreur Reconstruction IA:", error);
+    throw error;
   }
-);
+}
