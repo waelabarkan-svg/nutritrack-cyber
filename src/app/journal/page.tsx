@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore, useCollection } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { BottomNav } from '@/components/bottom-nav';
 import { 
   Plus, Search, Camera, Barcode, X, Info, Zap, Flame, Droplets,
   AlertTriangle, CheckCircle2, Beer, Soup, Loader2
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 export default function JournalPage() {
@@ -20,7 +20,7 @@ export default function JournalPage() {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isBarcodeOpen, setIsBarcodeOpen] = useState(false);
   
-  // États pour la recherche (Phase suivante)
+  // État pour la recherche
   const [searchTerm, setSearchTerm] = useState('');
 
   // Protection d'authentification
@@ -60,9 +60,33 @@ export default function JournalPage() {
         </div>
       </div>
 
-      {/* SECTION RECHERCHE (Phase 3) */}
+      {/* SECTION RECHERCHE CYBER-NÉON */}
       <div className="px-6 mb-8">
-        {/* L'input de recherche sera inséré ici */}
+        <div className="relative group">
+          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+            <Search size={14} className="text-white/20 group-focus-within:text-accent transition-colors" />
+          </div>
+          <Input 
+            type="text"
+            placeholder="RECHERCHER UN ALIMENT..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className={cn(
+              "w-full bg-black/40 border-white/10 pl-11 h-12 rounded-xl",
+              "text-[10px] font-black uppercase tracking-[0.2em] placeholder:text-white/20",
+              "focus:border-accent focus:ring-1 focus:ring-accent/30 transition-all duration-300",
+              "shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]"
+            )}
+          />
+          {searchTerm && (
+            <button 
+              onClick={() => setSearchTerm('')}
+              className="absolute inset-y-0 right-4 flex items-center text-white/20 hover:text-white transition-colors"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* LISTE DES REPAS / RÉSULTATS (Phase 4) */}
