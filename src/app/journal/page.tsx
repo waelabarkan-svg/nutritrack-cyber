@@ -46,7 +46,7 @@ export default function JournalPage() {
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  // Firestore Data - Utilisation de (meals as any) pour éviter les erreurs de build sur .docs si nécessaire
+  // Firestore Data - Fix .docs TypeScript
   const mealsQuery = useMemo(() => {
     if (!user) return null;
     return query(collection(db, 'users', user.uid, 'meals'), where('date', '==', today));
@@ -54,14 +54,18 @@ export default function JournalPage() {
 
   const { data: meals } = useCollection(mealsQuery);
 
-  // Fusion Tripartite pour la Recherche Globale (foodDb + localStorage + firebase)
+  // Fusion Tripartite pour la Recherche Globale (foodDb + localStorage + Firebase)
   const globalSearchResults = useMemo(() => {
     if (!searchTerm || searchTerm.length < 2) return [];
     try {
+      // 1. LocalStorage
       const localData = localStorage.getItem('biometric_memory');
       const localHistory = localData ? JSON.parse(localData) : [];
-      const firebaseData = (meals as any) || [];
       
+      // 2. Firebase Data (Safe access)
+      const firebaseData = Array.isArray(meals) ? meals : [];
+      
+      // 3. Fusion avec foodDb
       const allItems = [...(foodDb as any[]), ...localHistory, ...firebaseData];
       
       return allItems.filter((item: any) => {
@@ -203,7 +207,7 @@ export default function JournalPage() {
     if (!selectedMeal?.name) return;
     setIsAnalyzing(true);
     try {
-      // Cast any pour éviter les erreurs de build sur les types IA
+      // Cast any pour éviter les erreurs de build
       const result = await estimateDish({ dishName: selectedMeal.name }) as any;
       setSelectedMeal({ ...selectedMeal, ...result });
       toast({ title: "RÉUSSITE", description: "Micro-données reconstruites via Llama-4." });
@@ -225,17 +229,17 @@ export default function JournalPage() {
   };
 
   return (
-    <main className="min-h-screen bg-black text-white pb-32">
+    <main className="min-h-screen bg-black text-white pb-32 font-sans max-w-md mx-auto relative shadow-[0_0_50px_rgba(0,0,0,1)]">
       {/* HEADER & SEARCH ZONE */}
       <div className="p-6 space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-black tracking-tighter uppercase neon-text-blue">Journal</h1>
+          <h1 className="text-2xl font-black tracking-tighter uppercase neon-text-blue" style={{ textShadow: '0 0 10px #00FFFF' }}>Journal</h1>
           <div className="flex gap-2">
-            <Button size="icon" variant="outline" className="rounded-xl border-accent/40 bg-black/40" onClick={() => { setIsScanning(true); setScanMode('photo'); startCamera(); }}>
-              <Camera size={18} />
+            <Button size="icon" variant="outline" className="rounded-xl border-accent/30 bg-black/40" onClick={() => { setIsScanning(true); setScanMode('photo'); startCamera(); }}>
+              <Camera size={18} className="text-accent" />
             </Button>
-            <Button size="icon" variant="outline" className="rounded-xl border-accent/40 bg-black/40" onClick={() => { setIsScanning(true); setScanMode('barcode'); }}>
-              <Barcode size={18} />
+            <Button size="icon" variant="outline" className="rounded-xl border-accent/30 bg-black/40" onClick={() => { setIsScanning(true); setScanMode('barcode'); }}>
+              <Barcode size={18} className="text-accent" />
             </Button>
           </div>
         </div>
@@ -251,7 +255,7 @@ export default function JournalPage() {
         </div>
 
         {/* DISPLAY ZONE */}
-        <div className="space-y-8">
+        <div className="space-y-6 pb-24">
           {searchTerm ? (
             <div className="space-y-4">
               <p className="text-[10px] font-black text-accent uppercase tracking-[0.3em]">Résultats de recherche</p>
@@ -280,7 +284,7 @@ export default function JournalPage() {
             </div>
           ) : (
             ['petit-déjeuner', 'déjeuner', 'dîner', 'snack'].map((type) => {
-              const sectionMeals = (meals as any)?.filter((m: any) => m.type === type) || [];
+              const sectionMeals = (meals as any[])?.filter((m: any) => m.type === type) || [];
               return (
                 <div key={type} className="space-y-4">
                   <div className="flex justify-between items-center">
@@ -300,7 +304,7 @@ export default function JournalPage() {
                        <p className="text-[8px] text-accent font-black">{meal.calories} KCAL</p>
                     </div>
                   )) : (
-                    <p className="text-[8px] opacity-20 italic">Veuillez scanner ou rechercher un aliment</p>
+                    <p className="text-[8px] text-white/20 italic">Veuillez scanner ou rechercher un aliment</p>
                   )}
                 </div>
               );
@@ -368,7 +372,7 @@ export default function JournalPage() {
                      </Badge>
                      {selectedMeal.sugar > 10 && (
                        <Badge className="bg-destructive/20 text-destructive border-destructive/40 text-[9px] uppercase font-black animate-pulse">
-                         Alerte Glycémie
+                         HIGH SUGAR ALERT
                        </Badge>
                      )}
                    </div>
@@ -446,7 +450,7 @@ export default function JournalPage() {
                       ))}
                     </div>
                     <Button 
-                      className="w-full h-14 bg-accent text-black font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-accent/80"
+                      className="w-full h-14 bg-accent text-black font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-accent/80 shadow-[0_0_20px_rgba(0,255,255,0.4)]"
                       onClick={handleAddMeal}
                     >
                       ENREGISTRER AU JOURNAL
