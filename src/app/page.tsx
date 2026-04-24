@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useMemo, useEffect, useState } from 'react';
@@ -8,9 +7,9 @@ import { BottomNav } from '@/components/bottom-nav';
 import { CircularProgress } from '@/components/circular-progress';
 import { HydrationCard } from '@/components/hydration-card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Plus, Flame, Beef, Wheat, Droplet, Zap, Sparkles, AlertTriangle, Loader2, Cpu } from 'lucide-react';
+import { Plus, Flame, Beef, Wheat, Droplet, Zap, AlertTriangle, Loader2, Cpu } from 'lucide-react';
 import { collection, query, where, doc, onSnapshot } from 'firebase/firestore';
 import { calculateNutritionGoals, UserStats } from '@/lib/nutrition-utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -24,7 +23,6 @@ export default function Home() {
   const isMobile = useIsMobile();
   const [mounted, setMounted] = useState(false);
   
-  // États pour le Coach
   const [isCoachOpen, setIsCoachOpen] = useState(false);
   const [coachResponse, setCoachResponse] = useState<CoachFeedbackOutput | null>(null);
   const [isCoachLoading, setIsCoachLoading] = useState(false);
@@ -41,7 +39,6 @@ export default function Home() {
   }, [db, user, today]);
   const { data: meals } = useCollection(mealsQuery);
 
-  // Sync Hydratation pour le coach
   useEffect(() => {
     if (!user) return;
     const hydRef = doc(db, 'users', user.uid, 'hydration', today);
@@ -101,13 +98,7 @@ export default function Home() {
     setMounted(true);
   }, []);
 
-  if (!mounted) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-black">
-        <div className="w-12 h-12 border border-accent border-t-transparent animate-spin shadow-[0_0_25px_rgba(0,242,255,0.7)] rounded-full"></div>
-      </div>
-    );
-  }
+  if (!mounted) return null;
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -120,26 +111,25 @@ export default function Home() {
           <div className="flex flex-col items-end gap-2">
             <Button 
               onClick={handleCoachClick}
-              className="h-9 px-4 bg-black border-accent/40 text-accent text-[9px] font-black uppercase tracking-widest rounded-none hover:bg-accent/10 hover:border-accent shadow-[0_0_15px_rgba(0,242,255,0.2)]"
+              className="h-9 px-4 bg-black border-accent/40 text-accent text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-accent/10 hover:border-accent shadow-[0_0_15px_rgba(0,242,255,0.2)]"
             >
               <Zap size={14} className="mr-2" />
               Liaison Coach
             </Button>
             <div className="text-right">
-              <span className="text-[7px] sm:text-[8px] font-black text-muted-foreground uppercase tracking-widest">ID: {user?.uid.substring(0, 8) || 'GUEST'}</span>
+              <span className="text-[7px] sm:text-[8px] font-black text-white/40 uppercase tracking-widest">ID: {user?.uid.substring(0, 8) || 'GUEST'}</span>
             </div>
           </div>
         </header>
 
-        {/* Modale du Coach */}
         <Dialog open={isCoachOpen} onOpenChange={setIsCoachOpen}>
           <DialogContent className={cn(
-            "bg-black/95 backdrop-blur-2xl border-2 rounded-none p-8 max-w-sm transition-colors duration-500 shadow-[0_0_50px_rgba(0,0,0,0.5)]",
+            "bg-black/95 backdrop-blur-2xl border-2 rounded-none p-8 max-w-sm transition-all duration-500 shadow-[0_0_50px_rgba(0,0,0,0.8)]",
             coachResponse?.status === 'urgent' ? "border-destructive neon-glow-red" : "border-accent neon-glow-blue"
           )}>
             <DialogHeader>
               <DialogTitle className="sr-only">Diagnostic du Coach IA</DialogTitle>
-              <DialogDescription className="sr-only">Analyse neurale de vos performances biométriques.</DialogDescription>
+              <DialogDescription className="sr-only">Analyse neurale de vos performances biométriques via Groq Llama-3.</DialogDescription>
             </DialogHeader>
 
             <div className="space-y-6">
@@ -157,7 +147,7 @@ export default function Home() {
                   )}>
                     {isCoachLoading ? "Synchronisation..." : "Diagnostic Neural"}
                   </h3>
-                  <p className="text-[8px] text-white/40 font-black uppercase tracking-widest">Agent: Gemini-1.5-Flash</p>
+                  <p className="text-[8px] text-white/40 font-black uppercase tracking-widest">Moteur: Groq Llama-3.3</p>
                 </div>
               </div>
 
@@ -199,7 +189,7 @@ export default function Home() {
                   color="#ff0055"
                 >
                   <div className="flex flex-col items-center">
-                    <span className="text-[8px] sm:text-[10px] text-muted-foreground uppercase font-black tracking-[0.5em] mb-1 sm:mb-2 text-center">Flux Énergie</span>
+                    <span className="text-[8px] sm:text-[10px] text-white/40 uppercase font-black tracking-[0.5em] mb-1 sm:mb-2 text-center">Flux Énergie</span>
                     <span className="text-4xl sm:text-6xl font-black tracking-tighter neon-text-red">{dailyLog.calories}</span>
                     <div className="w-16 sm:w-20 h-[1px] bg-destructive/50 my-4 sm:my-5 shadow-[0_0_20px_rgba(255,0,85,0.8)]" />
                     <span className="text-[8px] sm:text-[9px] text-primary uppercase font-black tracking-[0.3em] sm:tracking-[0.4em] neon-text-yellow">Objectif {goals.calories}</span>
@@ -208,7 +198,7 @@ export default function Home() {
               </div>
             </TooltipTrigger>
             <TooltipContent className="max-w-[200px]">
-              FLUX ÉNERGÉTIQUE CALCULÉ SELON TON TDEE (DÉPENSE QUOTIDIENNE TOTALE).
+              DÉPENSE QUOTIDIENNE TOTALE CALCULÉE POUR VOTRE PROFIL.
             </TooltipContent>
           </Tooltip>
         </section>
@@ -224,13 +214,11 @@ export default function Home() {
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] sm:text-xs font-black block neon-text-yellow tracking-tight">{dailyLog.protein}g / {goals.protein}g</span>
-                  <span className="text-[7px] sm:text-[8px] text-muted-foreground uppercase font-black tracking-widest block">Protéines</span>
+                  <span className="text-[7px] sm:text-[8px] text-white/40 uppercase font-black tracking-widest block">Protéines</span>
                 </div>
               </div>
             </TooltipTrigger>
-            <TooltipContent>
-              CIBLE : {goals.protein}G. ESSENTIEL POUR LA RÉPARATION TISSULAIRE.
-            </TooltipContent>
+            <TooltipContent>CIBLE : {goals.protein}G.</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -241,13 +229,11 @@ export default function Home() {
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] sm:text-xs font-black block neon-text-blue tracking-tight">{dailyLog.carbs}g / {goals.carbs}g</span>
-                  <span className="text-[7px] sm:text-[8px] text-muted-foreground uppercase font-black tracking-widest block">Glucides</span>
+                  <span className="text-[7px] sm:text-[8px] text-white/40 uppercase font-black tracking-widest block">Glucides</span>
                 </div>
               </div>
             </TooltipTrigger>
-            <TooltipContent>
-              CIBLE : {goals.carbs}G. TON CARBURANT PRINCIPAL.
-            </TooltipContent>
+            <TooltipContent>CIBLE : {goals.carbs}G.</TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -258,13 +244,11 @@ export default function Home() {
                 </div>
                 <div className="space-y-1">
                   <span className="text-[10px] sm:text-xs font-black block neon-text-blue tracking-tight">{dailyLog.fat}g / {goals.fat}g</span>
-                  <span className="text-[7px] sm:text-[8px] text-muted-foreground uppercase font-black tracking-widest block">Lipides</span>
+                  <span className="text-[7px] sm:text-[8px] text-white/40 uppercase font-black tracking-widest block">Lipides</span>
                 </div>
               </div>
             </TooltipTrigger>
-            <TooltipContent>
-              CIBLE : {goals.fat}G. RÉGULATION HORMONALE.
-            </TooltipContent>
+            <TooltipContent>CIBLE : {goals.fat}G.</TooltipContent>
           </Tooltip>
         </section>
 

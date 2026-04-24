@@ -1,11 +1,15 @@
 'use server';
 /**
- * @fileOverview Flux IA pour un coaching nutritionnel personnalisé.
- * Modèle gemini-1.5-flash sur API v1 stable.
+ * @fileOverview Flux IA pour un coaching nutritionnel personnalisé via Groq.
+ * Utilise Llama-3.3-70b pour une analyse rapide et percutante.
  */
 
-import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+import Groq from 'groq-sdk';
+
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
 
 const CoachFeedbackInputSchema = z.object({
   stats: z.object({
@@ -31,53 +35,47 @@ const CoachFeedbackOutputSchema = z.object({
 export type CoachFeedbackOutput = z.infer<typeof CoachFeedbackOutputSchema>;
 
 export async function getCoachFeedback(input: CoachFeedbackInput): Promise<CoachFeedbackOutput> {
-  return coachFeedbackFlow(input);
+  if (!process.env.GROQ_API_KEY) {
+    throw new Error("GROQ_API_KEY manquante");
+  }
+
+  try {
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        {
+          role: "system",
+          content: `Tu es un Coach Nutritionnel expert dans un futur Cyberpunk. Analyse les données de l'Agent.
+          Réponds EXCLUSIVEMENT en français avec un style cyberpunk percutant.
+          
+          Structure JSON attendue :
+          {
+            "feedback": "ton conseil ici",
+            "status": "urgent" (si danger/manque grave) ou "encouragement" (si ok)
+          }`
+        },
+        {
+          role: "user",
+          content: `Profil: Poids ${input.stats.weight}kg, Objectif ${input.stats.goal}.
+          Conso: ${input.dailyLog.calories}kcal (P:${input.dailyLog.protein}g, G:${input.dailyLog.carbs}g, L:${input.dailyLog.fat}g).
+          Refroidissement: ${input.hydration}/10 verres.
+          
+          Analyse et renvoie le JSON.`
+        }
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.5,
+    });
+
+    const content = completion.choices[0]?.message?.content;
+    if (!content) throw new Error("Réponse vide de Groq");
+
+    return JSON.parse(content) as CoachFeedbackOutput;
+  } catch (error) {
+    console.error("Erreur Liaison Groq:", error);
+    return {
+      feedback: "Liaison neurale instable. Continue tes efforts, Agent !",
+      status: "encouragement",
+    };
+  }
 }
-
-const prompt = ai.definePrompt({
-  name: 'coachFeedbackPrompt',
-  model: 'googleai/gemini-1.5-flash',
-  input: { schema: CoachFeedbackInputSchema },
-  prompt: `Tu es un Coach Nutritionnel expert dans un futur Cyberpunk. Analyse les données de l'Agent.
-  
-  Profil: Poids {{{stats.weight}}}kg, Objectif {{{stats.goal}}}.
-  Conso: {{{dailyLog.calories}}}kcal (P:{{{dailyLog.protein}}}g, G:{{{dailyLog.carbs}}}g, L:{{{dailyLog.fat}}}g).
-  Refroidissement: {{{hydration}}}/10 verres.
-  
-  Réponds EXCLUSIVEMENT en français avec un style cyberpunk percutant.
-  
-  IMPORTANT : Réponds EXCLUSIVEMENT avec un objet JSON brut. 
-  Ne mets aucun texte avant ou après. Pas de balises Markdown. 
-  Ta réponse doit commencer par { et finir par }.
-
-  Structure JSON :
-  {
-    "feedback": "ton conseil ici",
-    "status": "urgent" ou "encouragement"
-  }
-
-  Priorité: 
-  - Hydratation < 4 : risque de surchauffe.
-  - Macros hors cible : statut "urgent".`,
-});
-
-const coachFeedbackFlow = ai.defineFlow(
-  {
-    name: 'coachFeedbackFlow',
-    inputSchema: CoachFeedbackInputSchema,
-    outputSchema: CoachFeedbackOutputSchema,
-  },
-  async (input) => {
-    try {
-      const { text } = await prompt(input);
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      const cleanJson = jsonMatch ? jsonMatch[0] : text;
-      return JSON.parse(cleanJson) as CoachFeedbackOutput;
-    } catch (error) {
-      return {
-        feedback: "Liaison neurale instable. Continue tes efforts, Agent !",
-        status: "encouragement",
-      };
-    }
-  }
-);
