@@ -274,20 +274,20 @@ export default function JournalPage() {
         </div>
 
         <section className="mb-12 space-y-6">
-          {/* Menu de sélection de type de repas néon */}
-          <div className="grid grid-cols-3 gap-2">
+          {/* Menu de sélection de type de repas glissant avec effet néon arrondi */}
+          <div className="flex gap-3 overflow-x-auto pb-6 px-1 scrollbar-hide -mx-1">
             {(['petit-déjeuner', 'déjeuner', 'dîner', 'snack', 'boisson'] as MealType[]).map((type) => (
               <Button
                 key={type}
                 variant={mealType === type ? "default" : "outline"}
                 onClick={() => setMealType(type)}
-                className={`h-10 rounded-none text-[8px] font-black uppercase tracking-widest transition-all ${
+                className={`h-10 rounded-full px-5 text-[9px] font-black uppercase tracking-[0.2em] whitespace-nowrap transition-all duration-500 ${
                   mealType === type 
-                    ? 'bg-primary text-black shadow-[0_0_15px_rgba(253,224,71,0.5)] border-primary' 
-                    : 'border-white/10 text-muted-foreground hover:text-white'
+                    ? 'bg-primary text-black border-primary shadow-[0_0_20px_rgba(253,224,71,0.6)]' 
+                    : 'bg-black/40 border-white/10 text-white/30 hover:text-white/60'
                 }`}
               >
-                {type === 'boisson' && <Coffee size={12} className="mr-1" />}
+                {type === 'boisson' && <Coffee size={14} className="mr-2" />}
                 {type}
               </Button>
             ))}
@@ -306,7 +306,7 @@ export default function JournalPage() {
             <div className="flex gap-3">
               <Dialog open={isScannerOpen} onOpenChange={(o) => { setIsScannerOpen(o); if(o) setTimeout(startCamera,100); else stopCamera(); }}>
                 <DialogTrigger asChild>
-                  <Button className="h-14 w-14 border-accent bg-black text-accent rounded-full shadow-[0_0_20px_rgba(0,242,255,0.4)] hover:shadow-[0_0_30px_rgba(0,242,255,0.6)] transition-all">
+                  <Button className="h-14 w-14 border-accent bg-black text-accent rounded-full shadow-[0_0_30px_rgba(0,242,255,0.5)] hover:shadow-[0_0_40px_rgba(0,242,255,0.7)] transition-all">
                     <Camera size={20} />
                   </Button>
                 </DialogTrigger>
@@ -317,7 +317,7 @@ export default function JournalPage() {
                         <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
                         <div className="absolute bottom-6 left-0 right-0 flex justify-center items-center px-10">
                           <button className="w-20 h-20 rounded-full border-8 border-accent/30 bg-black/20 backdrop-blur-md flex items-center justify-center group" onClick={capturePhoto}>
-                            <div className="w-12 h-12 rounded-full bg-accent group-active:scale-90 transition-transform shadow-[0_0_20px_rgba(0,242,255,0.8)]" />
+                            <div className="w-12 h-12 rounded-full bg-accent group-active:scale-90 transition-transform shadow-[0_0_25px_rgba(0,242,255,0.8)]" />
                           </button>
                         </div>
                       </>
@@ -351,7 +351,7 @@ export default function JournalPage() {
 
               <Dialog open={isBarcodeOpen} onOpenChange={(o) => { setIsBarcodeOpen(o); if(o) startBarcodeScanner(); else if(barcodeScannerRef.current) barcodeScannerRef.current.clear(); }}>
                 <DialogTrigger asChild>
-                  <Button className="h-14 w-14 border-primary bg-black text-primary rounded-full shadow-[0_0_20px_rgba(253,224,71,0.4)] hover:shadow-[0_0_30_rgba(253,224,71,0.6)] transition-all">
+                  <Button className="h-14 w-14 border-primary bg-black text-primary rounded-full shadow-[0_0_30px_rgba(253,224,71,0.5)] hover:shadow-[0_0_40px_rgba(253,224,71,0.7)] transition-all">
                     <Barcode size={20} />
                   </Button>
                 </DialogTrigger>
