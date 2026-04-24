@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, Search, Coffee, Utensils, Moon, Apple, Zap, Sparkles, Loader2, Camera, Upload, X, Check, AlertCircle, Scan } from 'lucide-react';
+import { Plus, Trash2, Search, Coffee, Utensils, Moon, Apple, Zap, Sparkles, Loader2, Camera, Upload, X, Check, AlertCircle, Scan, Volume2, VolumeX } from 'lucide-react';
 import { collection, addDoc, query, where, deleteDoc, doc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import foodDb from '@/lib/food-db.json';
@@ -27,6 +27,7 @@ export default function JournalPage() {
   const [selectedType, setSelectedType] = useState<MealType>('petit-déjeuner');
   const [isCustomOpen, setIsCustomOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   
   const [aiEstimating, setAiEstimating] = useState(false);
   const [aiResult, setAiResult] = useState<any>(null);
@@ -36,14 +37,6 @@ export default function JournalPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [customFood, setCustomFood] = useState({
-    name: '',
-    calories: '',
-    protein: '',
-    carbs: '',
-    fat: ''
-  });
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
@@ -60,6 +53,21 @@ export default function JournalPage() {
       .filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()))
       .slice(0, 8);
   }, [searchTerm]);
+
+  const speak = (text: string) => {
+    if (isMuted || typeof window === 'undefined' || !window.speechSynthesis) return;
+    
+    // Annule toute lecture en cours
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'fr-FR';
+    utterance.pitch = 0.7; // Tonalité basse pour effet SF/Robotique
+    utterance.rate = 0.9;  // Rythme légèrement lent pour plus de poids
+    utterance.volume = 1;
+    
+    window.speechSynthesis.speak(utterance);
+  };
 
   const startCamera = async () => {
     setAiResult(null);
@@ -116,8 +124,13 @@ export default function JournalPage() {
     try {
       const result = await scanDish({ photoDataUri: scanningImage });
       setAiResult(result);
+      
+      // Déclenchement vocal du conseil
+      if (result.healthAdvice) {
+        speak(result.healthAdvice);
+      }
     } catch (e: any) {
-      toast({ variant: "destructive", title: "DATA LINK OVERLOAD", description: "Serveur saturé, réessaie dans 60s" });
+      toast({ variant: "destructive", title: "DATA LINK OVERLOAD", description: "Échec de l'analyse optique." });
     } finally {
       setAiEstimating(false);
     }
@@ -137,7 +150,6 @@ export default function JournalPage() {
         createdAt: new Date().toISOString()
       });
 
-      // Gain d'XP avec limitation journalière
       if (isScan) {
         const res = addXp(50, 'scan');
         if (res && res.reason === 'limit_reached') {
@@ -178,9 +190,24 @@ export default function JournalPage() {
   return (
     <TooltipProvider>
       <main className="px-4 sm:px-6 pt-12 sm:pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white selection:bg-primary/20">
-        <div className="space-y-1 mb-8 sm:mb-12">
-          <p className="text-primary/60 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.5em] neon-text-yellow">Interface Log</p>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase neon-text-yellow">Journal de Bord</h1>
+        <div className="flex justify-between items-start mb-8 sm:mb-12">
+          <div className="space-y-1">
+            <p className="text-primary/60 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.5em] neon-text-yellow">Interface Log</p>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase neon-text-yellow">Journal de Bord</h1>
+          </div>
+          
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={`w-10 h-10 border transition-all ${isMuted ? 'text-destructive border-destructive/20' : 'text-accent border-accent/20'}`}
+            onClick={() => {
+              const newState = !isMuted;
+              setIsMuted(newState);
+              if (newState) window.speechSynthesis.cancel();
+            }}
+          >
+            {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+          </Button>
         </div>
 
         <section className="mb-12 space-y-6">
@@ -212,7 +239,7 @@ export default function JournalPage() {
                 />
               </div>
               
-              <Dialog open={isScannerOpen} onOpenChange={(open) => { setIsScannerOpen(open); if (!open) { stopCamera(); setScanningImage(null); setAiResult(null); }}}>
+              <Dialog open={isScannerOpen} onOpenChange={(open) => { setIsScannerOpen(open); if (!open) { stopCamera(); setScanningImage(null); setAiResult(null); window.speechSynthesis.cancel(); }}}>
                 <DialogTrigger asChild>
                   <Button className="h-14 w-14 border-accent bg-black text-accent neon-glow-blue rounded-[12px]" onClick={startCamera}>
                     <Camera size={20} />
@@ -221,7 +248,7 @@ export default function JournalPage() {
                 <DialogContent className="bg-black border-accent/40 text-white rounded-[20px] max-w-[95vw] sm:max-w-md p-0 overflow-hidden">
                   <DialogHeader className="sr-only">
                     <DialogTitle>Scan Optique</DialogTitle>
-                    <DialogDescription>Analyse de la composition moléculaire par vision artificielle Llama 4 Scout.</DialogDescription>
+                    <DialogDescription>Analyse par Llama 4 Scout.</DialogDescription>
                   </DialogHeader>
                   <div className="relative h-[70vh] bg-black">
                     {!scanningImage ? (
@@ -274,7 +301,9 @@ export default function JournalPage() {
                                 <span className="text-[8px] font-black text-accent uppercase tracking-[0.3em] block mb-1">ANALYSE OPTIQUE TERMINÉE</span>
                                 <h3 className="text-xl font-black text-white uppercase tracking-tighter">{aiResult.name}</h3>
                                 {aiResult.healthAdvice && (
-                                  <p className="text-[10px] text-primary font-bold uppercase tracking-tight mt-1">💡 {aiResult.healthAdvice}</p>
+                                  <p className="text-[10px] text-primary font-bold uppercase tracking-tight mt-1 flex items-center gap-1">
+                                    <Volume2 size={10} className="animate-pulse" /> {aiResult.healthAdvice}
+                                  </p>
                                 )}
                               </div>
                               <Button className="border-accent neon-glow-blue h-12 w-12" onClick={() => addMeal(aiResult, true)}>
@@ -294,7 +323,7 @@ export default function JournalPage() {
                                 </div>
                               ))}
                             </div>
-                            <Button variant="outline" className="w-full text-[10px] font-black tracking-widest" onClick={() => { setScanningImage(null); setAiResult(null); }}>RESCANNER</Button>
+                            <Button variant="outline" className="w-full text-[10px] font-black tracking-widest" onClick={() => { setScanningImage(null); setAiResult(null); window.speechSynthesis.cancel(); }}>RESCANNER</Button>
                           </div>
                         )}
                       </div>
