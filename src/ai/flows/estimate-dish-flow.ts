@@ -1,7 +1,7 @@
-
 'use server';
 /**
- * @fileOverview Flux de reconstruction moléculaire via Llama-4 Scout (Groq).
+ * @fileOverview Flux de reconstruction moléculaire et coaching nutritionnel via Llama-4 Scout (Groq).
+ * L'IA agit comme un agent autonome prodiguant des conseils proactifs.
  */
 
 import { z } from 'genkit';
@@ -17,6 +17,7 @@ const EstimateDishOutputSchema = z.object({
   minerals: z.string(),
   aiAnalysis: z.string(),
   healthAdvice: z.string(),
+  coachAnalysis: z.string().describe('Analyse approfondie et conseils proactifs du coach IA'),
 });
 
 export type EstimateDishOutput = z.infer<typeof EstimateDishOutputSchema>;
@@ -36,21 +37,29 @@ export async function estimateDish(input: { dishName: string }): Promise<Estimat
         model: "meta-llama/llama-4-scout-17b-16e-instruct",
         messages: [
           {
+            role: "system",
+            content: `Tu es un coach nutritionnel d'élite, proactif et expert. 
+            Ta mission est d'analyser les aliments avec une précision moléculaire tout en agissant comme un mentor. 
+            Tu dois identifier les pièges nutritionnels, suggérer des alternatives plus saines si nécessaire, et féliciter l'utilisateur pour les bons choix. 
+            Ton ton est expert, direct et encourageant.`
+          },
+          {
             role: "user",
-            content: `Génère uniquement le JSON des micro-nutriments et une description courte pour cet aliment : "${input.dishName}".
+            content: `Analyse cet aliment : "${input.dishName}". 
             
-            Réponds EXCLUSIVEMENT avec un objet JSON pur sans texte additionnel :
+            Réponds EXCLUSIVEMENT avec un objet JSON pur respectant cette structure exacte :
             {
-              "name": "nom",
+              "name": "nom de l'aliment",
               "calories": nombre,
               "protein": nombre,
               "carbs": nombre,
               "fat": nombre,
               "fiber": nombre,
-              "vitamins": "liste séparée par des virgules",
-              "minerals": "liste séparée par des virgules",
-              "aiAnalysis": "phrase courte",
-              "healthAdvice": "conseil"
+              "vitamins": "liste de vitamines détectées",
+              "minerals": "liste de minéraux détectés",
+              "aiAnalysis": "brève analyse technique",
+              "healthAdvice": "conseil de santé immédiat",
+              "coachAnalysis": "ton expertise proactive : analyse l'équilibre, propose des alternatives ou des optimisations, et donne ton avis de coach sur ce choix."
             }`
           }
         ],
@@ -76,10 +85,11 @@ export async function estimateDish(input: { dishName: string }): Promise<Estimat
       vitamins: result.vitamins || "Non détecté",
       minerals: result.minerals || "Non détecté",
       aiAnalysis: result.aiAnalysis || "Analyse moléculaire terminée.",
-      healthAdvice: result.healthAdvice || "Maintien des paramètres conseillé."
+      healthAdvice: result.healthAdvice || "Maintien des paramètres conseillé.",
+      coachAnalysis: result.coachAnalysis || "Analyse proactive indisponible pour le moment."
     };
   } catch (error) {
-    console.error("Erreur Reconstruction IA:", error);
+    console.error("Erreur Reconstruction IA & Coaching:", error);
     throw error;
   }
 }
