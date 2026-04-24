@@ -16,7 +16,6 @@ import { estimateDish } from '@/ai/flows/estimate-dish-flow';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Html5QrcodeScanner } from "html5-qrcode";
 
@@ -47,7 +46,7 @@ export default function JournalPage() {
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  // Firestore Data
+  // Firestore Data - Utilisation de (meals as any) pour éviter les erreurs de build sur .docs si nécessaire
   const mealsQuery = useMemo(() => {
     if (!user) return null;
     return query(collection(db, 'users', user.uid, 'meals'), where('date', '==', today));
@@ -55,7 +54,7 @@ export default function JournalPage() {
 
   const { data: meals } = useCollection(mealsQuery);
 
-  // Fusion Tripartite pour la Recherche Globale
+  // Fusion Tripartite pour la Recherche Globale (foodDb + localStorage + firebase)
   const globalSearchResults = useMemo(() => {
     if (!searchTerm || searchTerm.length < 2) return [];
     try {
@@ -68,7 +67,7 @@ export default function JournalPage() {
       return allItems.filter((item: any) => {
         const name = item?.name || item?.product_name || "";
         return name.toString().toLowerCase().includes(searchTerm.toLowerCase());
-      }).slice(0, 15); // Limiter pour la performance
+      }).slice(0, 15); 
     } catch (e) {
       return [];
     }
@@ -115,7 +114,7 @@ export default function JournalPage() {
       const result = await scanDish({ photoDataUri: dataUri });
       setSelectedMeal({ ...result, imageUrl: dataUri });
     } catch (err) {
-      toast({ variant: "destructive", title: "ERREUR SCAN", description: "Impossible d'analyser l'image." });
+      toast({ variant: "destructive", title: "ERREUR SCAN", description: "Analyse moléculaire interrompue." });
     } finally {
       setIsAnalyzing(false);
       stopCamera();
@@ -130,12 +129,19 @@ export default function JournalPage() {
         scanner.render(onBarcodeSuccess, (err) => {});
         scannerRef.current = scanner;
       }, 300);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        if (scannerRef.current) {
+          scannerRef.current.clear().catch(console.error);
+        }
+      };
     }
   }, [scanMode]);
 
   const onBarcodeSuccess = async (decodedText: string) => {
-    if (scannerRef.current) scannerRef.current.clear();
+    if (scannerRef.current) {
+      await scannerRef.current.clear().catch(console.error);
+    }
     setIsAnalyzing(true);
     try {
       const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${decodedText}.json`);
@@ -154,10 +160,10 @@ export default function JournalPage() {
         };
         setSelectedMeal(result);
       } else {
-        toast({ title: "INTROUVABLE", description: "Produit non répertorié." });
+        toast({ title: "INTROUVABLE", description: "Produit non répertorié dans la base." });
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "ERREUR RESEAU" });
+      toast({ variant: "destructive", title: "ERREUR RÉSEAU" });
     } finally {
       setIsAnalyzing(false);
       setScanMode(null);
@@ -179,7 +185,7 @@ export default function JournalPage() {
       // 1. Firestore
       await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
 
-      // 2. Local Memory
+      // 2. Local Memory (Sync)
       const localData = localStorage.getItem('biometric_memory');
       const memory = localData ? JSON.parse(localData) : [];
       memory.push(mealData);
@@ -197,9 +203,10 @@ export default function JournalPage() {
     if (!selectedMeal?.name) return;
     setIsAnalyzing(true);
     try {
+      // Cast any pour éviter les erreurs de build sur les types IA
       const result = await estimateDish({ dishName: selectedMeal.name }) as any;
       setSelectedMeal({ ...selectedMeal, ...result });
-      toast({ title: "RECONSTRUCTION RÉUSSIE", description: "Micro-données récupérées." });
+      toast({ title: "RÉUSSITE", description: "Micro-données reconstruites via Llama-4." });
     } catch (err) {
       toast({ variant: "destructive", title: "ÉCHEC RECONSTRUCTION" });
     } finally {
@@ -219,15 +226,15 @@ export default function JournalPage() {
 
   return (
     <main className="min-h-screen bg-black text-white pb-32">
-      {/* HEADER & SEARCH */}
+      {/* HEADER & SEARCH ZONE */}
       <div className="p-6 space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-black tracking-tighter uppercase neon-text-blue">Journal</h1>
           <div className="flex gap-2">
-            <Button size="icon" variant="outline" className="rounded-xl border-accent/40" onClick={() => { setIsScanning(true); setScanMode('photo'); startCamera(); }}>
+            <Button size="icon" variant="outline" className="rounded-xl border-accent/40 bg-black/40" onClick={() => { setIsScanning(true); setScanMode('photo'); startCamera(); }}>
               <Camera size={18} />
             </Button>
-            <Button size="icon" variant="outline" className="rounded-xl border-accent/40" onClick={() => { setIsScanning(true); setScanMode('barcode'); }}>
+            <Button size="icon" variant="outline" className="rounded-xl border-accent/40 bg-black/40" onClick={() => { setIsScanning(true); setScanMode('barcode'); }}>
               <Barcode size={18} />
             </Button>
           </div>
@@ -302,12 +309,12 @@ export default function JournalPage() {
         </div>
       </div>
 
-      {/* SCAN MODAL */}
+      {/* SCAN DIALOG */}
       <Dialog open={isScanning} onOpenChange={(open) => { if(!open) { stopCamera(); setIsScanning(false); setScanMode(null); setCapturedImage(null); } }}>
         <DialogContent className="bg-black border-accent/30 text-white max-w-sm rounded-[24px]">
           <DialogHeader>
             <DialogTitle className="text-[10px] font-black text-accent uppercase tracking-widest text-center">
-              {scanMode === 'photo' ? 'Scan Optique' : 'Scan Industriel'}
+              {scanMode === 'photo' ? 'Analyse Optique' : 'Scan Industriel'}
             </DialogTitle>
           </DialogHeader>
           
@@ -330,7 +337,7 @@ export default function JournalPage() {
           </div>
 
           <p className="text-[8px] text-center text-white/40 uppercase tracking-widest mt-4">
-            ALIGNER L'ÉLÉMENT DANS LE CADRE
+            ALIGNER L'ÉLÉMENT DANS LE CADRE DE LECTURE
           </p>
         </DialogContent>
       </Dialog>
@@ -361,14 +368,14 @@ export default function JournalPage() {
                      </Badge>
                      {selectedMeal.sugar > 10 && (
                        <Badge className="bg-destructive/20 text-destructive border-destructive/40 text-[9px] uppercase font-black animate-pulse">
-                         Alerte Sucre
+                         Alerte Glycémie
                        </Badge>
                      )}
                    </div>
                 </div>
               </div>
 
-              {/* Stats Grid */}
+              {/* Stats & Information */}
               <div className="p-6 space-y-8 overflow-y-auto">
                 <div className="grid grid-cols-4 gap-4">
                   <div className="text-center">
@@ -403,7 +410,7 @@ export default function JournalPage() {
                   {!selectedMeal.vitamins ? (
                     <div className="p-4 border border-orange-500/20 bg-orange-500/5 rounded-xl flex items-center gap-3">
                       <AlertTriangle size={16} className="text-orange-500" />
-                      <p className="text-[8px] text-orange-500/80 font-black uppercase">Archive incomplète - Reconstruction conseillée</p>
+                      <p className="text-[8px] text-orange-500/80 font-black uppercase">Archive incomplète - Reconstruction IA conseillée</p>
                     </div>
                   ) : (
                     <div className="space-y-3">
@@ -419,7 +426,7 @@ export default function JournalPage() {
                   )}
                 </div>
 
-                {/* Save Section */}
+                {/* Persistence */}
                 {!selectedMeal.date && (
                   <div className="space-y-4 pt-4 border-t border-white/5">
                     <div className="grid grid-cols-2 gap-2">
@@ -445,12 +452,6 @@ export default function JournalPage() {
                       ENREGISTRER AU JOURNAL
                     </Button>
                   </div>
-                )}
-                
-                {selectedMeal.aiAnalysis && (
-                  <p className="text-[8px] text-accent/60 font-black italic text-center uppercase tracking-widest">
-                    Estimation IA active • Haute Fidélité
-                  </p>
                 )}
               </div>
             </div>
