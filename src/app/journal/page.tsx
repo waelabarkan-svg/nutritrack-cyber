@@ -106,7 +106,6 @@ export default function JournalPage() {
         videoRef.current.srcObject = stream;
       }
     } catch (err) {
-      console.error("Camera error:", err);
       setHasCameraPermission(false);
       toast({ variant: "destructive", title: "ACCÈS CAMÉRA REFUSÉ" });
     }
@@ -202,7 +201,7 @@ export default function JournalPage() {
         date: today,
         imageUrl: food.imageUrl || null,
         createdAt: new Date().toISOString(),
-        isAiEstimated: isScan && !food.imageUrl?.startsWith('http')
+        isAiEstimated: isScan && (!food.imageUrl || !food.imageUrl.startsWith('http'))
       });
 
       if (isScan) {
@@ -460,9 +459,11 @@ export default function JournalPage() {
                           {meal.imageUrl ? (
                             <img src={meal.imageUrl} className="w-full h-full object-cover contrast-125 brightness-110" alt="" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                              <ImageOff size={14} className="text-muted-foreground/40" />
-                            </div>
+                            <img 
+                              src={`https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=100&h=100&food=${encodeURIComponent(meal.name)}`} 
+                              className="w-full h-full object-cover contrast-125 brightness-75" 
+                              alt="" 
+                            />
                           )}
                         </div>
                         <div>
@@ -485,7 +486,7 @@ export default function JournalPage() {
               <div className="relative">
                 <DialogHeader>
                   <DialogTitle className="sr-only">Détails de l'aliment</DialogTitle>
-                  <DialogDescription className="sr-only">Analyse nutritionnelle complète incluant les micro-nutriments et vitamines.</DialogDescription>
+                  <DialogDescription className="sr-only">Analyse nutritionnelle complète et micro-nutriments.</DialogDescription>
                 </DialogHeader>
                 <div className="h-48 w-full relative">
                   {selectedMeal.imageUrl ? (
@@ -543,12 +544,15 @@ export default function JournalPage() {
                     </div>
                     
                     {!selectedMeal.vitamins && !selectedMeal.minerals && !selectedMeal.fiber ? (
-                      <div className="p-4 bg-white/5 border border-white/10 rounded-lg flex flex-col items-center gap-4">
-                        <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest text-center">Archive incomplète détectée</p>
+                      <div className="p-4 bg-primary/5 border border-primary/40 rounded-lg flex flex-col items-center gap-4 shadow-[0_0_15px_rgba(253,224,71,0.2)]">
+                        <div className="flex items-center gap-2 text-primary">
+                          <AlertCircle size={14} />
+                          <p className="text-[9px] font-black uppercase tracking-widest">ALERTE SYSTÈME : ARCHIVE INCOMPLÈTE</p>
+                        </div>
                         <Button 
                           onClick={repairBioData} 
                           disabled={aiEstimating}
-                          className="w-full border-accent text-accent bg-black/40 h-10 text-[9px] font-black"
+                          className="w-full border-primary text-primary bg-black/40 h-10 text-[9px] font-black hover:bg-primary/10"
                         >
                           {aiEstimating ? <Loader2 className="animate-spin mr-2" size={12} /> : <RefreshCw className="mr-2" size={12} />}
                           RECONSTRUIRE BIO-DONNÉES

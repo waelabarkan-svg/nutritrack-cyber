@@ -36,7 +36,7 @@ const prompt = ai.definePrompt({
   input: { schema: EstimateDishInputSchema },
   prompt: `Tu es un Expert Nutritionniste Cyberpunk. Analyse le plat : "{{{dishName}}}".
   
-  Estime les valeurs pour une portion standard, incluant :
+  Estime précisément les valeurs pour une portion standard, incluant :
   - Fibres (g)
   - Vitamines (A, C, D, B12)
   - Minéraux (Fer, Magnésium, Zinc)
@@ -52,10 +52,10 @@ const prompt = ai.definePrompt({
     "carbs": nombre,
     "fat": nombre,
     "fiber": nombre,
-    "vitamins": "Liste formatée (ex: B12, B6)",
-    "minerals": "Liste formatée (ex: Fer, Zinc)",
-    "aiAnalysis": "phrase courte cyberpunk (max 10 mots)",
-    "healthAdvice": "ton conseil nutritionnel"
+    "vitamins": "Liste formatée (ex: Vitamine B12 (élevée), B6)",
+    "minerals": "Liste formatée (ex: Fer, Magnésium, Zinc)",
+    "aiAnalysis": "Analyse moléculaire terminée.",
+    "healthAdvice": "Conseil nutritionnel court et percutant"
   }`,
 });
 
