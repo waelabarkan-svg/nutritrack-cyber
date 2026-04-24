@@ -15,7 +15,6 @@ import { toast } from '@/hooks/use-toast';
 import { scanDish } from '@/ai/flows/scan-dish-flow';
 import { estimateDish } from '@/ai/flows/estimate-dish-flow';
 import { addXp } from '@/lib/gamification-utils';
-import { Html5QrcodeScanner } from 'html5-qrcode';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -28,7 +27,6 @@ export default function JournalPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<MealType>('petit-déjeuner');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [isBarcodeOpen, setIsBarcodeOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState<any>(null);
   const [isMuted, setIsMuted] = useState(false);
@@ -36,13 +34,10 @@ export default function JournalPage() {
   const [aiEstimating, setAiEstimating] = useState(false);
   const [aiResult, setAiResult] = useState<any>(null);
   const [scanningImage, setScanningImage] = useState<string | null>(null);
-  const [barcodeResult, setBarcodeResult] = useState<any>(null);
-  const [isFetchingBarcode, setIsFetchingBarcode] = useState(false);
   const [isReconstructing, setIsReconstructing] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const barcodeScannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
@@ -53,22 +48,19 @@ export default function JournalPage() {
 
   const { data: meals } = useCollection(mealsQuery);
 
-  // Recherche Globale : Combine Firestore Today + LocalStorage History
-  const searchableMeals = useMemo(() => {
-    if (typeof window === 'undefined') return [];
-    const todayList = meals || [];
+  // RECHERCHE GLOBALE : Parcourt l'intégralité du localStorage
+  const globalSearchResults = useMemo(() => {
+    if (!searchTerm || typeof window === 'undefined') return [];
     const localHistory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
-    
-    // Filtrer pour éviter les doublons si l'historique local contient déjà aujourd'hui
-    const historyOthers = localHistory.filter((h: any) => h.date !== today);
-    
-    return [...todayList, ...historyOthers];
-  }, [meals, today]);
+    return localHistory.filter((item: any) => 
+      item.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [searchTerm]);
 
   const announceResults = (data: any) => {
     if (isMuted || typeof window === 'undefined' || !window.speechSynthesis) return;
     const formatValue = (val: any) => (val !== undefined && val !== null ? val : 'non détecté');
-    const script = `Analyse terminée. Produit : ${data.name}. Apport énergétique : ${formatValue(data.calories)} calories. Sucre : ${formatValue(data.sugar)} grammes.`;
+    const script = `Analyse terminée. Produit : ${data.name}. Apport énergétique : ${formatValue(data.calories)} calories.`;
     
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(script);
@@ -150,10 +142,8 @@ export default function JournalPage() {
         isAiEstimated: isScan
       };
 
-      // 1. Sauvegarde Firestore
       await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
       
-      // 2. Indexation LocalStorage (pour recherche et graphiques)
       const history = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
       history.push({ ...mealData, id: Date.now().toString() });
       localStorage.setItem('biometric_memory', JSON.stringify(history));
@@ -233,13 +223,11 @@ export default function JournalPage() {
 
   const getFallbackImage = (name: string) => {
     const term = name.toLowerCase();
-    // Recherche Unsplash ciblée pour éviter les salades génériques
     let keywords = "food";
     if (term.includes('poulet')) keywords = "meat,chicken,grilled";
     else if (term.includes('boeuf')) keywords = "meat,beef,steak";
     else if (term.includes('burger')) keywords = "burger,fastfood";
     else if (term.includes('riz')) keywords = "rice,bowl";
-    
     return `https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=400&h=300&sig=${encodeURIComponent(term)}`;
   };
 
@@ -324,39 +312,66 @@ export default function JournalPage() {
         </section>
 
         <div className="space-y-12">
-          {['petit-déjeuner', 'déjeuner', 'dîner', 'snack'].map((type) => {
-            // Filtrage dynamique incluant la recherche globale
-            const sectionMeals = (searchTerm ? searchableMeals : (meals || []))
-              .filter((m: any) => m.type === type)
-              .filter((m: any) => !searchTerm || m.name.toLowerCase().includes(searchTerm.toLowerCase()));
-
-            return (
-              <div key={type} className="space-y-4">
-                <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/70 border-l-2 border-primary pl-3">{type.toUpperCase()}</h2>
-                <div className="space-y-3">
-                  {sectionMeals.length > 0 ? sectionMeals.map((meal: any) => (
-                    <div key={meal.id} onClick={() => openDetails(meal)} className="cyber-card-blue p-4 flex justify-between items-center cursor-pointer hover:border-accent group transition-all">
-                      <div className="flex items-center gap-4">
-                        <img 
-                          src={meal.imageUrl || getFallbackImage(meal.name)} 
-                          className="w-12 h-12 object-cover border border-accent/20 rounded-xl group-hover:border-accent/60 transition-all" 
-                          alt="" 
-                        />
-                        <div>
-                          <div className="flex items-center gap-2">
-                             {meal.isLiquid ? <Droplet size={10} className="text-accent" /> : <Soup size={10} className="text-primary" />}
-                             <h3 className="font-black text-xs uppercase tracking-tight">{meal.name}</h3>
-                          </div>
-                          <p className="text-[9px] text-muted-foreground uppercase font-black">{meal.calories} KCAL | {meal.sugar || 0}g SUCRE</p>
+          {searchTerm ? (
+            <div className="space-y-4">
+              <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-accent border-l-2 border-accent pl-3">RÉSULTATS DE RECHERCHE</h2>
+              <div className="space-y-3">
+                {globalSearchResults.length > 0 ? globalSearchResults.map((meal: any) => (
+                  <div key={meal.id} onClick={() => openDetails(meal)} className="cyber-card-blue p-4 flex justify-between items-center cursor-pointer hover:border-accent group transition-all">
+                    <div className="flex items-center gap-4">
+                      <img 
+                        src={meal.imageUrl || getFallbackImage(meal.name)} 
+                        className="w-12 h-12 object-cover border border-accent/20 rounded-xl group-hover:border-accent/60 transition-all" 
+                        alt="" 
+                      />
+                      <div>
+                        <div className="flex items-center gap-2">
+                           {meal.isLiquid ? <Droplet size={10} className="text-accent" /> : <Soup size={10} className="text-primary" />}
+                           <h3 className="font-black text-xs uppercase tracking-tight">{meal.name}</h3>
                         </div>
+                        <p className="text-[9px] text-muted-foreground uppercase font-black">{meal.calories} KCAL | {meal.date}</p>
                       </div>
-                      <Button variant="ghost" size="icon" className="text-white/10 hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); deleteMeal(meal.id); }}><Trash2 size={14} /></Button>
                     </div>
-                  )) : <div className="h-[1px] w-full bg-white/5" />}
-                </div>
+                  </div>
+                )) : (
+                  <div className="p-12 text-center border border-dashed border-white/10 rounded-2xl">
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em]">AUCUNE ARCHIVE CORRESPONDANTE DANS LA BASE</p>
+                  </div>
+                )}
               </div>
-            );
-          })}
+            </div>
+          ) : (
+            ['petit-déjeuner', 'déjeuner', 'dîner', 'snack'].map((type) => {
+              const sectionMeals = (meals || []).filter((m: any) => m.type === type);
+
+              return (
+                <div key={type} className="space-y-4">
+                  <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/70 border-l-2 border-primary pl-3">{type.toUpperCase()}</h2>
+                  <div className="space-y-3">
+                    {sectionMeals.length > 0 ? sectionMeals.map((meal: any) => (
+                      <div key={meal.id} onClick={() => openDetails(meal)} className="cyber-card-blue p-4 flex justify-between items-center cursor-pointer hover:border-accent group transition-all">
+                        <div className="flex items-center gap-4">
+                          <img 
+                            src={meal.imageUrl || getFallbackImage(meal.name)} 
+                            className="w-12 h-12 object-cover border border-accent/20 rounded-xl group-hover:border-accent/60 transition-all" 
+                            alt="" 
+                          />
+                          <div>
+                            <div className="flex items-center gap-2">
+                               {meal.isLiquid ? <Droplet size={10} className="text-accent" /> : <Soup size={10} className="text-primary" />}
+                               <h3 className="font-black text-xs uppercase tracking-tight">{meal.name}</h3>
+                            </div>
+                            <p className="text-[9px] text-muted-foreground uppercase font-black">{meal.calories} KCAL | {meal.sugar || 0}g SUCRE</p>
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="icon" className="text-white/10 hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); deleteMeal(meal.id); }}><Trash2 size={14} /></Button>
+                      </div>
+                    )) : <div className="h-[1px] w-full bg-white/5" />}
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
 
         <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
