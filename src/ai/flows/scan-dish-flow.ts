@@ -1,9 +1,10 @@
+
 'use server';
 
 /**
  * @fileOverview Flux de scan optique utilisant GROQ avec le modèle Llama 4 Scout.
- * Analyse approfondie incluant macros et micro-nutriments spécifiques.
- * Support des liquides et unités ml/g ajouté.
+ * Analyse approfondie incluant macros, sucre, caféine et micro-nutriments.
+ * Support avancé des liquides et alertes glycémiques.
  */
 
 export async function scanDish(input: { photoDataUri: string }) {
@@ -30,7 +31,8 @@ export async function scanDish(input: { photoDataUri: string }) {
                 type: "text",
                 text: `Analyse visuellement ce plat ou cette boisson. 
                 Détermine s'il s'agit d'un liquide ou d'un solide.
-                Estime les ingrédients, les calories et les macros (P/G/L). 
+                Estime les ingrédients, les calories, les macros (P/G/L) et spécifiquement le SUCRE (en g). 
+                Si c'est une boisson, estime la CAFÉINE (en mg) et identifie les ADDITIFS/ÉDULCORANTS.
                 
                 Réponds EXCLUSIVEMENT en français avec un objet JSON pur (sans balises markdown) respectant cette structure exacte : 
                 {
@@ -41,11 +43,14 @@ export async function scanDish(input: { photoDataUri: string }) {
                   "protein": nombre,
                   "carbs": nombre,
                   "fat": nombre,
+                  "sugar": nombre (g),
+                  "caffeine": nombre (mg),
                   "micronutrients": {
-                    "vitamines": ["Vitamine B12 (élevée)", "Vitamine B6"],
-                    "mineraux": ["Fer (riche)", "Zinc", "Magnésium"],
+                    "vitamines": ["Vitamine B12", "Vitamine C"],
+                    "mineraux": ["Fer", "Magnésium"],
                     "fibres": "nombre + g",
-                    "hydrationMl": "nombre si c'est de l'eau ou une boisson hydratante"
+                    "additives": ["Aspartame", "E120"],
+                    "hydrationRate": 0.0 a 1.0 (ex: Eau=1.0, Soda=0.85, Café=0.7)
                   },
                   "aiAnalysis": "courte phrase style cyberpunk (max 10 mots)",
                   "healthAdvice": "ton conseil nutritionnel avec du caractère"
@@ -76,11 +81,15 @@ export async function scanDish(input: { photoDataUri: string }) {
     // Normalisation pour le frontend
     return {
       ...result,
+      sugar: parseFloat(result.sugar) || 0,
+      caffeine: parseFloat(result.caffeine) || 0,
       fiber: parseFloat(result.micronutrients?.fibres) || 0,
       vitamins: result.micronutrients?.vitamines?.join(', '),
       minerals: result.micronutrients?.mineraux?.join(', '),
+      additives: result.micronutrients?.additives?.join(', '),
       isLiquid: !!result.isLiquid,
-      unit: result.unit || (result.isLiquid ? 'ml' : 'g')
+      unit: result.unit || (result.isLiquid ? 'ml' : 'g'),
+      hydrationRate: result.micronutrients?.hydrationRate || (result.isLiquid ? 0.85 : 0)
     };
 
   } catch (error: any) {

@@ -21,7 +21,7 @@
     },
     "Meal": {
       "title": "Meal Entry",
-      "description": "A food item logged by the user.",
+      "description": "A food or drink item logged by the user.",
       "type": "object",
       "properties": {
         "name": { "type": "string" },
@@ -29,11 +29,16 @@
         "protein": { "type": "number" },
         "carbs": { "type": "number" },
         "fat": { "type": "number" },
+        "sugar": { "type": "number" },
+        "caffeine": { "type": "number" },
         "fiber": { "type": "number" },
         "vitamins": { "type": "string" },
         "minerals": { "type": "string" },
+        "additives": { "type": "string" },
         "date": { "type": "string", "format": "date" },
-        "type": { "type": "string", "enum": ["breakfast", "lunch", "dinner", "snack"] },
+        "type": { "type": "string", "enum": ["petit-déjeuner", "déjeuner", "dîner", "snack"] },
+        "isLiquid": { "type": "boolean" },
+        "unit": { "type": "string", "enum": ["g", "ml"] },
         "createdAt": { "type": "string", "format": "date-time" },
         "imageUrl": { "type": "string" }
       },
@@ -41,7 +46,7 @@
     },
     "Hydration": {
       "title": "Hydration Entry",
-      "description": "Amount of water consumed on a specific day.",
+      "description": "Amount of effective hydration consumed on a specific day.",
       "type": "object",
       "properties": {
         "amount": { "type": "number" }
