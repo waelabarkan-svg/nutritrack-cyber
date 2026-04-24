@@ -82,7 +82,7 @@ export function HydrationCard() {
                 <p className="text-[9px] text-primary font-black uppercase tracking-widest mt-1 neon-text-yellow">Objectif : {(targetMl / 1000).toFixed(1)}L</p>
               </div>
             </div>
-            <div className="text-right pr-2 sm:pr-0">
+            <div className="text-right pr-6 sm:pr-0">
               <span className={`font-black text-4xl sm:text-5xl tracking-tighter transition-all duration-500 ${isComplete ? 'text-accent neon-text-blue' : 'text-accent/80'}`}>
                 {glasses}
               </span>
