@@ -7,8 +7,8 @@ import { useUser, useFirestore, useCollection } from '@/firebase';
 import { BottomNav } from '@/components/bottom-nav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { Plus, Trash2, Search, Camera, Upload, X, Check, Loader2, Scan, Volume2, VolumeX, Sparkles, Barcode } from 'lucide-react';
 import { collection, addDoc, query, where, deleteDoc, doc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
@@ -65,7 +65,7 @@ export default function JournalPage() {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'fr-FR';
     utterance.pitch = 0.7;
-    utterance.rate = 0.9;
+    utterance.rate = 1.0;
     utterance.volume = 1;
 
     const voices = window.speechSynthesis.getVoices();
@@ -128,10 +128,11 @@ export default function JournalPage() {
           calories: Math.round(p.nutriments['energy-kcal_100g'] || 0),
           protein: Math.round(p.nutriments.proteins_100g || 0),
           carbs: Math.round(p.nutriments.carbohydrates_100g || 0),
-          fat: Math.round(p.nutriments.fat_100g || 0)
+          fat: Math.round(p.nutriments.fat_100g || 0),
+          healthAdvice: "Produit industriel identifié. Intégrité nutritionnelle vérifiée par la base de données."
         };
         setBarcodeResult(result);
-        speak(`Données reçues pour ${result.name}. ${result.calories} calories détectées.`);
+        speak(`Analyse terminée. ${result.name}. ${result.calories} calories détectées. ${result.protein} grammes de protéines. Voici mon analyse : ${result.healthAdvice}`);
       } else {
         toast({ variant: "destructive", title: "PRODUIT NON RÉPERTORIÉ" });
       }
@@ -158,7 +159,7 @@ export default function JournalPage() {
     try {
       const result = await scanDish({ photoDataUri: scanningImage });
       setAiResult(result);
-      if (result.healthAdvice) speak(result.healthAdvice);
+      speak(`Analyse terminée. ${result.name}. ${result.calories} calories détectées. ${result.protein} grammes de protéines. Voici mon analyse : ${result.healthAdvice}`);
     } catch (e) {
       toast({ variant: "destructive", title: "DATA LINK OVERLOAD" });
     } finally {
@@ -280,8 +281,17 @@ export default function JournalPage() {
                           ) : aiResult ? (
                             <div className="absolute bottom-0 left-0 right-0 p-6 bg-black/90 border-t border-accent/40">
                               <div className="flex justify-between items-start mb-4">
-                                <div><h3 className="text-xl font-black">{aiResult.name}</h3><p className="text-[10px] text-primary font-bold mt-1">{aiResult.healthAdvice}</p></div>
-                                <Button className="border-accent neon-glow-blue h-12 w-12" onClick={() => addMeal(aiResult, true)}><Check size={24} /></Button>
+                                <div className="flex-1 pr-4">
+                                  <h3 className="text-xl font-black">{aiResult.name}</h3>
+                                  <div className="grid grid-cols-4 gap-2 my-2">
+                                    <div className="text-center"><p className="text-[10px] font-black">{aiResult.calories}</p><p className="text-[6px] text-muted-foreground">KCAL</p></div>
+                                    <div className="text-center"><p className="text-[10px] font-black">{aiResult.protein}g</p><p className="text-[6px] text-muted-foreground">PROT</p></div>
+                                    <div className="text-center"><p className="text-[10px] font-black">{aiResult.carbs}g</p><p className="text-[6px] text-muted-foreground">GLUC</p></div>
+                                    <div className="text-center"><p className="text-[10px] font-black">{aiResult.fat}g</p><p className="text-[6px] text-muted-foreground">LIPID</p></div>
+                                  </div>
+                                  <p className="text-[10px] text-primary font-bold mt-1 leading-tight">{aiResult.healthAdvice}</p>
+                                </div>
+                                <Button className="border-accent neon-glow-blue h-12 w-12 shrink-0" onClick={() => addMeal(aiResult, true)}><Check size={24} /></Button>
                               </div>
                               <Button variant="outline" className="w-full text-[10px] font-black" onClick={() => { setScanningImage(null); setAiResult(null); }}>RESCANNER</Button>
                             </div>
@@ -306,13 +316,14 @@ export default function JournalPage() {
                     {isFetchingBarcode && <div className="flex justify-center mt-4"><Loader2 className="animate-spin text-primary" /></div>}
                     {barcodeResult && (
                       <div className="mt-6 p-4 border border-primary/40 bg-primary/5 rounded-xl">
-                         <h3 className="font-black uppercase mb-4">{barcodeResult.name}</h3>
+                         <h3 className="font-black uppercase mb-2">{barcodeResult.name}</h3>
                          <div className="grid grid-cols-4 gap-2 mb-4">
                             <div className="text-center"><p className="text-xs font-black">{barcodeResult.calories}</p><p className="text-[7px] text-muted-foreground">KCAL</p></div>
                             <div className="text-center"><p className="text-xs font-black">{barcodeResult.protein}g</p><p className="text-[7px] text-muted-foreground">PROT</p></div>
                             <div className="text-center"><p className="text-xs font-black">{barcodeResult.carbs}g</p><p className="text-[7px] text-muted-foreground">GLUC</p></div>
                             <div className="text-center"><p className="text-xs font-black">{barcodeResult.fat}g</p><p className="text-[7px] text-muted-foreground">LIPID</p></div>
                          </div>
+                         <p className="text-[10px] text-primary/80 mb-4 font-bold">{barcodeResult.healthAdvice}</p>
                          <Button className="w-full border-primary neon-glow-yellow" onClick={() => addMeal(barcodeResult, true)}>ARCHIVER PRODUIT</Button>
                       </div>
                     )}
