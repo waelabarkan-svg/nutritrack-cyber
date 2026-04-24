@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -5,9 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { BottomNav } from '@/components/bottom-nav';
 import { 
-  Plus, Search, Camera, Barcode, X, Droplets,
-  Circle, Coffee, Sun, Moon, Cookie, Soup, Pizza, Beer,
-  Zap, Loader2, RefreshCw
+  Plus, Search, Camera, Barcode, Droplets,
+  Soup, Pizza, Beer, Zap, Loader2, RefreshCw
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -210,20 +210,20 @@ export default function JournalPage() {
   if (loading || !user) return null;
 
   const categories = [
-    { id: 'petit-déjeuner', label: 'PETIT-DÉJEUNER', icon: Coffee },
-    { id: 'déjeuner', label: 'DÉJEUNER', icon: Sun },
-    { id: 'dîner', label: 'DÎNER', icon: Moon },
-    { id: 'snack', label: 'SNACK', icon: Cookie },
+    { id: 'petit-déjeuner', label: 'PETIT-DÉJEUNER' },
+    { id: 'déjeuner', label: 'DÉJEUNER' },
+    { id: 'dîner', label: 'DÎNER' },
+    { id: 'snack', label: 'SNACK' },
   ];
 
   return (
-    <main className="max-w-md mx-auto min-h-screen bg-black text-white relative shadow-2xl pb-32 overflow-x-hidden">
+    <main className="max-w-md mx-auto min-h-screen bg-black text-white relative shadow-[0_0_50px_rgba(0,0,0,1)] pb-32">
       
-      {/* HEADER : TRANCHANT & NÉON */}
+      {/* HEADER : TERMINAL LOOK */}
       <header className="p-6 flex justify-between items-center bg-black">
         <h1 
           className="font-black text-2xl uppercase tracking-[0.2em] text-white"
-          style={{ textShadow: '0 0 10px #00FFFF' }}
+          style={{ textShadow: '0 0 10px #00FFFF, 0 0 20px #00FFFF' }}
         >
           Journal
         </h1>
@@ -231,23 +231,23 @@ export default function JournalPage() {
         <div className="flex gap-4">
           <button 
             onClick={() => setIsCameraOpen(true)}
-            className="text-white/40 hover:text-accent transition-all duration-300"
+            className="text-accent/70 hover:text-accent transition-all duration-300 active:scale-95"
           >
-            <Camera size={20} />
+            <Camera size={22} />
           </button>
           <button 
             onClick={() => setIsBarcodeOpen(true)}
-            className="text-white/40 hover:text-accent transition-all duration-300"
+            className="text-accent/70 hover:text-accent transition-all duration-300 active:scale-95"
           >
-            <Barcode size={20} />
+            <Barcode size={22} />
           </button>
         </div>
       </header>
 
-      {/* RECHERCHE : FENTE DISCRÈTE */}
-      <div className="px-6 mb-10">
-        <div className="relative border-b border-white/10 group">
-          <div className="absolute inset-y-0 left-0 flex items-center pointer-events-none">
+      {/* RECHERCHE : FENTE SOMBRE */}
+      <div className="px-6 mb-8">
+        <div className="relative border border-white/10 group bg-black/40 rounded-none">
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
             <Search size={14} className="text-white/20 group-focus-within:text-accent" />
           </div>
           <Input 
@@ -255,67 +255,62 @@ export default function JournalPage() {
             placeholder="RECHERCHER UN ALIMENT..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-transparent border-none pl-8 h-12 rounded-none text-[10px] font-bold uppercase tracking-[0.2em] focus:ring-0 placeholder:text-white/20"
+            className="w-full bg-transparent border-none pl-10 h-10 rounded-none text-[10px] font-bold uppercase tracking-[0.2em] focus:ring-0 placeholder:text-white/20"
           />
         </div>
       </div>
 
       {/* CONTENU PRINCIPAL */}
-      <div className="px-6">
+      <div className="px-6 space-y-10">
         {searchTerm ? (
-          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <h2 className="text-[9px] font-black uppercase tracking-[0.3em] text-accent opacity-60">
-              RÉSULTATS_INDEX
+          <div className="space-y-4 animate-in fade-in duration-300">
+            <h2 className="text-[10px] font-light uppercase tracking-[0.4em] text-white/30 border-b border-white/10 pb-1">
+              Archives_Trouvées
             </h2>
-            <div className="grid gap-2">
+            <div className="space-y-1">
               {globalSearchResults.map((item: any, idx: number) => (
                 <div 
                   key={idx}
                   onClick={() => addMeal(item)}
-                  className="bg-accent/5 border border-accent/10 p-4 flex items-center justify-between group cursor-pointer hover:bg-accent/10 transition-all"
+                  className="flex justify-between items-center py-3 border-b border-white/5 hover:bg-white/[0.03] transition-all cursor-pointer group px-1"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="text-accent/40">
-                      {item.isDish ? <Soup size={16} /> : (item.isLiquid ? <Beer size={16} /> : <Pizza size={16} />)}
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-white">{(item.name || item.product_name).toUpperCase()}</p>
-                      <p className="text-[8px] text-accent font-black uppercase mt-1 tracking-tighter">{item.calories} KCAL</p>
-                    </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-white/90">
+                      {(item.name || item.product_name).toUpperCase()}
+                    </span>
                   </div>
-                  <Plus size={14} className="text-accent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <div className="flex items-center gap-4">
+                    <span className="text-[11px] font-black text-[#00FFFF]">{item.calories} KCAL</span>
+                    <Plus size={14} className="text-accent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                 </div>
               ))}
             </div>
-            {globalSearchResults.length === 0 && (
-              <p className="text-[8px] text-white/20 font-black uppercase italic text-center py-10 tracking-[0.2em]">SÉQUENCE NON TROUVÉE</p>
-            )}
           </div>
         ) : (
-          <div className="space-y-12 pb-20">
+          <div className="space-y-12">
             {categories.map((category) => {
               const sectionMeals = Array.isArray(meals) ? meals.filter((m: any) => m.type === category.id) : [];
 
               return (
                 <div key={category.id} className="space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                    <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">{category.label}</h2>
-                    <span className="text-[8px] font-black text-white/20 tracking-widest">{sectionMeals.length} ITEMS</span>
-                  </div>
+                  <h2 className="text-[10px] font-light uppercase tracking-[0.4em] text-white/30 border-b border-white/10 pb-1 mb-4">
+                    {category.label}
+                  </h2>
                   <div className="space-y-0.5">
                     {sectionMeals.length > 0 ? sectionMeals.map((meal: any) => (
-                      <div key={meal.id} className="flex justify-between items-center py-4 border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors group">
+                      <div key={meal.id} className="flex justify-between items-center py-3 border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
                         <div className="flex items-center gap-3">
-                          {meal.isLiquid ? <Droplets size={12} className="text-accent" /> : <div className="w-1 h-1 bg-white/20 rounded-full" />}
+                          {meal.isLiquid ? <Droplets size={12} className="text-accent/60" /> : <div className="w-1 h-1 bg-white/10 rounded-full" />}
                           <span className="text-[11px] font-bold uppercase tracking-widest text-white/90">{meal.name}</span>
                         </div>
-                        <div className="flex items-center gap-6">
-                          <span className="text-[11px] font-black text-[#00FFFF] tracking-tight" style={{ textShadow: '0 0 8px rgba(0,255,255,0.4)' }}>{meal.calories} KCAL</span>
+                        <div className="flex items-center gap-4">
+                          <span className="text-[11px] font-black text-[#00FFFF]">{meal.calories} KCAL</span>
                           <button 
                             onClick={(e) => { e.stopPropagation(); reconstructBioData(meal.name, meal.id); }}
-                            className="p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="p-1"
                           >
-                            {isAnalyzing ? <Loader2 size={12} className="animate-spin text-accent" /> : <RefreshCw size={12} className="text-white/20 hover:text-white" />}
+                            {isAnalyzing ? <Loader2 size={12} className="animate-spin text-accent" /> : <RefreshCw size={12} className="text-white/10 hover:text-white" />}
                           </button>
                         </div>
                       </div>
@@ -330,11 +325,11 @@ export default function JournalPage() {
         )}
       </div>
 
-      {/* DIALOGUES DE SCAN : NOIR & CYAN */}
+      {/* DIALOGUES : DARK & ACCENT */}
       <Dialog open={isCameraOpen} onOpenChange={setIsCameraOpen}>
-        <DialogContent className="bg-black border-accent/40 rounded-none max-w-sm">
+        <DialogContent className="bg-black border-accent/40 rounded-none max-w-sm p-4">
           <DialogHeader><DialogTitle className="text-accent text-center uppercase tracking-[0.4em] font-black text-[10px]">Analyse Optique</DialogTitle></DialogHeader>
-          <div className="relative aspect-video bg-black rounded-none overflow-hidden border border-white/10">
+          <div className="relative aspect-square bg-black border border-white/10 overflow-hidden">
             <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
             {isAnalyzing && (
               <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-4">
@@ -346,18 +341,17 @@ export default function JournalPage() {
           <button 
             onClick={capturePhoto}
             disabled={isAnalyzing}
-            className="w-16 h-16 border-2 border-accent rounded-none mx-auto flex items-center justify-center hover:bg-accent/10 active:scale-95 transition-all mt-4"
+            className="w-14 h-14 border border-accent rounded-none mx-auto flex items-center justify-center hover:bg-accent/10 active:scale-95 transition-all mt-4"
           >
-            <div className="w-10 h-10 bg-accent shadow-[0_0_20px_#00FFFF]" />
+            <div className="w-8 h-8 bg-accent shadow-[0_0_20px_#00FFFF]" />
           </button>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isBarcodeOpen} onOpenChange={setIsBarcodeOpen}>
-        <DialogContent className="bg-black border-accent/40 rounded-none max-w-sm">
+        <DialogContent className="bg-black border-accent/40 rounded-none max-w-sm p-4">
           <DialogHeader><DialogTitle className="text-accent text-center uppercase tracking-[0.4em] font-black text-[10px]">Scan Industriel</DialogTitle></DialogHeader>
           <div id="reader" className="w-full overflow-hidden border border-white/10 min-h-[250px]" />
-          <p className="text-[8px] text-white/20 text-center uppercase tracking-[0.3em] mt-2">Alignement du code-barres requis</p>
         </DialogContent>
       </Dialog>
 
