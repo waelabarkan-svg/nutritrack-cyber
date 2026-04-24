@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -6,7 +7,7 @@ import { useUser, useFirestore, useCollection } from '@/firebase';
 import { BottomNav } from '@/components/bottom-nav';
 import { 
   Plus, Search, Camera, Barcode, X, Info, Zap, Flame, Droplets,
-  AlertTriangle, CheckCircle2, Beer, Soup, Loader2
+  AlertTriangle, CheckCircle2, Beer, Soup, Pizza, Loader2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { collection, query, where } from 'firebase/firestore';
@@ -18,12 +19,12 @@ export default function JournalPage() {
   const db = useFirestore();
   const router = useRouter();
 
-  // États de l'interface
+  // ÉTATS DE L'INTERFACE
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isBarcodeOpen, setIsBarcodeOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Requête Firebase pour l'historique utilisateur (fusion recherche)
+  // REQUÊTE FIREBASE POUR LES ARCHIVES
   const mealsQuery = useMemo(() => {
     if (!user) return null;
     return collection(db, 'users', user.uid, 'meals');
@@ -31,13 +32,15 @@ export default function JournalPage() {
 
   const { data: meals } = useCollection(mealsQuery);
 
-  // MOTEUR DE RECHERCHE GLOBAL
+  // MOTEUR DE RECHERCHE GLOBAL (LOGIQUE PHASE 4)
   const globalSearchResults = useMemo(() => {
     if (!searchTerm || searchTerm.trim().length < 2) return [];
 
     try {
-      // Transformation des données Firebase avec protection .docs (meals est déjà un tableau via useCollection)
-      const firebaseData = Array.isArray(meals) ? meals : [];
+      // Transformation sécurisée des données Firebase
+      const firebaseData = (meals as any)?.docs 
+        ? (meals as any).docs.map((d: any) => ({ id: d.id, ...d.data() }))
+        : (Array.isArray(meals) ? meals : []);
       
       // Fusion des sources : JSON statique + Historique Firebase
       const allItems = [...(foodDb as any[]), ...firebaseData];
@@ -45,7 +48,7 @@ export default function JournalPage() {
       // Filtrage insensible à la casse
       const queryLower = searchTerm.toLowerCase();
       
-      // Utilisation d'un Set pour éviter les doublons par nom
+      // Unicité des résultats
       const seenNames = new Set();
       
       return allItems.filter((item: any) => {
@@ -57,14 +60,14 @@ export default function JournalPage() {
           return true;
         }
         return false;
-      }).slice(0, 15); // Limite pour performance
+      }).slice(0, 15);
     } catch (e) {
-      console.error("Erreur critique du moteur de recherche:", e);
+      console.error("Crash du moteur de recherche:", e);
       return [];
     }
   }, [searchTerm, meals]);
 
-  // Protection d'authentification
+  // PROTECTION D'ACCÈS
   useEffect(() => {
     if (!loading && !user) router.push('/login');
   }, [user, loading, router]);
@@ -73,7 +76,8 @@ export default function JournalPage() {
 
   return (
     <main className="max-w-md mx-auto min-h-screen bg-black text-white relative shadow-[0_0_50px_rgba(0,0,0,0.8)] pb-32">
-      {/* SECTION HEADER NÉON */}
+      
+      {/* SECTION 1 : HEADER NÉON (PHASE 1 & 2) */}
       <div className="p-6 flex justify-between items-center">
         <h1 
           className="font-black text-2xl uppercase tracking-[0.2em] text-white"
@@ -82,26 +86,23 @@ export default function JournalPage() {
           Journal
         </h1>
         
-        {/* BOUTONS ACTIONS CYBER-NÉON */}
         <div className="flex gap-3">
           <button 
             onClick={() => setIsCameraOpen(true)}
             className="w-11 h-11 bg-white/5 border border-accent/30 rounded-lg flex items-center justify-center transition-all hover:bg-accent/10 hover:border-accent hover:shadow-[0_0_15px_rgba(0,242,255,0.4)] active:scale-95 group"
-            title="Scan Optique"
           >
             <Camera size={20} className="text-accent group-hover:scale-110 transition-transform" />
           </button>
           <button 
             onClick={() => setIsBarcodeOpen(true)}
             className="w-11 h-11 bg-white/5 border border-accent/30 rounded-lg flex items-center justify-center transition-all hover:bg-accent/10 hover:border-accent hover:shadow-[0_0_15px_rgba(0,242,255,0.4)] active:scale-95 group"
-            title="Scan Industriel"
           >
             <Barcode size={20} className="text-accent group-hover:scale-110 transition-transform" />
           </button>
         </div>
       </div>
 
-      {/* SECTION RECHERCHE CYBER-NÉON */}
+      {/* SECTION 2 : BARRE DE RECHERCHE (PHASE 3) */}
       <div className="px-6 mb-8">
         <div className="relative group">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
@@ -122,7 +123,7 @@ export default function JournalPage() {
           {searchTerm && (
             <button 
               onClick={() => setSearchTerm('')}
-              className="absolute inset-y-0 right-4 flex items-center text-white/20 hover:text-white transition-colors"
+              className="absolute inset-y-0 right-4 flex items-center text-white/20 hover:text-white"
             >
               <X size={14} />
             </button>
@@ -130,46 +131,61 @@ export default function JournalPage() {
         </div>
       </div>
 
-      {/* RÉSULTATS DE RECHERCHE OU JOURNAL */}
+      {/* SECTION 3 : AFFICHAGE DES RÉSULTATS (PHASE 5) */}
       <div className="px-6 space-y-6">
         {searchTerm ? (
           <div className="space-y-4">
-            <h2 className="text-[9px] font-black uppercase tracking-[0.4em] text-accent neon-text-blue">
-              Résultats de Recherche
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-[9px] font-black uppercase tracking-[0.4em] text-accent neon-text-blue">
+                Résultats de Recherche
+              </h2>
+              <span className="text-[8px] font-black text-white/20 uppercase">{globalSearchResults.length} Archives</span>
+            </div>
+
             {globalSearchResults.length > 0 ? (
               <div className="grid gap-3">
                 {globalSearchResults.map((item: any, idx: number) => (
                   <div 
                     key={idx}
-                    className="cyber-card-blue p-4 flex justify-between items-center group cursor-pointer hover:bg-accent/5"
+                    className="bg-blue-500/5 border border-blue-500/20 p-4 rounded-xl flex items-center justify-between group cursor-pointer hover:bg-blue-500/10 transition-all duration-300"
                   >
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-widest">{item.name || item.product_name}</p>
-                      <p className="text-[8px] text-muted-foreground uppercase font-black mt-1">
-                        {item.calories} kcal • {item.protein}g P • {item.carbs}g G
-                      </p>
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-blue-500/10 border border-blue-500/30 rounded-lg flex items-center justify-center text-blue-400">
+                        {item.isDish ? <Soup size={18} /> : <Pizza size={18} />}
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white">
+                          {item.name || item.product_name}
+                        </p>
+                        <p className="text-[8px] text-white/40 uppercase font-black mt-1">
+                          {item.calories} kcal • {item.protein}g P • {item.carbs}g G
+                        </p>
+                      </div>
                     </div>
-                    <Plus size={16} className="text-accent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Plus 
+                      size={16} 
+                      className="text-accent opacity-40 group-hover:opacity-100 group-hover:scale-125 transition-all" 
+                    />
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-[9px] text-white/20 font-black uppercase tracking-widest italic text-center py-10">
-                Aucune archive correspondante dans la base.
-              </p>
+              <div className="text-center py-20 bg-white/5 border border-dashed border-white/10 rounded-2xl">
+                <p className="text-[9px] text-white/20 font-black uppercase tracking-[0.4em] italic px-4">
+                  SÉQUENCE NON TROUVÉE DANS LES ARCHIVES
+                </p>
+              </div>
             )}
           </div>
         ) : (
-          <div className="text-center py-20">
-            <p className="text-[9px] text-white/20 font-black uppercase tracking-widest italic">
-              Veuillez scanner ou rechercher un aliment
+          /* JOURNAL QUOTIDIEN (À REMPLIR EN PHASE 6) */
+          <div className="text-center py-20 opacity-40">
+            <p className="text-[9px] text-white/40 font-black uppercase tracking-widest italic">
+              Veuillez scanner ou rechercher un aliment pour initialiser le cycle.
             </p>
           </div>
         )}
       </div>
-
-      {/* LES MODALES DE SCAN SERONT INJECTÉES À LA PROCHAINE ÉTAPE */}
 
       <BottomNav />
     </main>
