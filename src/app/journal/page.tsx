@@ -53,11 +53,26 @@ export default function JournalPage() {
 
   const { data: meals } = useCollection(mealsQuery);
 
+  // Recherche hybride : DB locale + Historique récent
   const filteredFood = useMemo(() => {
-    if (!searchTerm) return [];
-    return foodDb
-      .filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()))
-      .slice(0, 8);
+    if (!searchTerm || searchTerm.length < 2) return [];
+    
+    const searchLower = searchTerm.toLowerCase();
+    
+    // 1. Filtrer la DB locale
+    const dbResults = foodDb.filter(f => f.name.toLowerCase().includes(searchLower));
+    
+    // 2. Filtrer l'historique récent (localStorage via biometric_memory)
+    const history = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
+    const historyResults = history
+      .filter((h: any) => h.name?.toLowerCase().includes(searchLower))
+      .map((h: any) => ({ ...h, isFromHistory: true }));
+
+    // Fusion et dédoublonnage par nom
+    const combined = [...historyResults, ...dbResults];
+    const unique = Array.from(new Map(combined.map(item => [item.name.toUpperCase(), item])).values());
+    
+    return unique.slice(0, 10);
   }, [searchTerm]);
 
   const announceResults = (data: any) => {
@@ -185,10 +200,30 @@ export default function JournalPage() {
     }
   };
 
+  const updateBiometricMemory = (meal: any) => {
+    const memory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
+    const newEntry = {
+      id: Date.now(),
+      name: meal.name,
+      calories: meal.calories,
+      protein: meal.protein,
+      carbs: meal.carbs,
+      fat: meal.fat,
+      vitamins: meal.vitamins,
+      minerals: meal.minerals,
+      fiber: meal.fiber,
+      date: today,
+      imageUrl: meal.imageUrl,
+      scans: 1
+    };
+    memory.push(newEntry);
+    localStorage.setItem('biometric_memory', JSON.stringify(memory.slice(-50))); // Garder les 50 derniers
+  };
+
   const addMeal = async (food: any, isScan = false) => {
     if (!user) return;
     try {
-      await addDoc(collection(db, 'users', user.uid, 'meals'), {
+      const mealData = {
         name: food.name.toUpperCase(),
         calories: Number(food.calories),
         protein: Number(food.protein),
@@ -201,8 +236,11 @@ export default function JournalPage() {
         date: today,
         imageUrl: food.imageUrl || null,
         createdAt: new Date().toISOString(),
-        isAiEstimated: isScan && (!food.imageUrl || !food.imageUrl.startsWith('http'))
-      });
+        isAiEstimated: isScan
+      };
+
+      await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
+      updateBiometricMemory(mealData);
 
       if (isScan) {
         const res = addXp(50, 'scan');
@@ -214,6 +252,7 @@ export default function JournalPage() {
       setScanningImage(null);
       setIsScannerOpen(false);
       setIsBarcodeOpen(false);
+      setSearchTerm('');
       toast({ title: "SYSTÈME MIS À JOUR" });
     } catch (e) {
       toast({ variant: "destructive", title: "ERREUR SYNCHRO" });
@@ -304,7 +343,7 @@ export default function JournalPage() {
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/40" size={18} />
-                <Input className="bg-white/5 border-primary/20 h-14 pl-12 font-black uppercase tracking-widest rounded-[12px]" placeholder="RECHERCHER..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                <Input className="bg-white/5 border-primary/20 h-14 pl-12 font-black uppercase tracking-widest rounded-[12px]" placeholder="RECHERCHER DANS L'HISTORIQUE..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
               </div>
               
               <div className="flex gap-2">
@@ -427,18 +466,27 @@ export default function JournalPage() {
             </div>
           </div>
 
-          {(filteredFood.length > 0 || searchTerm.length > 2) && (
-            <div className="space-y-2">
-              {filteredFood.map((food, idx) => (
+          {(filteredFood.length > 0) && (
+            <div className="space-y-2 animate-in fade-in slide-in-from-top-4 duration-300">
+              <h3 className="text-[8px] font-black text-primary/40 uppercase tracking-widest px-1">Résultats de la recherche historique</h3>
+              {filteredFood.map((food: any, idx) => (
                 <div key={idx} className="cyber-card-yellow p-4 flex justify-between items-center bg-black/90 border-primary/40 rounded-[12px]">
-                  <div><p className="font-black text-xs uppercase">{food.name}</p><p className="text-[9px] text-muted-foreground">{food.calories} KCAL | P: {food.protein}G</p></div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded border border-primary/20 bg-black overflow-hidden">
+                       {food.imageUrl ? <img src={food.imageUrl} className="w-full h-full object-cover" alt="" /> : <Info className="w-full h-full p-2 text-primary/20" />}
+                    </div>
+                    <div>
+                      <p className="font-black text-xs uppercase">{food.name}</p>
+                      <p className="text-[9px] text-muted-foreground">{food.calories} KCAL | P: {food.protein}G</p>
+                    </div>
+                  </div>
                   <Button size="icon" className="w-10 h-10 border-primary" onClick={() => addMeal(food)}><Plus size={18} /></Button>
                 </div>
               ))}
               {!aiResult && searchTerm.length > 3 && (
                 <Button onClick={handleAiEstimate} disabled={aiEstimating} className="w-full h-14 border-[#a855f7] bg-black/80 text-[#a855f7]">
                   {aiEstimating ? <Loader2 className="animate-spin mr-2" size={16} /> : <Sparkles className="mr-2" size={16} />}
-                  <span className="font-black text-[10px] tracking-[0.2em] uppercase">ANALYSE SMART DISH</span>
+                  <span className="font-black text-[10px] tracking-[0.2em] uppercase">NOUVELLE ESTIMATION SMART</span>
                 </Button>
               )}
             </div>

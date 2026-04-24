@@ -28,21 +28,20 @@ export async function scanDish(input: { photoDataUri: string }) {
               {
                 type: "text",
                 text: `Analyse visuellement ce plat. Estime les ingrédients, les calories et les macros (P/G/L). 
-                Analyse moléculaire profonde requise pour : 
-                - Fibres (g)
-                - Vitamines (Priorité: A, C, D, B12)
-                - Sels Minéraux (Priorité: Fer, Magnésium, Zinc)
+                Analyse moléculaire profonde requise. 
                 
-                Réponds EXCLUSIVEMENT en français avec un objet JSON pur (sans balises markdown) respectant cette structure : 
+                Réponds EXCLUSIVEMENT en français avec un objet JSON pur (sans balises markdown) respectant cette structure exacte : 
                 {
                   "name": "nom du plat",
                   "calories": nombre,
                   "protein": nombre,
                   "carbs": nombre,
                   "fat": nombre,
-                  "fiber": nombre,
-                  "vitamins": "Liste formatée (ex: Vitamine B12 (élevée), B6)",
-                  "minerals": "Liste formatée (ex: Fer (riche), Zinc)",
+                  "micronutrients": {
+                    "vitamines": ["Vitamine B12 (élevée)", "Vitamine B6"],
+                    "mineraux": ["Fer (riche)", "Zinc", "Magnésium"],
+                    "fibres": "nombre + g"
+                  },
                   "aiAnalysis": "courte phrase style cyberpunk (max 10 mots)",
                   "healthAdvice": "ton conseil nutritionnel avec du caractère"
                 }`
@@ -69,7 +68,13 @@ export async function scanDish(input: { photoDataUri: string }) {
     const data = await response.json();
     const result = JSON.parse(data.choices[0].message.content);
     
-    return result;
+    // Normalisation pour le frontend
+    return {
+      ...result,
+      fiber: parseFloat(result.micronutrients?.fibres) || 0,
+      vitamins: result.micronutrients?.vitamines?.join(', '),
+      minerals: result.micronutrients?.mineraux?.join(', ')
+    };
 
   } catch (error: any) {
     console.error("Erreur Vision Engine (Groq):", error);
