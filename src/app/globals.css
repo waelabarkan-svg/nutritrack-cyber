@@ -16,13 +16,13 @@
     --secondary-foreground: 0 0% 100%;
     --muted: 0 0% 10%;
     --muted-foreground: 0 0% 40%;
-    --accent: 183 100% 50%; /* Bleu Électrique #00f2ff */
+    --accent: 183 100% 50%; /* Cyan Électrique #00f2ff */
     --accent-foreground: 0 0% 100%;
-    --destructive: 340 100% 50%; /* Rouge Magenta #ff0055 */
+    --destructive: 346 100% 50%; /* Rouge Rubis Intense #ff003c */
     --destructive-foreground: 0 0% 100%;
     --border: 183 100% 50% / 0.2;
     --input: 0 0% 5%;
-    --ring: 51 98% 63%;
+    --ring: 346 100% 50%;
     --radius: 1rem;
     --violet: 270 91% 65%; /* Violet Néon #a855f7 */
   }
@@ -44,7 +44,7 @@
   }
   
   .cyber-card-red {
-    @apply bg-black/60 backdrop-blur-xl border border-destructive/40 shadow-[0_0_30px_rgba(255,0,85,0.25)] transition-all duration-500 rounded-[16px];
+    @apply bg-black/60 backdrop-blur-xl border border-destructive/40 shadow-[0_0_30px_rgba(255,0,60,0.25)] transition-all duration-500 rounded-[16px];
   }
 
   .cyber-card-yellow {
@@ -64,7 +64,7 @@
   }
 
   .neon-glow-red {
-    @apply shadow-[0_0_25px_rgba(255,0,85,0.6)];
+    @apply shadow-[0_0_25px_rgba(255,0,60,0.6)];
   }
 
   .neon-glow-violet {
@@ -80,7 +80,7 @@
   }
 
   .neon-text-red {
-    text-shadow: 0 0 15px rgba(255,0,85,0.9);
+    text-shadow: 0 0 15px rgba(255,0,60,0.9);
   }
 
   .neon-text-violet {
@@ -103,7 +103,6 @@
     @apply h-[1px] w-full bg-gradient-to-r from-transparent via-[#a855f7]/60 to-transparent my-8;
   }
 
-  /* Animations de Rang */
   .animate-neon-border {
     position: relative;
     overflow: hidden;

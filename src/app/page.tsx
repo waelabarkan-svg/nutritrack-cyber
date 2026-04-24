@@ -186,12 +186,12 @@ export default function Home() {
                   size={isMobile ? 220 : 260} 
                   strokeWidth={4} 
                   progress={calProgress} 
-                  color="#ff0055"
+                  color="#ff003c"
                 >
                   <div className="flex flex-col items-center">
                     <span className="text-[8px] sm:text-[10px] text-white/40 uppercase font-black tracking-[0.5em] mb-1 sm:mb-2 text-center">Flux Énergie</span>
                     <span className="text-4xl sm:text-6xl font-black tracking-tighter neon-text-red">{dailyLog.calories}</span>
-                    <div className="w-16 sm:w-20 h-[1px] bg-destructive/50 my-4 sm:my-5 shadow-[0_0_20px_rgba(255,0,85,0.8)]" />
+                    <div className="w-16 sm:w-20 h-[1px] bg-destructive/50 my-4 sm:my-5 shadow-[0_0_20px_rgba(255,0,60,0.8)]" />
                     <span className="text-[8px] sm:text-[9px] text-primary uppercase font-black tracking-[0.3em] sm:tracking-[0.4em] neon-text-yellow">Objectif {goals.calories}</span>
                   </div>
                 </CircularProgress>
@@ -260,9 +260,9 @@ export default function Home() {
 
         <button 
           onClick={() => router.push('/journal')}
-          className="fixed bottom-32 right-6 sm:right-8 w-14 h-14 sm:w-16 sm:h-16 bg-black text-primary border-2 border-primary shadow-[0_0_30px_rgba(253,224,71,0.6)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-40 rounded-none group"
+          className="fixed bottom-32 right-6 sm:right-8 w-14 h-14 sm:w-16 sm:h-16 bg-black text-destructive border-2 border-destructive shadow-[0_0_30px_rgba(255,0,60,0.6)] flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-40 rounded-none group"
         >
-          <Plus size={24} strokeWidth={3} className="group-hover:neon-text-yellow" />
+          <Plus size={24} strokeWidth={3} className="group-hover:neon-text-red" />
         </button>
 
         <BottomNav />
