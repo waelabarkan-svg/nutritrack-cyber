@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -194,16 +193,11 @@ export default function JournalPage() {
         isAiEstimated: isScan
       };
       
-      // Archivage définitif en base de données
       await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
-      
-      // Mise à jour de la mémoire locale pour la recherche rapide
       updateBiometricMemory(mealData);
       
-      // Attribution XP
       if (isScan) addXp(50, 'scan');
       
-      // Réinitialisation UI
       setAiResult(null);
       setBarcodeResult(null);
       setScanningImage(null);
@@ -211,9 +205,9 @@ export default function JournalPage() {
       setIsBarcodeOpen(false);
       setSearchTerm('');
       
-      toast({ title: "ARCHIVE SÉCURISÉE", description: "Enregistrement permanent effectué." });
+      toast({ title: "ARCHIVE SÉCURISÉE" });
     } catch (e) {
-      toast({ variant: "destructive", title: "ERREUR SYNCHRO", description: "Échec de l'enregistrement en base." });
+      toast({ variant: "destructive", title: "ERREUR SYNCHRO" });
     }
   };
 
@@ -282,8 +276,8 @@ export default function JournalPage() {
       <main className="px-4 sm:px-6 pt-12 sm:pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white">
         <div className="flex justify-between items-start mb-8 sm:mb-12">
           <div className="space-y-1">
-            <p className="text-primary/60 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.5em] neon-text-yellow">Interface Log</p>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase neon-text-yellow" style={{ textShadow: '0 0 10px #fde047, 0 0 20px #fde047' }}>Journal de Bord</h1>
+            <p className="text-[#a855f7]/60 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.5em] neon-text-violet">Interface Log</p>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase neon-text-violet" style={{ textShadow: '0 0 10px #a855f7, 0 0 20px #a855f7' }}>Journal de Bord</h1>
           </div>
           <Button variant="ghost" size="icon" className={`w-10 h-10 border transition-all ${isMuted ? 'text-destructive border-destructive/20' : 'text-accent border-accent/20'}`} onClick={() => { setIsMuted(!isMuted); window.speechSynthesis.cancel(); }}>
             {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
@@ -298,7 +292,7 @@ export default function JournalPage() {
                 onClick={() => setMealType(type)} 
                 className={`px-6 py-2 text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap rounded-full flex items-center ${
                   mealType === type 
-                  ? 'bg-primary text-black border-primary shadow-[0_0_15px_rgba(253,224,71,0.5)]' 
+                  ? 'bg-[#a855f7] text-black border-[#a855f7] shadow-[0_0_15px_rgba(168,85,247,0.5)]' 
                   : 'border-white/10 text-muted-foreground'
                 }`}
               >
@@ -310,8 +304,8 @@ export default function JournalPage() {
           
           <div className="flex gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/40" size={18} />
-              <Input className="bg-white/5 border-primary/20 h-14 pl-12 font-black uppercase rounded-none focus:ring-primary/40" placeholder="RECHERCHER..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-destructive/40" size={18} />
+              <Input className="bg-white/5 border-destructive/20 h-14 pl-12 font-black uppercase rounded-none focus:ring-destructive/40" placeholder="RECHERCHER..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
             <div className="flex gap-3">
               <Dialog open={isScannerOpen} onOpenChange={(o) => { setIsScannerOpen(o); if(o) setTimeout(startCamera,100); else stopCamera(); }}>
@@ -414,7 +408,7 @@ export default function JournalPage() {
                 </div>
               ))}
               {!aiResult && searchTerm.length > 3 && (
-                <Button onClick={handleAiEstimate} disabled={aiEstimating} className="w-full h-14 border-[#00FFFF]/40 bg-black text-[#00FFFF] rounded-none font-black text-[10px] tracking-widest hover:bg-[#00FFFF]/10">
+                <Button onClick={handleAiEstimate} disabled={aiEstimating} className="w-full h-14 border-[#a855f7]/40 bg-black text-[#a855f7] rounded-none font-black text-[10px] tracking-widest hover:bg-[#a855f7]/10">
                   {aiEstimating ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2" />} ESTIMATION MOLÉCULAIRE IA
                 </Button>
               )}
@@ -500,8 +494,8 @@ export default function JournalPage() {
                       <span className="text-[12px] font-black text-white">{selectedMeal.carbs}g</span>
                       <span className="text-[6px] font-black text-muted-foreground uppercase">Gluc</span>
                     </div>
-                    <div className="flex flex-col items-center justify-center border border-accent/20 bg-black/40 p-3 rounded-none">
-                      <Droplet size={14} className="text-accent mb-1" />
+                    <div className="flex flex-col items-center justify-center border border-[#a855f7]/20 bg-black/40 p-3 rounded-none">
+                      <Droplet size={14} className="text-[#a855f7] mb-1" />
                       <span className="text-[12px] font-black text-white">{selectedMeal.fat}g</span>
                       <span className="text-[6px] font-black text-muted-foreground uppercase">Lipid</span>
                     </div>

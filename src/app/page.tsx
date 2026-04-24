@@ -105,13 +105,13 @@ export default function Home() {
       <main className="px-4 sm:px-6 pt-12 sm:pt-16 max-w-md mx-auto min-h-screen bg-black text-white pb-32">
         <header className="flex justify-between items-start mb-12 sm:mb-16">
           <div className="space-y-1">
-            <p className="text-accent/60 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.4em] sm:tracking-[0.5em] neon-text-blue">Système en ligne</p>
-            <h1 className="text-lg sm:text-xl font-black tracking-[0.15em] sm:tracking-[0.2em] neon-text-blue uppercase">Accueil</h1>
+            <p className="text-[#a855f7]/60 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.4em] sm:tracking-[0.5em] neon-text-violet">Système en ligne</p>
+            <h1 className="text-lg sm:text-xl font-black tracking-[0.15em] sm:tracking-[0.2em] neon-text-violet uppercase">Accueil</h1>
           </div>
           <div className="flex flex-col items-end gap-2">
             <Button 
               onClick={handleCoachClick}
-              className="h-9 px-4 bg-black border-accent/40 text-accent text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-accent/10 hover:border-accent shadow-[0_0_15px_rgba(0,242,255,0.2)]"
+              className="h-9 px-4 bg-black border-[#a855f7]/40 text-[#a855f7] text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-[#a855f7]/10 hover:border-[#a855f7] shadow-[0_0_15px_rgba(168,85,247,0.2)]"
             >
               <Zap size={14} className="mr-2" />
               Liaison Coach
@@ -125,25 +125,25 @@ export default function Home() {
         <Dialog open={isCoachOpen} onOpenChange={setIsCoachOpen}>
           <DialogContent className={cn(
             "bg-black/95 backdrop-blur-2xl border-2 rounded-none p-8 max-w-sm transition-all duration-500 shadow-[0_0_50px_rgba(0,0,0,0.8)]",
-            coachResponse?.status === 'urgent' ? "border-destructive neon-glow-red" : "border-accent neon-glow-blue"
+            coachResponse?.status === 'urgent' ? "border-destructive neon-glow-red" : "border-[#a855f7] neon-glow-violet"
           )}>
             <DialogHeader>
               <DialogTitle className="sr-only">Diagnostic du Coach IA</DialogTitle>
-              <DialogDescription className="sr-only">Analyse neurale de vos performances biométriques via Groq Llama-3.</DialogDescription>
+              <DialogDescription className="sr-only">Analyse neurale de vos performances biométriques.</DialogDescription>
             </DialogHeader>
 
             <div className="space-y-6">
               <div className="flex items-center gap-3">
                 <div className={cn(
                   "w-12 h-12 border flex items-center justify-center",
-                  coachResponse?.status === 'urgent' ? "border-destructive text-destructive" : "border-accent text-accent"
+                  coachResponse?.status === 'urgent' ? "border-destructive text-destructive" : "border-[#a855f7] text-[#a855f7]"
                 )}>
                   {isCoachLoading ? <Loader2 className="animate-spin" size={24} /> : coachResponse?.status === 'urgent' ? <AlertTriangle size={24} className="animate-pulse" /> : <Cpu size={24} />}
                 </div>
                 <div>
                   <h3 className={cn(
                     "text-[10px] font-black uppercase tracking-[0.4em]",
-                    coachResponse?.status === 'urgent' ? "text-destructive neon-text-red" : "text-accent neon-text-blue"
+                    coachResponse?.status === 'urgent' ? "text-destructive neon-text-red" : "text-[#a855f7] neon-text-violet"
                   )}>
                     {isCoachLoading ? "Synchronisation..." : "Diagnostic Neural"}
                   </h3>
@@ -169,7 +169,7 @@ export default function Home() {
                 onClick={() => setIsCoachOpen(false)}
                 className={cn(
                   "w-full h-12 font-black text-[10px] tracking-[0.3em] rounded-none border-2 bg-black",
-                  coachResponse?.status === 'urgent' ? "border-destructive text-destructive hover:bg-destructive/10" : "border-accent text-accent hover:bg-accent/10"
+                  coachResponse?.status === 'urgent' ? "border-destructive text-destructive hover:bg-destructive/10" : "border-[#a855f7] text-[#a855f7] hover:bg-[#a855f7]/10"
                 )}
               >
                 COMPRIS_AGENT
@@ -203,7 +203,7 @@ export default function Home() {
           </Tooltip>
         </section>
 
-        <div className="laser-line-blue mb-12" />
+        <div className="laser-line-violet mb-12" />
 
         <section className="grid grid-cols-3 gap-2 sm:gap-6 mb-12">
           <Tooltip>
@@ -239,11 +239,11 @@ export default function Home() {
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex flex-col items-center text-center space-y-3 sm:space-y-4 cursor-help">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 border border-accent/40 flex items-center justify-center bg-black shadow-[0_0_15px_rgba(0,242,255,0.2)] rounded-none">
-                   <Droplet className="text-accent" size={16} />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 border border-[#a855f7]/40 flex items-center justify-center bg-black shadow-[0_0_15px_rgba(168,85,247,0.2)] rounded-none">
+                   <Droplet className="text-[#a855f7]" size={16} />
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] sm:text-xs font-black block neon-text-blue tracking-tight">{dailyLog.fat}g / {goals.fat}g</span>
+                  <span className="text-[10px] sm:text-xs font-black block neon-text-violet tracking-tight">{dailyLog.fat}g / {goals.fat}g</span>
                   <span className="text-[7px] sm:text-[8px] text-white/40 uppercase font-black tracking-widest block">Lipides</span>
                 </div>
               </div>

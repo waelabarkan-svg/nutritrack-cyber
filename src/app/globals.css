@@ -24,6 +24,7 @@
     --input: 0 0% 5%;
     --ring: 51 98% 63%;
     --radius: 1rem;
+    --violet: 270 91% 65%; /* Violet Néon #a855f7 */
   }
 }
 
@@ -50,6 +51,10 @@
     @apply bg-black/60 backdrop-blur-xl border border-primary/40 shadow-[0_0_30px_rgba(253,224,71,0.25)] transition-all duration-500 rounded-[16px];
   }
 
+  .cyber-card-violet {
+    @apply bg-black/60 backdrop-blur-xl border border-[#a855f7]/40 shadow-[0_0_30px_rgba(168,85,247,0.25)] transition-all duration-500 rounded-[16px];
+  }
+
   .neon-glow-blue {
     @apply shadow-[0_0_25px_rgba(0,242,255,0.6)];
   }
@@ -60,6 +65,10 @@
 
   .neon-glow-red {
     @apply shadow-[0_0_25px_rgba(255,0,85,0.6)];
+  }
+
+  .neon-glow-violet {
+    @apply shadow-[0_0_25px_rgba(168,85,247,0.6)];
   }
 
   .neon-text-blue {
@@ -74,6 +83,10 @@
     text-shadow: 0 0 15px rgba(255,0,85,0.9);
   }
 
+  .neon-text-violet {
+    text-shadow: 0 0 15px rgba(168,85,247,0.9);
+  }
+
   .laser-line-blue {
     @apply h-[1px] w-full bg-gradient-to-r from-transparent via-accent/60 to-transparent my-8;
   }
@@ -84,6 +97,10 @@
 
   .laser-line-yellow {
     @apply h-[1px] w-full bg-gradient-to-r from-transparent via-primary/60 to-transparent my-8;
+  }
+
+  .laser-line-violet {
+    @apply h-[1px] w-full bg-gradient-to-r from-transparent via-[#a855f7]/60 to-transparent my-8;
   }
 
   /* Animations de Rang */
