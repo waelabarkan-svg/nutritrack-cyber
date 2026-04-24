@@ -1,7 +1,7 @@
-
 'use server';
 /**
  * @fileOverview Flux IA pour l'estimation nutritionnelle textuelle.
+ * Version Cyber-Optimisée avec estimation des micro-nutriments.
  */
 
 import { ai } from '@/ai/genkit';
@@ -35,7 +35,7 @@ const prompt = ai.definePrompt({
   input: { schema: EstimateDishInputSchema },
   prompt: `Tu es un Expert Nutritionniste Cyberpunk. Analyse le plat : "{{{dishName}}}".
   
-  Estime les valeurs pour une portion standard, incluant les fibres, vitamines et minéraux.
+  Estime les valeurs pour une portion standard, incluant les fibres (g), les vitamines (priorité A, C, D, B12) et les minéraux (priorité Fer, Magnésium, Zinc).
   
   IMPORTANT : Réponds EXCLUSIVEMENT avec un objet JSON brut sans balises Markdown. 
   Ta réponse doit commencer par { et finir par }.
@@ -48,8 +48,8 @@ const prompt = ai.definePrompt({
     "carbs": nombre,
     "fat": nombre,
     "fiber": nombre,
-    "vitamins": "liste",
-    "minerals": "liste",
+    "vitamins": "liste des vitamines estimées",
+    "minerals": "liste des minéraux estimés",
     "aiAnalysis": "phrase courte cyberpunk (max 10 mots)"
   }`,
 });

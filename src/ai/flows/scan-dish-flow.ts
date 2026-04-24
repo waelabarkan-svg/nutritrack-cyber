@@ -1,9 +1,8 @@
-
 'use server';
 
 /**
  * @fileOverview Flux de scan optique utilisant GROQ avec le modèle Llama 4 Scout.
- * Inclus désormais l'estimation des micro-nutriments.
+ * Analyse approfondie incluant macros et micro-nutriments spécifiques (Vitamines A, C, D, B12, Fer, Magnésium, Zinc).
  */
 
 export async function scanDish(input: { photoDataUri: string }) {
@@ -29,7 +28,11 @@ export async function scanDish(input: { photoDataUri: string }) {
               {
                 type: "text",
                 text: `Analyse visuellement ce plat. Estime les ingrédients, les calories et les macros (P/G/L). 
-                Ajoute une estimation des micro-nutriments : Fibres (g), Vitamines (liste courte), et Sels Minéraux (liste courte).
+                Analyse moléculaire profonde requise pour les micro-nutriments : 
+                - Fibres (g)
+                - Vitamines (Priorité: A, C, D, B12)
+                - Sels Minéraux (Priorité: Fer, Magnésium, Zinc)
+                
                 Réponds EXCLUSIVEMENT en français avec un objet JSON pur (sans balises markdown) respectant cette structure : 
                 {
                   "name": "nom du plat",
@@ -38,8 +41,8 @@ export async function scanDish(input: { photoDataUri: string }) {
                   "carbs": nombre,
                   "fat": nombre,
                   "fiber": nombre,
-                  "vitamins": "ex: A, C, B12",
-                  "minerals": "ex: Fer, Magnésium",
+                  "vitamins": "liste des vitamines détectées ou estimées",
+                  "minerals": "liste des minéraux détectés ou estimés",
                   "aiAnalysis": "courte phrase style cyberpunk (max 10 mots)",
                   "healthAdvice": "ton conseil nutritionnel avec du caractère"
                 }`

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Plus, Trash2, Search, Camera, Upload, X, Check, Loader2, Scan, Volume2, VolumeX, Sparkles, Barcode, ImageOff, Info, Zap, Flame, Wheat, Droplet } from 'lucide-react';
+import { Plus, Trash2, Search, Camera, Upload, X, Check, Loader2, Scan, Volume2, VolumeX, Sparkles, Barcode, ImageOff, Info, Zap, Flame, Wheat, Droplet, AlertCircle } from 'lucide-react';
 import { collection, addDoc, query, where, deleteDoc, doc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import foodDb from '@/lib/food-db.json';
@@ -136,15 +136,18 @@ export default function JournalPage() {
         const p = data.product;
         const realImageUrl = p.image_front_url || p.image_url || p.selected_images?.front?.display?.fr || p.selected_images?.front?.display?.en || null;
         
+        // Extraction avancée des micronutriments depuis OpenFoodFacts
+        const getNutrient = (key: string) => Math.round(p.nutriments[key] || 0);
+        
         const result = {
           name: p.product_name || "PRODUIT INCONNU",
-          calories: Math.round(p.nutriments['energy-kcal_100g'] || 0),
-          protein: Math.round(p.nutriments.proteins_100g || 0),
-          carbs: Math.round(p.nutriments.carbohydrates_100g || 0),
-          fat: Math.round(p.nutriments.fat_100g || 0),
-          fiber: Math.round(p.nutriments.fiber_100g || 0),
-          vitamins: p.vitamins_tags?.map((v: string) => v.split(':').pop()).join(', ') || "Non répertorié",
-          minerals: p.minerals_tags?.map((m: string) => m.split(':').pop()).join(', ') || "Non répertorié",
+          calories: getNutrient('energy-kcal_100g'),
+          protein: getNutrient('proteins_100g'),
+          carbs: getNutrient('carbohydrates_100g'),
+          fat: getNutrient('fat_100g'),
+          fiber: getNutrient('fiber_100g'),
+          vitamins: p.vitamins_tags?.map((v: string) => v.split(':').pop()?.replace('-', ' ')?.toUpperCase()).join(', ') || "Non répertorié",
+          minerals: p.minerals_tags?.map((m: string) => m.split(':').pop()?.replace('-', ' ')?.toUpperCase()).join(', ') || "Non répertorié",
           healthAdvice: "Produit industriel identifié. Intégrité nutritionnelle vérifiée.",
           imageUrl: realImageUrl
         };
@@ -518,20 +521,30 @@ export default function JournalPage() {
                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/70 flex items-center gap-2">
                       <Info size={12} /> Micro-Nutriments
                     </h3>
-                    <div className="grid grid-cols-1 gap-3">
-                      <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/5">
-                        <span className="text-[9px] font-black text-muted-foreground uppercase">Fibres</span>
-                        <span className="text-xs font-black text-white">{selectedMeal.fiber || 0} g</span>
+                    
+                    {(!selectedMeal.vitamins || selectedMeal.vitamins === "Non détecté") && (!selectedMeal.minerals || selectedMeal.minerals === "Non détecté") && !selectedMeal.fiber ? (
+                      <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-3">
+                        <AlertCircle size={16} className="text-destructive shrink-0" />
+                        <p className="text-[9px] font-black text-destructive uppercase tracking-widest leading-tight">
+                          DONNÉES MICRO-NUTRITIONNELLES NON DISPONIBLES POUR CETTE ARCHIVE ANCIENNE
+                        </p>
                       </div>
-                      <div className="flex flex-col gap-1.5 p-3 bg-white/5 rounded-lg border border-white/5">
-                        <span className="text-[9px] font-black text-muted-foreground uppercase">Vitamines</span>
-                        <span className="text-[10px] font-black text-accent neon-text-blue">{selectedMeal.vitamins || "Non détecté"}</span>
+                    ) : (
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/5">
+                          <span className="text-[9px] font-black text-muted-foreground uppercase">Fibres</span>
+                          <span className="text-xs font-black text-white">{selectedMeal.fiber || 0} g</span>
+                        </div>
+                        <div className="flex flex-col gap-1.5 p-3 bg-white/5 rounded-lg border border-white/5">
+                          <span className="text-[9px] font-black text-muted-foreground uppercase">Vitamines</span>
+                          <span className="text-[10px] font-black text-accent neon-text-blue">{selectedMeal.vitamins || "Non détecté"}</span>
+                        </div>
+                        <div className="flex flex-col gap-1.5 p-3 bg-white/5 rounded-lg border border-white/5">
+                          <span className="text-[9px] font-black text-muted-foreground uppercase">Sels Minéraux</span>
+                          <span className="text-[10px] font-black text-primary neon-text-yellow">{selectedMeal.minerals || "Non détecté"}</span>
+                        </div>
                       </div>
-                      <div className="flex flex-col gap-1.5 p-3 bg-white/5 rounded-lg border border-white/5">
-                        <span className="text-[9px] font-black text-muted-foreground uppercase">Sels Minéraux</span>
-                        <span className="text-[10px] font-black text-primary neon-text-yellow">{selectedMeal.minerals || "Non détecté"}</span>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
