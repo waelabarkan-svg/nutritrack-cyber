@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -68,7 +69,7 @@ export default function JournalPage() {
   const announceResults = (data: any) => {
     if (isMuted || typeof window === 'undefined' || !window.speechSynthesis) return;
     const formatValue = (val: any) => (val !== undefined && val !== null ? val : 'non détecté');
-    const script = `Analyse terminée. Produit : ${data.name}. Apport énergétique : ${formatValue(data.calories)} calories. Protéines : ${formatValue(data.protein)} grammes. Lipides : ${formatValue(data.fat)} grammes. Glucides : ${formatValue(data.carbs)} grammes.`;
+    const script = `Analyse terminée. Produit : ${data.name}. Apport énergétique : ${formatValue(data.calories)} calories. Protéines : ${formatValue(data.protein)} grammes.`;
     
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(script);
@@ -121,7 +122,7 @@ export default function JournalPage() {
       if (data.status === 1 && data.product) {
         const p = data.product;
         const result = {
-          name: p.product_name || "PRODUIT INCONNU",
+          name: (p.product_name || "PRODUIT INCONNU").toUpperCase(),
           calories: Math.round(p.nutriments['energy-kcal_100g'] || 0),
           protein: Math.round(p.nutriments['proteins_100g'] || 0),
           carbs: Math.round(p.nutriments['carbohydrates_100g'] || 0),
@@ -168,15 +169,21 @@ export default function JournalPage() {
     }
   };
 
+  const updateBiometricMemory = (meal: any) => {
+    const memory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
+    memory.push(meal);
+    localStorage.setItem('biometric_memory', JSON.stringify(memory.slice(-50)));
+  };
+
   const addMeal = async (food: any, isScan = false) => {
     if (!user) return;
     try {
       const mealData = {
         name: food.name.toUpperCase(),
-        calories: Number(food.calories),
-        protein: Number(food.protein),
-        carbs: Number(food.carbs),
-        fat: Number(food.fat),
+        calories: Number(food.calories) || 0,
+        protein: Number(food.protein) || 0,
+        carbs: Number(food.carbs) || 0,
+        fat: Number(food.fat) || 0,
         fiber: Number(food.fiber || 0),
         vitamins: food.vitamins || null,
         minerals: food.minerals || null,
@@ -186,17 +193,27 @@ export default function JournalPage() {
         createdAt: new Date().toISOString(),
         isAiEstimated: isScan
       };
+      
+      // Archivage définitif en base de données
       await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
+      
+      // Mise à jour de la mémoire locale pour la recherche rapide
+      updateBiometricMemory(mealData);
+      
+      // Attribution XP
       if (isScan) addXp(50, 'scan');
+      
+      // Réinitialisation UI
       setAiResult(null);
       setBarcodeResult(null);
       setScanningImage(null);
       setIsScannerOpen(false);
       setIsBarcodeOpen(false);
       setSearchTerm('');
-      toast({ title: "SYSTÈME MIS À JOUR" });
+      
+      toast({ title: "ARCHIVE SÉCURISÉE", description: "Enregistrement permanent effectué." });
     } catch (e) {
-      toast({ variant: "destructive", title: "ERREUR SYNCHRO" });
+      toast({ variant: "destructive", title: "ERREUR SYNCHRO", description: "Échec de l'enregistrement en base." });
     }
   };
 
@@ -268,51 +285,45 @@ export default function JournalPage() {
             <p className="text-primary/60 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.5em] neon-text-yellow">Interface Log</p>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase neon-text-yellow" style={{ textShadow: '0 0 10px #fde047, 0 0 20px #fde047' }}>Journal de Bord</h1>
           </div>
-          <Button variant="ghost" size="icon" className={`w-10 h-10 border transition-all ${isMuted ? 'text-destructive border-destructive/20' : 'text-accent border-accent/20 active:shadow-[0_0_15px_rgba(0,242,255,0.5)]'}`} onClick={() => { setIsMuted(!isMuted); window.speechSynthesis.cancel(); }}>
+          <Button variant="ghost" size="icon" className={`w-10 h-10 border transition-all ${isMuted ? 'text-destructive border-destructive/20' : 'text-accent border-accent/20'}`} onClick={() => { setIsMuted(!isMuted); window.speechSynthesis.cancel(); }}>
             {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
           </Button>
         </div>
 
         <section className="mb-12 space-y-6">
-          <div className="flex gap-3 overflow-x-auto pb-6 px-1 scrollbar-hide -mx-1">
+          <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
             {(['petit-déjeuner', 'déjeuner', 'dîner', 'snack', 'boisson'] as MealType[]).map((type) => (
-              <Button
-                key={type}
-                variant={mealType === type ? "default" : "outline"}
-                onClick={() => setMealType(type)}
-                className={`h-10 rounded-full px-5 text-[9px] font-black uppercase tracking-[0.2em] whitespace-nowrap transition-all duration-500 ${
+              <button 
+                key={type} 
+                onClick={() => setMealType(type)} 
+                className={`px-6 py-2 text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap rounded-full flex items-center ${
                   mealType === type 
-                    ? 'bg-primary text-black border-primary shadow-[0_0_20px_rgba(253,224,71,0.6)]' 
-                    : 'bg-black/40 border-white/10 text-white/30 hover:text-white/60'
+                  ? 'bg-primary text-black border-primary shadow-[0_0_15px_rgba(253,224,71,0.5)]' 
+                  : 'border-white/10 text-muted-foreground'
                 }`}
               >
                 {type === 'boisson' && <Coffee size={14} className="mr-2" />}
                 {type}
-              </Button>
+              </button>
             ))}
           </div>
-
-          <div className="flex gap-4">
+          
+          <div className="flex gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/40" size={18} />
-              <Input 
-                className="bg-black border-white/10 h-14 pl-12 font-black uppercase rounded-none text-[10px] tracking-[0.2em] focus:border-accent transition-all placeholder:text-white/20" 
-                placeholder="RECHERCHER UN ALIMENT..." 
-                value={searchTerm} 
-                onChange={(e) => setSearchTerm(e.target.value)} 
-              />
+              <Input className="bg-white/5 border-primary/20 h-14 pl-12 font-black uppercase rounded-none focus:ring-primary/40" placeholder="RECHERCHER..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
             <div className="flex gap-3">
               <Dialog open={isScannerOpen} onOpenChange={(o) => { setIsScannerOpen(o); if(o) setTimeout(startCamera,100); else stopCamera(); }}>
                 <DialogTrigger asChild>
-                  <Button className="h-14 w-14 border-accent bg-black text-accent rounded-full shadow-[0_0_30px_rgba(0,242,255,0.5)] hover:shadow-[0_0_40px_rgba(0,242,255,0.7)] transition-all">
+                  <Button className="h-14 w-14 border-accent bg-black text-accent rounded-full shadow-[0_0_25px_rgba(0,242,255,0.4)] active:scale-90 transition-all">
                     <Camera size={20} />
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="bg-black border-accent text-white rounded-none p-0 overflow-hidden max-w-sm">
                   <DialogHeader className="sr-only">
                     <DialogTitle>Analyse IA</DialogTitle>
-                    <DialogDescription>Capture visuelle pour analyse nutritionnelle.</DialogDescription>
+                    <DialogDescription>Flux optique en direct.</DialogDescription>
                   </DialogHeader>
                   <div className="relative h-[70vh]">
                     {!scanningImage ? (
@@ -320,7 +331,7 @@ export default function JournalPage() {
                         <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
                         <div className="absolute bottom-6 left-0 right-0 flex justify-center items-center px-10">
                           <button className="w-20 h-20 rounded-full border-8 border-accent/30 bg-black/20 backdrop-blur-md flex items-center justify-center group" onClick={capturePhoto}>
-                            <div className="w-12 h-12 rounded-full bg-accent group-active:scale-90 transition-transform shadow-[0_0_25px_rgba(0,242,255,0.8)]" />
+                            <div className="w-12 h-12 rounded-full bg-accent group-active:scale-90 transition-transform shadow-[0_0_20px_rgba(0,242,255,0.8)]" />
                           </button>
                         </div>
                       </>
@@ -354,14 +365,14 @@ export default function JournalPage() {
 
               <Dialog open={isBarcodeOpen} onOpenChange={(o) => { setIsBarcodeOpen(o); if(o) startBarcodeScanner(); else if(barcodeScannerRef.current) barcodeScannerRef.current.clear(); }}>
                 <DialogTrigger asChild>
-                  <Button className="h-14 w-14 border-primary bg-black text-primary rounded-full shadow-[0_0_30px_rgba(253,224,71,0.5)] hover:shadow-[0_0_40px_rgba(253,224,71,0.7)] transition-all">
+                  <Button className="h-14 w-14 border-primary bg-black text-primary rounded-full shadow-[0_0_25px_rgba(253,224,71,0.4)] active:scale-90 transition-all">
                     <Barcode size={20} />
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="bg-black border-primary text-white rounded-none p-6 max-w-sm">
                   <DialogHeader className="sr-only">
                     <DialogTitle>Scan Code-Barres</DialogTitle>
-                    <DialogDescription>Liaison avec la base de données mondiale.</DialogDescription>
+                    <DialogDescription>Accès index OpenFoodFacts.</DialogDescription>
                   </DialogHeader>
                   <div id="reader" className="w-full min-h-[300px] bg-black/50 border border-primary/20 rounded-none overflow-hidden" />
                   {isFetchingBarcode && <div className="flex justify-center mt-6"><Loader2 className="animate-spin text-primary" /></div>}
@@ -372,10 +383,10 @@ export default function JournalPage() {
                         <div className="flex-1">
                           <h3 className="font-black uppercase mb-3 text-sm tracking-tight text-primary neon-text-yellow">{barcodeResult.name}</h3>
                           <div className="grid grid-cols-4 gap-2 text-center">
-                            <div><p className="text-[12px] font-black">{barcodeResult.calories}</p><p className="text-[8px] text-muted-foreground font-black">KCAL</p></div>
-                            <div><p className="text-[12px] font-black">{barcodeResult.protein}g</p><p className="text-[8px] text-muted-foreground font-black">PROT</p></div>
-                            <div><p className="text-[12px] font-black">{barcodeResult.carbs}g</p><p className="text-[8px] text-muted-foreground font-black">GLUC</p></div>
-                            <div><p className="text-[12px] font-black">{barcodeResult.fat}g</p><p className="text-[8px] text-muted-foreground font-black">LIPID</p></div>
+                            <div><p className="text-[11px] font-black">{barcodeResult.calories}</p><p className="text-[7px] text-muted-foreground font-black">KCAL</p></div>
+                            <div><p className="text-[11px] font-black">{barcodeResult.protein}g</p><p className="text-[7px] text-muted-foreground font-black">PROT</p></div>
+                            <div><p className="text-[11px] font-black">{barcodeResult.carbs}g</p><p className="text-[7px] text-muted-foreground font-black">GLUC</p></div>
+                            <div><p className="text-[11px] font-black">{barcodeResult.fat}g</p><p className="text-[7px] text-muted-foreground font-black">LIPID</p></div>
                           </div>
                         </div>
                       </div>
@@ -389,21 +400,21 @@ export default function JournalPage() {
 
           {filteredFood.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-[10px] font-black text-primary/40 uppercase tracking-[0.3em] px-1">Archives Suggestion</h3>
+              <h3 className="text-[8px] font-black text-primary/40 uppercase tracking-widest px-1">Archives Suggestion</h3>
               {filteredFood.map((food: any, idx) => (
-                <div key={idx} className="flex justify-between items-center py-4 bg-accent/5 border border-accent/20 rounded-none group hover:border-accent transition-all px-4">
+                <div key={idx} className="flex justify-between items-center py-4 bg-white/5 border border-white/10 rounded-none group hover:border-primary transition-all px-4">
                   <div className="flex items-center gap-4">
-                    <img src={food.imageUrl || getFallbackImage(food.name)} className="w-10 h-10 object-cover border border-accent/20 transition-all" alt="" />
+                    <img src={food.imageUrl || getFallbackImage(food.name)} className="w-10 h-10 object-cover rounded-none border border-white/10" alt="" />
                     <div>
                       <p className="font-black text-[12px] uppercase tracking-tight text-white">{food.name}</p>
                       <p className="text-[10px] text-muted-foreground font-black uppercase">{food.calories} KCAL | P: {food.protein}G</p>
                     </div>
                   </div>
-                  <Button size="icon" className="w-10 h-10 border-accent/40 bg-transparent text-accent shadow-none hover:bg-accent/10" onClick={() => addMeal(food)}><Plus size={18} /></Button>
+                  <Button size="icon" className="w-10 h-10 border-primary bg-transparent text-primary hover:bg-primary/10" onClick={() => addMeal(food)}><Plus size={18} /></Button>
                 </div>
               ))}
               {!aiResult && searchTerm.length > 3 && (
-                <Button onClick={handleAiEstimate} disabled={aiEstimating} className="w-full h-14 border-[#00FFFF]/40 bg-black text-[#00FFFF] rounded-none font-black text-[12px] tracking-widest hover:bg-[#00FFFF]/10 active:shadow-[0_0_15px_rgba(0,255,255,0.4)]">
+                <Button onClick={handleAiEstimate} disabled={aiEstimating} className="w-full h-14 border-[#00FFFF]/40 bg-black text-[#00FFFF] rounded-none font-black text-[10px] tracking-widest hover:bg-[#00FFFF]/10">
                   {aiEstimating ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2" />} ESTIMATION MOLÉCULAIRE IA
                 </Button>
               )}
@@ -419,11 +430,11 @@ export default function JournalPage() {
                 <div key={section} className="space-y-4">
                   <div className="flex items-center gap-2 border-b border-white/10 pb-1 mb-4">
                     <div className="w-1 h-3 bg-primary" />
-                    <h3 className="text-[12px] font-light text-white/30 uppercase tracking-[0.4em]">{section}</h3>
+                    <h3 className="text-[10px] font-light text-white/30 uppercase tracking-[0.4em]">{section}</h3>
                   </div>
                   
                   {sectionMeals.length === 0 ? (
-                    <p className="text-[10px] text-white/10 font-black uppercase tracking-widest italic py-2">Veuillez scanner ou rechercher un aliment</p>
+                    <p className="text-[8px] text-white/10 font-black uppercase tracking-widest italic py-2">Veuillez scanner ou rechercher un aliment</p>
                   ) : (
                     <div className="space-y-1">
                       {sectionMeals.map((meal: any) => (
@@ -474,22 +485,22 @@ export default function JournalPage() {
 
                 <div className="p-6 space-y-6">
                   <div className="grid grid-cols-4 gap-2">
-                    <div className="flex flex-col items-center justify-center border border-destructive/20 bg-black/40 p-3">
+                    <div className="flex flex-col items-center justify-center border border-destructive/20 bg-black/40 p-3 rounded-none">
                       <Flame size={14} className="text-destructive mb-1" />
                       <span className="text-[12px] font-black text-white">{selectedMeal.calories}</span>
                       <span className="text-[6px] font-black text-muted-foreground uppercase">Kcal</span>
                     </div>
-                    <div className="flex flex-col items-center justify-center border border-accent/20 bg-black/40 p-3">
+                    <div className="flex flex-col items-center justify-center border border-accent/20 bg-black/40 p-3 rounded-none">
                       <Zap size={14} className="text-accent mb-1" />
                       <span className="text-[12px] font-black text-white">{selectedMeal.protein}g</span>
                       <span className="text-[6px] font-black text-muted-foreground uppercase">Prot</span>
                     </div>
-                    <div className="flex flex-col items-center justify-center border border-primary/20 bg-black/40 p-3">
+                    <div className="flex flex-col items-center justify-center border border-primary/20 bg-black/40 p-3 rounded-none">
                       <Wheat size={14} className="text-primary mb-1" />
                       <span className="text-[12px] font-black text-white">{selectedMeal.carbs}g</span>
                       <span className="text-[6px] font-black text-muted-foreground uppercase">Gluc</span>
                     </div>
-                    <div className="flex flex-col items-center justify-center border border-accent/20 bg-black/40 p-3">
+                    <div className="flex flex-col items-center justify-center border border-accent/20 bg-black/40 p-3 rounded-none">
                       <Droplet size={14} className="text-accent mb-1" />
                       <span className="text-[12px] font-black text-white">{selectedMeal.fat}g</span>
                       <span className="text-[6px] font-black text-muted-foreground uppercase">Lipid</span>
