@@ -58,10 +58,15 @@ export default function JournalPage() {
       .slice(0, 8);
   }, [searchTerm]);
 
-  const speak = (text: string) => {
+  const announceResults = (data: any) => {
     if (isMuted || typeof window === 'undefined' || !window.speechSynthesis) return;
+    
+    const formatValue = (val: any) => (val !== undefined && val !== null ? val : 'non détecté');
+    
+    const script = `Analyse terminée. Produit : ${data.name}. Apport énergétique : ${formatValue(data.calories)} calories. Protéines : ${formatValue(data.protein)} grammes. Lipides : ${formatValue(data.fat)} grammes. Glucides : ${formatValue(data.carbs)} grammes. Analyse du coach : ${data.healthAdvice || 'en attente'}.`;
+    
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
+    const utterance = new SpeechSynthesisUtterance(script);
     utterance.lang = 'fr-FR';
     utterance.pitch = 0.7;
     utterance.rate = 1.0;
@@ -69,9 +74,9 @@ export default function JournalPage() {
 
     const voices = window.speechSynthesis.getVoices();
     const preferredVoice = 
-      voices.find(v => v.lang.includes('fr') && v.name.includes('Google')) ||
-      voices.find(v => v.lang.includes('fr') && v.name.includes('Natural')) ||
-      voices.find(v => v.lang.includes('fr'));
+      voices.find(v => v.lang.includes('fr') && (v.name.includes('Google') || v.name.includes('Natural'))) ||
+      voices.find(v => v.lang.includes('fr')) ||
+      voices.find(v => v.lang.includes('en') && v.name.includes('Google')); // Fallback IA sophistiquée
 
     if (preferredVoice) utterance.voice = preferredVoice;
 
@@ -135,7 +140,7 @@ export default function JournalPage() {
           healthAdvice: "Produit industriel identifié. Intégrité nutritionnelle vérifiée par la base de données."
         };
         setBarcodeResult(result);
-        speak(`Analyse terminée. ${result.name}. ${result.calories} calories détectées. ${result.protein} grammes de protéines. Voici mon analyse : ${result.healthAdvice}`);
+        announceResults(result);
       } else {
         toast({ variant: "destructive", title: "PRODUIT NON RÉPERTORIÉ" });
       }
@@ -163,7 +168,7 @@ export default function JournalPage() {
     try {
       const result = await scanDish({ photoDataUri: scanningImage });
       setAiResult(result);
-      speak(`Analyse terminée. ${result.name}. ${result.calories} calories détectées. ${result.protein} grammes de protéines. Voici mon analyse : ${result.healthAdvice}`);
+      announceResults(result);
     } catch (e) {
       toast({ variant: "destructive", title: "DATA LINK OVERLOAD" });
     } finally {
@@ -270,7 +275,6 @@ export default function JournalPage() {
                     setAiResult(null);
                     setScanningImage(null);
                   } else {
-                    // Délai pour s'assurer que le ref videoRef est monté
                     setTimeout(startCamera, 100);
                   }
                 }}>
