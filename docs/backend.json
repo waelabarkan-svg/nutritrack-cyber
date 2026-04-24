@@ -31,7 +31,8 @@
         "fat": { "type": "number" },
         "date": { "type": "string", "format": "date" },
         "type": { "type": "string", "enum": ["breakfast", "lunch", "dinner", "snack"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "imageUrl": { "type": "string" }
       },
       "required": ["name", "calories", "date", "type"]
     },

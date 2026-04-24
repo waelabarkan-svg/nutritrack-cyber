@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -8,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Plus, Trash2, Search, Camera, Upload, X, Check, Loader2, Scan, Volume2, VolumeX, Sparkles, Barcode } from 'lucide-react';
+import { Plus, Trash2, Search, Camera, Upload, X, Check, Loader2, Scan, Volume2, VolumeX, Sparkles, Barcode, ImageOff } from 'lucide-react';
 import { collection, addDoc, query, where, deleteDoc, doc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import foodDb from '@/lib/food-db.json';
@@ -76,7 +77,7 @@ export default function JournalPage() {
     const preferredVoice = 
       voices.find(v => v.lang.includes('fr') && (v.name.includes('Google') || v.name.includes('Natural'))) ||
       voices.find(v => v.lang.includes('fr')) ||
-      voices.find(v => v.lang.includes('en') && v.name.includes('Google')); // Fallback IA sophistiquée
+      voices.find(v => v.lang.includes('en') && v.name.includes('Google'));
 
     if (preferredVoice) utterance.voice = preferredVoice;
 
@@ -137,7 +138,8 @@ export default function JournalPage() {
           protein: Math.round(p.nutriments.proteins_100g || 0),
           carbs: Math.round(p.nutriments.carbohydrates_100g || 0),
           fat: Math.round(p.nutriments.fat_100g || 0),
-          healthAdvice: "Produit industriel identifié. Intégrité nutritionnelle vérifiée par la base de données."
+          healthAdvice: "Produit industriel identifié. Intégrité nutritionnelle vérifiée par la base de données.",
+          imageUrl: p.image_url || p.selected_images?.front?.display?.fr || p.selected_images?.front?.display?.en || null
         };
         setBarcodeResult(result);
         announceResults(result);
@@ -167,8 +169,11 @@ export default function JournalPage() {
     setAiEstimating(true);
     try {
       const result = await scanDish({ photoDataUri: scanningImage });
-      setAiResult(result);
-      announceResults(result);
+      // Illustration via Unsplash
+      const illustrationUrl = `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=400&h=300&food=${encodeURIComponent(result.name)}`;
+      const enrichedResult = { ...result, imageUrl: illustrationUrl };
+      setAiResult(enrichedResult);
+      announceResults(enrichedResult);
     } catch (e) {
       toast({ variant: "destructive", title: "DATA LINK OVERLOAD" });
     } finally {
@@ -187,6 +192,7 @@ export default function JournalPage() {
         fat: Number(food.fat),
         type: selectedType,
         date: today,
+        imageUrl: food.imageUrl || null,
         createdAt: new Date().toISOString()
       });
 
@@ -284,7 +290,7 @@ export default function JournalPage() {
                   <DialogContent className="bg-black border-accent/40 text-white rounded-[20px] max-w-[95vw] sm:max-w-md p-0 overflow-hidden">
                     <DialogHeader>
                       <DialogTitle className="sr-only">Scanner de Bio-Données</DialogTitle>
-                      <DialogDescription className="sr-only">Analyse nutritionnelle en cours via liaison Groq...</DialogDescription>
+                      <DialogDescription className="sr-only">Analyse nutritionnelle en cours via liaison Llama 4 Scout...</DialogDescription>
                     </DialogHeader>
                     <div className="relative h-[70vh] bg-black">
                       {!scanningImage ? (
@@ -304,8 +310,18 @@ export default function JournalPage() {
                             <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-4"><Loader2 className="animate-spin text-accent" size={48} /><p className="text-[12px] font-black tracking-[0.6em] text-accent uppercase animate-pulse">LIAISON GROQ...</p></div>
                           ) : aiResult ? (
                             <div className="absolute bottom-0 left-0 right-0 p-6 bg-black/90 border-t border-accent/40">
-                              <div className="flex justify-between items-start mb-4">
-                                <div className="flex-1 pr-4">
+                              <div className="flex gap-4 mb-4">
+                                <div className="w-20 h-20 shrink-0 border border-accent/40 rounded-lg overflow-hidden shadow-[0_0_15px_rgba(0,242,255,0.3)] bg-black">
+                                  {aiResult.imageUrl ? (
+                                    <img src={aiResult.imageUrl} className="w-full h-full object-cover contrast-125 brightness-90 sepia-[0.1]" alt="Illustration" />
+                                  ) : (
+                                    <div className="w-full h-full flex flex-col items-center justify-center gap-1">
+                                      <ImageOff size={16} className="text-muted-foreground animate-pulse" />
+                                      <span className="text-[6px] font-black text-muted-foreground">GLITCH</span>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1">
                                   <h3 className="text-xl font-black">{aiResult.name}</h3>
                                   <div className="grid grid-cols-4 gap-2 my-2">
                                     <div className="text-center"><p className="text-[10px] font-black">{aiResult.calories}</p><p className="text-[6px] text-muted-foreground">KCAL</p></div>
@@ -313,11 +329,13 @@ export default function JournalPage() {
                                     <div className="text-center"><p className="text-[10px] font-black">{aiResult.carbs}g</p><p className="text-[6px] text-muted-foreground">GLUC</p></div>
                                     <div className="text-center"><p className="text-[10px] font-black">{aiResult.fat}g</p><p className="text-[6px] text-muted-foreground">LIPID</p></div>
                                   </div>
-                                  <p className="text-[10px] text-primary font-bold mt-1 leading-tight">{aiResult.healthAdvice}</p>
                                 </div>
-                                <Button className="border-accent neon-glow-blue h-12 w-12 shrink-0" onClick={() => addMeal(aiResult, true)}><Check size={24} /></Button>
                               </div>
-                              <Button variant="outline" className="w-full text-[10px] font-black" onClick={() => { setScanningImage(null); setAiResult(null); startCamera(); }}>RESCANNER</Button>
+                              <p className="text-[10px] text-primary font-bold mb-4 leading-tight">{aiResult.healthAdvice}</p>
+                              <div className="flex gap-2">
+                                <Button variant="outline" className="flex-1 text-[10px] font-black" onClick={() => { setScanningImage(null); setAiResult(null); startCamera(); }}>RESCANNER</Button>
+                                <Button className="flex-1 border-accent neon-glow-blue font-black" onClick={() => addMeal(aiResult, true)}><Check className="mr-2" size={16} />ARCHIVER</Button>
+                              </div>
                             </div>
                           ) : (
                             <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center gap-4 px-6">
@@ -351,12 +369,23 @@ export default function JournalPage() {
                     {isFetchingBarcode && <div className="flex justify-center mt-4"><Loader2 className="animate-spin text-primary" /></div>}
                     {barcodeResult && (
                       <div className="mt-6 p-4 border border-primary/40 bg-primary/5 rounded-xl">
-                         <h3 className="font-black uppercase mb-2">{barcodeResult.name}</h3>
-                         <div className="grid grid-cols-4 gap-2 mb-4">
-                            <div className="text-center"><p className="text-xs font-black">{barcodeResult.calories}</p><p className="text-[7px] text-muted-foreground">KCAL</p></div>
-                            <div className="text-center"><p className="text-xs font-black">{barcodeResult.protein}g</p><p className="text-[7px] text-muted-foreground">PROT</p></div>
-                            <div className="text-center"><p className="text-xs font-black">{barcodeResult.carbs}g</p><p className="text-[7px] text-muted-foreground">GLUC</p></div>
-                            <div className="text-center"><p className="text-xs font-black">{barcodeResult.fat}g</p><p className="text-[7px] text-muted-foreground">LIPID</p></div>
+                         <div className="flex gap-4 mb-4">
+                           <div className="w-16 h-16 shrink-0 border border-primary/40 rounded-lg overflow-hidden bg-black">
+                             {barcodeResult.imageUrl ? (
+                               <img src={barcodeResult.imageUrl} className="w-full h-full object-cover contrast-125" alt="Product" />
+                             ) : (
+                               <div className="w-full h-full flex items-center justify-center"><ImageOff size={16} className="text-white/20" /></div>
+                             )}
+                           </div>
+                           <div className="flex-1">
+                             <h3 className="font-black uppercase mb-2 text-sm">{barcodeResult.name}</h3>
+                             <div className="grid grid-cols-4 gap-2">
+                                <div className="text-center"><p className="text-[10px] font-black">{barcodeResult.calories}</p><p className="text-[6px] text-muted-foreground">KCAL</p></div>
+                                <div className="text-center"><p className="text-[10px] font-black">{barcodeResult.protein}g</p><p className="text-[6px] text-muted-foreground">PROT</p></div>
+                                <div className="text-center"><p className="text-[10px] font-black">{barcodeResult.carbs}g</p><p className="text-[6px] text-muted-foreground">GLUC</p></div>
+                                <div className="text-center"><p className="text-[10px] font-black">{barcodeResult.fat}g</p><p className="text-[6px] text-muted-foreground">LIPID</p></div>
+                             </div>
+                           </div>
                          </div>
                          <p className="text-[10px] text-primary/80 mb-4 font-bold">{barcodeResult.healthAdvice}</p>
                          <Button className="w-full border-primary neon-glow-yellow" onClick={() => addMeal(barcodeResult, true)}>ARCHIVER PRODUIT</Button>
@@ -395,7 +424,19 @@ export default function JournalPage() {
                 <div className="space-y-3">
                   {sectionMeals.length > 0 ? sectionMeals.map((meal: any) => (
                     <div key={meal.id} className="cyber-card-blue p-4 flex justify-between items-center bg-black/40 border-accent/20">
-                      <div><h3 className="font-black text-xs uppercase">{meal.name}</h3><p className="text-[9px] text-muted-foreground uppercase">{meal.calories} KCAL | P: {meal.protein}G</p></div>
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 shrink-0 border border-accent/20 rounded-md overflow-hidden bg-black/50">
+                          {meal.imageUrl ? (
+                            <img src={meal.imageUrl} className="w-full h-full object-cover contrast-110" alt="" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[8px] text-muted-foreground">N/A</div>
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-black text-xs uppercase">{meal.name}</h3>
+                          <p className="text-[9px] text-muted-foreground uppercase">{meal.calories} KCAL | P: {meal.protein}G</p>
+                        </div>
+                      </div>
                       <Button variant="ghost" size="icon" className="text-white/10" onClick={() => deleteMeal(meal.id)}><Trash2 size={14} /></Button>
                     </div>
                   )) : <div className="h-[1px] w-full bg-white/5" />}
