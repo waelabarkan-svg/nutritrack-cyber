@@ -6,8 +6,10 @@ import { Toaster } from '@/components/ui/toaster';
 export const metadata: Metadata = {
   title: 'NutriTrack - Cyber Edition',
   description: 'Suivez votre nutrition avec une précision néon.',
+  manifest: '/manifest.json',
   icons: {
     icon: '/icon.png',
+    shortcut: '/icon-android.png',
     apple: '/apple-icon.png',
   },
   appleWebApp: {
