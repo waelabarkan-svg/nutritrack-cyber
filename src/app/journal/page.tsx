@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -7,7 +6,7 @@ import { useUser, useFirestore, useCollection } from '@/firebase';
 import { BottomNav } from '@/components/bottom-nav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Plus, Trash2, Search, Camera, Upload, X, Check, Loader2, Scan, Volume2, VolumeX, Sparkles, Barcode } from 'lucide-react';
 import { collection, addDoc, query, where, deleteDoc, doc } from 'firebase/firestore';
@@ -262,6 +261,10 @@ export default function JournalPage() {
                     <Button className="h-14 w-14 border-accent bg-black text-accent neon-glow-blue rounded-[12px]" onClick={startCamera}><Camera size={20} /></Button>
                   </DialogTrigger>
                   <DialogContent className="bg-black border-accent/40 text-white rounded-[20px] max-w-[95vw] sm:max-w-md p-0 overflow-hidden">
+                    <DialogHeader>
+                      <DialogTitle className="sr-only">Scanner de Bio-Données</DialogTitle>
+                      <DialogDescription className="sr-only">Analyse nutritionnelle en cours via liaison Groq...</DialogDescription>
+                    </DialogHeader>
                     <div className="relative h-[70vh] bg-black">
                       {!scanningImage ? (
                         <>
@@ -311,7 +314,10 @@ export default function JournalPage() {
                     <Button className="h-14 w-14 border-primary bg-black text-primary neon-glow-yellow rounded-[12px]" onClick={startBarcodeScanner}><Barcode size={20} /></Button>
                   </DialogTrigger>
                   <DialogContent className="bg-black border-primary/40 text-white rounded-[20px] max-w-[95vw] sm:max-w-md p-6">
-                    <DialogHeader><DialogTitle className="text-primary neon-text-yellow uppercase tracking-widest text-center">Scan Code-Barres</DialogTitle></DialogHeader>
+                    <DialogHeader>
+                      <DialogTitle className="text-primary neon-text-yellow uppercase tracking-widest text-center">Scan Code-Barres</DialogTitle>
+                      <DialogDescription className="sr-only">Interrogation de la base de données OpenFoodFacts...</DialogDescription>
+                    </DialogHeader>
                     <div id="reader" className="w-full min-h-[300px] bg-black/50 border border-primary/20 mt-4 rounded-xl overflow-hidden" />
                     {isFetchingBarcode && <div className="flex justify-center mt-4"><Loader2 className="animate-spin text-primary" /></div>}
                     {barcodeResult && (
