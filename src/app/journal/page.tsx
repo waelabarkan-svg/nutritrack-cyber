@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -9,8 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Plus, Trash2, Search, Camera, X, Check, Loader2, Volume2, VolumeX, Sparkles, Barcode, AlertCircle, RefreshCw, Flame, Zap, Wheat, Droplet } from 'lucide-react';
-import { collection, addDoc, query, where, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { Plus, Trash2, Search, Camera, X, Check, Loader2, Volume2, VolumeX, Sparkles, Barcode, AlertCircle, RefreshCw, Flame, Zap, Wheat, Droplet, Soup, Beer } from 'lucide-react';
+import { collection, addDoc, query, where, deleteDoc, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import foodDb from '@/lib/food-db.json';
 import { estimateDish } from '@/ai/flows/estimate-dish-flow';
@@ -53,22 +52,10 @@ export default function JournalPage() {
 
   const { data: meals } = useCollection(mealsQuery);
 
-  const filteredFood = useMemo(() => {
-    if (!searchTerm || searchTerm.length < 2) return [];
-    const searchLower = searchTerm.toLowerCase();
-    const dbResults = foodDb.filter(f => f.name.toLowerCase().includes(searchLower));
-    const memory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
-    const memoryResults = memory
-      .filter((h: any) => h.name?.toLowerCase().includes(searchLower))
-      .map((h: any) => ({ ...h, isFromHistory: true }));
-
-    const combined = [...memoryResults, ...dbResults];
-    return Array.from(new Map(combined.map(item => [item.name.toUpperCase(), item])).values()).slice(0, 10);
-  }, [searchTerm]);
-
   const announceResults = (data: any) => {
     if (isMuted || typeof window === 'undefined' || !window.speechSynthesis) return;
     const formatValue = (val: any) => (val !== undefined && val !== null ? val : 'non détecté');
+    const unit = data.isLiquid ? 'millilitres' : 'grammes';
     const script = `Analyse terminée. Produit : ${data.name}. Apport énergétique : ${formatValue(data.calories)} calories. Protéines : ${formatValue(data.protein)} grammes. Lipides : ${formatValue(data.fat)} grammes. Glucides : ${formatValue(data.carbs)} grammes. Analyse du coach : ${data.healthAdvice || 'en attente'}.`;
     
     window.speechSynthesis.cancel();
@@ -121,6 +108,7 @@ export default function JournalPage() {
       const data = await res.json();
       if (data.status === 1 && data.product) {
         const p = data.product;
+        const isDrink = p.categories_tags?.some((c: string) => c.includes('beverage') || c.includes('drink'));
         const result = {
           name: p.product_name || "PRODUIT INCONNU",
           calories: Math.round(p.nutriments['energy-kcal_100g'] || 0),
@@ -128,6 +116,8 @@ export default function JournalPage() {
           carbs: Math.round(p.nutriments['carbohydrates_100g'] || 0),
           fat: Math.round(p.nutriments['fat_100g'] || 0),
           fiber: Math.round(p.nutriments['fiber_100g'] || 0),
+          isLiquid: isDrink,
+          unit: isDrink ? 'ml' : 'g',
           vitamins: p.vitamins_tags?.map((v: string) => v.split(':').pop()?.toUpperCase()).join(', ') || null,
           minerals: p.minerals_tags?.map((m: string) => m.split(':').pop()?.toUpperCase()).join(', ') || null,
           healthAdvice: "Produit industriel identifié. Intégrité vérifiée.",
@@ -169,13 +159,6 @@ export default function JournalPage() {
     }
   };
 
-  const updateBiometricMemory = (meal: any) => {
-    const memory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
-    const newEntry = { ...meal, id: Date.now() };
-    memory.push(newEntry);
-    localStorage.setItem('biometric_memory', JSON.stringify(memory.slice(-50)));
-  };
-
   const addMeal = async (food: any, isScan = false) => {
     if (!user) return;
     try {
@@ -186,6 +169,8 @@ export default function JournalPage() {
         carbs: Number(food.carbs),
         fat: Number(food.fat),
         fiber: Number(food.fiber || 0),
+        isLiquid: !!food.isLiquid,
+        unit: food.unit || (food.isLiquid ? 'ml' : 'g'),
         vitamins: food.vitamins || null,
         minerals: food.minerals || null,
         type: selectedType,
@@ -195,7 +180,15 @@ export default function JournalPage() {
         isAiEstimated: isScan
       };
       await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
-      updateBiometricMemory(mealData);
+      
+      // Si c'est un liquide, on met à jour aussi le tracker d'hydratation (estimation 250ml par portion par défaut si non spécifié)
+      if (food.isLiquid) {
+        const hydRef = doc(db, 'users', user.uid, 'hydration', today);
+        const hydSnap = await getDoc(hydRef);
+        const currentAmount = hydSnap.exists() ? hydSnap.data().amount : 0;
+        await setDoc(hydRef, { amount: currentAmount + 1 }, { merge: true });
+      }
+
       if (isScan) addXp(50, 'scan');
       setAiResult(null);
       setBarcodeResult(null);
@@ -209,46 +202,6 @@ export default function JournalPage() {
     }
   };
 
-  const handleAiEstimate = async () => {
-    if (!searchTerm || aiEstimating) return;
-    setAiEstimating(true);
-    try {
-      const result = await estimateDish({ dishName: searchTerm });
-      setAiResult({ ...result, imageUrl: null });
-    } catch (e) {
-      toast({ variant: "destructive", title: "ERREUR SYSTÈME" });
-    } finally {
-      setAiEstimating(false);
-    }
-  };
-
-  const repairBioData = async () => {
-    if (!selectedMeal || aiEstimating || !user) return;
-    setAiEstimating(true);
-    try {
-      const result = await estimateDish({ dishName: selectedMeal.name });
-      const mealRef = doc(db, 'users', user.uid, 'meals', selectedMeal.id);
-      const updateData = {
-        vitamins: result.vitamins || "Non détecté",
-        minerals: result.minerals || "Non détecté",
-        fiber: Number(result.fiber) || 0,
-        isAiEstimated: true
-      };
-      await updateDoc(mealRef, updateData);
-      setSelectedMeal({ ...selectedMeal, ...updateData });
-      toast({ title: "RECONSTRUCTION TERMINÉE" });
-    } catch (e) {
-      toast({ variant: "destructive", title: "ÉCHEC RECONSTRUCTION" });
-    } finally {
-      setAiEstimating(false);
-    }
-  };
-
-  const deleteMeal = async (id: string) => {
-    if (!user) return;
-    deleteDoc(doc(db, 'users', user.uid, 'meals', id));
-  };
-
   const openDetails = (meal: any) => {
     setSelectedMeal(meal);
     setIsDetailsOpen(true);
@@ -256,19 +209,12 @@ export default function JournalPage() {
 
   const getFallbackImage = (name: string) => {
     const term = name.toLowerCase();
-    let keywords = `food,${encodeURIComponent(term)}`;
-    if (term.includes('poulet')) keywords = 'meat,chicken,grilled';
-    if (term.includes('boeuf')) keywords = 'meat,beef,steak';
-    // Use a clean search-based placeholder to avoid tofu salad
     return `https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=400&h=300&sig=${encodeURIComponent(term)}`;
   };
 
   const renderBadges = (data: string | string[] | null) => {
     if (!data || data === "Non détecté" || data === "Non répertorié") return null;
-    
-    // Support for both comma-separated strings and pre-parsed arrays
     const items = Array.isArray(data) ? data : data.split(',');
-    
     return items.map((item, i) => (
       <Badge key={i} variant="outline" className="bg-white/5 border-white/10 text-[8px] uppercase font-black py-0.5 px-2 mr-1 mb-1">
         {String(item).trim()}
@@ -326,7 +272,10 @@ export default function JournalPage() {
                           <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-4"><Loader2 className="animate-spin text-accent" size={48} /><p className="text-[12px] font-black tracking-[0.6em] text-accent uppercase animate-pulse">LIAISON NEURALE...</p></div>
                         ) : aiResult ? (
                           <div className="absolute bottom-0 left-0 right-0 p-8 bg-black/90 border-t border-accent/40 backdrop-blur-xl">
-                            <h3 className="text-xl font-black uppercase mb-6 tracking-tight text-accent neon-text-blue">{aiResult.name}</h3>
+                            <div className="flex items-center gap-2 mb-2">
+                              {aiResult.isLiquid ? <Droplet size={14} className="text-accent" /> : <Soup size={14} className="text-primary" />}
+                              <h3 className="text-xl font-black uppercase tracking-tight text-accent neon-text-blue">{aiResult.name}</h3>
+                            </div>
                             <div className="grid grid-cols-4 gap-4 mb-8">
                               <div className="text-center"><p className="text-sm font-black text-white">{aiResult.calories}</p><p className="text-[7px] text-muted-foreground uppercase font-black">KCAL</p></div>
                               <div className="text-center"><p className="text-sm font-black text-white">{aiResult.protein}g</p><p className="text-[7px] text-muted-foreground uppercase font-black">PROT</p></div>
@@ -361,7 +310,10 @@ export default function JournalPage() {
                       <div className="flex gap-5 mb-6">
                         <img src={barcodeResult.imageUrl || getFallbackImage(barcodeResult.name)} className="w-20 h-20 object-cover border border-primary/40 rounded-xl" alt="" />
                         <div className="flex-1">
-                          <h3 className="font-black uppercase mb-3 text-sm tracking-tight text-primary neon-text-yellow">{barcodeResult.name}</h3>
+                          <div className="flex items-center gap-2 mb-1">
+                            {barcodeResult.isLiquid ? <Beer size={12} className="text-accent" /> : <Soup size={12} className="text-primary" />}
+                            <h3 className="font-black uppercase text-xs tracking-tight text-primary neon-text-yellow">{barcodeResult.name}</h3>
+                          </div>
                           <div className="grid grid-cols-4 gap-2 text-center">
                             <div><p className="text-[11px] font-black">{barcodeResult.calories}</p><p className="text-[7px] text-muted-foreground font-black">KCAL</p></div>
                             <div><p className="text-[11px] font-black">{barcodeResult.protein}g</p><p className="text-[7px] text-muted-foreground font-black">PROT</p></div>
@@ -377,29 +329,6 @@ export default function JournalPage() {
               </Dialog>
             </div>
           </div>
-
-          {filteredFood.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-[8px] font-black text-primary/40 uppercase tracking-widest px-1">Archives Suggestion</h3>
-              {filteredFood.map((food: any, idx) => (
-                <div key={idx} className="cyber-card-yellow p-4 flex justify-between items-center bg-black/90 border-primary/40 rounded-[12px] group hover:border-primary transition-all">
-                  <div className="flex items-center gap-4">
-                    <img src={food.imageUrl || getFallbackImage(food.name)} className="w-10 h-10 object-cover rounded-lg border border-primary/20 group-hover:border-primary/60 transition-all" alt="" />
-                    <div>
-                      <p className="font-black text-xs uppercase tracking-tight">{food.name}</p>
-                      <p className="text-[9px] text-muted-foreground font-black uppercase">{food.calories} KCAL | P: {food.protein}G</p>
-                    </div>
-                  </div>
-                  <Button size="icon" className="w-10 h-10 border-primary shadow-none bg-primary/5 hover:bg-primary/20" onClick={() => addMeal(food)}><Plus size={18} /></Button>
-                </div>
-              ))}
-              {!aiResult && searchTerm.length > 3 && (
-                <Button onClick={handleAiEstimate} disabled={aiEstimating} className="w-full h-14 border-[#a855f7]/40 bg-[#a855f7]/5 text-[#a855f7] rounded-xl font-black text-[10px] tracking-widest hover:bg-[#a855f7]/10">
-                  {aiEstimating ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2" />} ESTIMATION MOLÉCULAIRE IA
-                </Button>
-              )}
-            </div>
-          )}
         </section>
 
         <div className="space-y-12">
@@ -414,7 +343,10 @@ export default function JournalPage() {
                       <div className="flex items-center gap-4">
                         <img src={meal.imageUrl || getFallbackImage(meal.name)} className="w-12 h-12 object-cover border border-accent/20 rounded-xl group-hover:border-accent/60 transition-all" alt="" />
                         <div>
-                          <h3 className="font-black text-xs uppercase tracking-tight">{meal.name}</h3>
+                          <div className="flex items-center gap-2">
+                             {meal.isLiquid ? <Droplet size={10} className="text-accent" /> : <Soup size={10} className="text-primary" />}
+                             <h3 className="font-black text-xs uppercase tracking-tight">{meal.name}</h3>
+                          </div>
                           <p className="text-[9px] text-muted-foreground uppercase font-black">{meal.calories} KCAL | P: {meal.protein}G</p>
                         </div>
                       </div>
@@ -445,7 +377,10 @@ export default function JournalPage() {
 
                 <div className="p-8 space-y-8">
                   <div className="space-y-2">
-                    <p className="text-accent/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-blue">Diagnostic Moléculaire</p>
+                    <div className="flex items-center gap-3">
+                      {selectedMeal.isLiquid ? <Droplet className="text-accent" size={16} /> : <Soup className="text-primary" size={16} />}
+                      <p className="text-accent/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-blue">Diagnostic Moléculaire</p>
+                    </div>
                     <h2 className="text-2xl font-black tracking-tighter uppercase neon-text-blue leading-none">{selectedMeal.name}</h2>
                   </div>
 
@@ -473,50 +408,27 @@ export default function JournalPage() {
                   </div>
 
                   <div className="space-y-6 pt-6 border-t border-white/10">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/70">Bio-Micro-Données</h3>
-                      <Badge variant="outline" className="border-primary/20 text-[7px] px-2 py-0">SYNC_OK</Badge>
-                    </div>
-                    
-                    {(!selectedMeal.vitamins || selectedMeal.vitamins === "Non répertorié") ? (
-                      <div className="p-6 bg-orange-500/5 border border-orange-500/30 rounded-2xl flex flex-col items-center gap-5">
-                        <div className="flex items-center gap-3 text-orange-500">
-                          <AlertCircle size={18} />
-                          <p className="text-[10px] font-black uppercase tracking-widest text-center">INTERFACE INCOMPLÈTE</p>
-                        </div>
-                        <Button onClick={repairBioData} disabled={aiEstimating} className="w-full border-orange-500 text-orange-500 bg-black/40 h-12 font-black text-[10px] tracking-widest hover:bg-orange-500/10">
-                          {aiEstimating ? <Loader2 className="animate-spin mr-2" /> : <RefreshCw className="mr-2" />} RECONSTRUIRE ARCHIVE
-                        </Button>
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/70">Bio-Micro-Données</h3>
+                    <div className="space-y-5">
+                      <div className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/10">
+                        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Fibres</span>
+                        <span className="text-sm font-black text-white">{selectedMeal.fiber || 0} g</span>
                       </div>
-                    ) : (
-                      <div className="space-y-5">
-                        <div className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/10">
-                          <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Fibres</span>
-                          <span className="text-sm font-black text-white">{selectedMeal.fiber || 0} g</span>
+                      
+                      <div className="space-y-3">
+                        <span className="text-[10px] font-black text-accent/60 uppercase tracking-widest flex items-center gap-2 mb-2"><Zap size={12} className="text-accent" /> Vitamines</span>
+                        <div className="flex flex-wrap gap-1">
+                          {renderBadges(selectedMeal.vitamins) || <span className="text-[10px] text-white/40">Aucune donnée</span>}
                         </div>
-                        
-                        <div className="space-y-3">
-                          <span className="text-[10px] font-black text-accent/60 uppercase tracking-widest flex items-center gap-2 mb-2"><Zap size={12} className="text-accent" /> Vitamines</span>
-                          <div className="flex flex-wrap gap-1">
-                            {renderBadges(selectedMeal.vitamins) || <span className="text-[10px] text-white/40">Aucune donnée</span>}
-                          </div>
-                        </div>
+                      </div>
 
-                        <div className="space-y-3">
-                          <span className="text-[10px] font-black text-primary/60 uppercase tracking-widest flex items-center gap-2 mb-2"><Zap size={12} className="text-primary" /> Sels Minéraux</span>
-                          <div className="flex flex-wrap gap-1">
-                            {renderBadges(selectedMeal.minerals) || <span className="text-[10px] text-white/40">Aucune donnée</span>}
-                          </div>
+                      <div className="space-y-3">
+                        <span className="text-[10px] font-black text-primary/60 uppercase tracking-widest flex items-center gap-2 mb-2"><Zap size={12} className="text-primary" /> Sels Minéraux</span>
+                        <div className="flex flex-wrap gap-1">
+                          {renderBadges(selectedMeal.minerals) || <span className="text-[10px] text-white/40">Aucune donnée</span>}
                         </div>
-                        
-                        {selectedMeal.isAiEstimated && (
-                          <div className="pt-4 border-t border-white/5 flex items-center justify-center gap-2">
-                             <div className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                             <p className="text-[8px] font-black text-muted-foreground tracking-[0.3em] uppercase">Estimation IA Llama-4 Scout</p>
-                          </div>
-                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
               </div>

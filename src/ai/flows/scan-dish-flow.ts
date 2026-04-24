@@ -3,6 +3,7 @@
 /**
  * @fileOverview Flux de scan optique utilisant GROQ avec le modèle Llama 4 Scout.
  * Analyse approfondie incluant macros et micro-nutriments spécifiques.
+ * Support des liquides et unités ml/g ajouté.
  */
 
 export async function scanDish(input: { photoDataUri: string }) {
@@ -27,12 +28,15 @@ export async function scanDish(input: { photoDataUri: string }) {
             content: [
               {
                 type: "text",
-                text: `Analyse visuellement ce plat. Estime les ingrédients, les calories et les macros (P/G/L). 
-                Analyse moléculaire profonde requise. 
+                text: `Analyse visuellement ce plat ou cette boisson. 
+                Détermine s'il s'agit d'un liquide ou d'un solide.
+                Estime les ingrédients, les calories et les macros (P/G/L). 
                 
                 Réponds EXCLUSIVEMENT en français avec un objet JSON pur (sans balises markdown) respectant cette structure exacte : 
                 {
-                  "name": "nom du plat",
+                  "name": "nom du plat ou boisson",
+                  "isLiquid": boolean,
+                  "unit": "ml" ou "g",
                   "calories": nombre,
                   "protein": nombre,
                   "carbs": nombre,
@@ -40,7 +44,8 @@ export async function scanDish(input: { photoDataUri: string }) {
                   "micronutrients": {
                     "vitamines": ["Vitamine B12 (élevée)", "Vitamine B6"],
                     "mineraux": ["Fer (riche)", "Zinc", "Magnésium"],
-                    "fibres": "nombre + g"
+                    "fibres": "nombre + g",
+                    "hydrationMl": "nombre si c'est de l'eau ou une boisson hydratante"
                   },
                   "aiAnalysis": "courte phrase style cyberpunk (max 10 mots)",
                   "healthAdvice": "ton conseil nutritionnel avec du caractère"
@@ -73,7 +78,9 @@ export async function scanDish(input: { photoDataUri: string }) {
       ...result,
       fiber: parseFloat(result.micronutrients?.fibres) || 0,
       vitamins: result.micronutrients?.vitamines?.join(', '),
-      minerals: result.micronutrients?.mineraux?.join(', ')
+      minerals: result.micronutrients?.mineraux?.join(', '),
+      isLiquid: !!result.isLiquid,
+      unit: result.unit || (result.isLiquid ? 'ml' : 'g')
     };
 
   } catch (error: any) {
