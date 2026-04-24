@@ -34,7 +34,7 @@ export async function scanDish(input: { photoDataUri: string }) {
                 Estime les ingrédients, les calories, les macros (P/G/L) et spécifiquement le SUCRE (en g). 
                 Si c'est une boisson, estime la CAFÉINE (en mg) et identifie les ADDITIFS/ÉDULCORANTS.
                 
-                Réponds EXCLUSIVEMENT en français avec un objet JSON pur (sans balises markdown) respectant cette structure exacte : 
+                Réponds EXCLUSIVEMENT avec un objet JSON pur (sans balises markdown) respectant cette structure exacte : 
                 {
                   "name": "nom du plat ou boisson",
                   "isLiquid": boolean,
@@ -66,7 +66,7 @@ export async function scanDish(input: { photoDataUri: string }) {
           }
         ],
         response_format: { type: "json_object" },
-        temperature: 0.7,
+        temperature: 0.1,
       })
     });
 
@@ -78,7 +78,6 @@ export async function scanDish(input: { photoDataUri: string }) {
     const data = await response.json();
     const result = JSON.parse(data.choices[0].message.content);
     
-    // Normalisation pour le frontend
     return {
       ...result,
       sugar: parseFloat(result.sugar) || 0,

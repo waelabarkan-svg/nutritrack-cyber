@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -50,7 +51,6 @@ export default function JournalPage() {
 
   const { data: meals } = useCollection(mealsQuery);
 
-  // RECHERCHE GLOBALE : Blindée contre les types erronés
   const globalSearchResults = useMemo(() => {
     if (!searchTerm) return [];
     try {
@@ -60,20 +60,9 @@ export default function JournalPage() {
         item.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     } catch (e) {
-      console.error("Search Logic Error:", e);
       return [];
     }
   }, [searchTerm]);
-
-  const announceResults = (data: any) => {
-    if (isMuted || typeof window === 'undefined' || !window.speechSynthesis) return;
-    const name = data.name || 'Aliment Inconnu';
-    const script = `Analyse terminée. Produit : ${name}. Apport énergétique : ${data.calories || 0} calories.`;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(script);
-    utterance.lang = 'fr-FR';
-    window.speechSynthesis.speak(utterance);
-  };
 
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
@@ -115,7 +104,6 @@ export default function JournalPage() {
       const result = await scanDish({ photoDataUri: scanningImage });
       const enrichedResult = { ...result, imageUrl: scanningImage };
       setAiResult(enrichedResult);
-      announceResults(enrichedResult);
     } catch (e) {
       toast({ variant: "destructive", title: "LIAISON ÉCHOUÉE" });
     } finally {
@@ -127,9 +115,7 @@ export default function JournalPage() {
     if (aiEstimating) return;
     setAiEstimating(true);
     if (scannerRef.current) {
-      try {
-        await scannerRef.current.clear();
-      } catch (e) {}
+      try { await scannerRef.current.clear(); } catch (e) {}
     }
     
     try {
@@ -152,7 +138,6 @@ export default function JournalPage() {
           minerals: p.nutriments.minerals_tags?.join(', ') || null
         };
         setAiResult(result);
-        announceResults(result);
       } else {
         toast({ variant: "destructive", title: "PRODUIT NON RÉPERTORIÉ" });
       }
@@ -268,16 +253,15 @@ export default function JournalPage() {
     ));
   };
 
-  const getFallbackImage = (name: string) => {
-    const term = encodeURIComponent((name || "food").toLowerCase());
+  const getFallbackImage = (meal: any) => {
+    if (meal.imageUrl) return meal.imageUrl;
+    const term = encodeURIComponent((meal.name || "food").toLowerCase());
     return `https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=400&h=300&sig=${term}`;
   };
 
-  // INITIALISATION SÉCURISÉE DU SCANNER
   useEffect(() => {
     let scanner: Html5QrcodeScanner | null = null;
     if (isBarcodeOpen) {
-      // On attend un cycle de rendu pour être sûr que #reader est là
       const timer = setTimeout(() => {
         const readerElement = document.getElementById("reader");
         if (readerElement) {
@@ -288,14 +272,12 @@ export default function JournalPage() {
       }, 300);
       return () => {
         clearTimeout(timer);
-        if (scanner) {
-          try {
-            scanner.clear();
-          } catch (e) {}
-        }
+        if (scanner) { try { scanner.clear(); } catch (e) {} }
       };
     }
   }, [isBarcodeOpen]);
+
+  if (loading || !user) return null;
 
   return (
     <TooltipProvider>
@@ -313,7 +295,7 @@ export default function JournalPage() {
         <section className="mb-12 space-y-6">
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             {['petit-déjeuner', 'déjeuner', 'dîner', 'snack'].map((type) => (
-              <button key={type} onClick={() => setSelectedType(type as MealType)} className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest border rounded-full transition-all whitespace-nowrap ${selectedType === type ? 'bg-primary text-black border-primary' : 'border-white/10 text-muted-foreground'}`}>{type}</button>
+              <button key={type} onClick={() => setSelectedType(type as MealType)} className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest border rounded-full transition-all whitespace-nowrap ${selectedType === type ? 'bg-primary text-black border-primary shadow-[0_0_10px_rgba(253,224,71,0.4)]' : 'border-white/10 text-muted-foreground'}`}>{type}</button>
             ))}
           </div>
           
@@ -328,14 +310,10 @@ export default function JournalPage() {
               />
             </div>
             <div className="flex gap-2">
-              {/* SCANNER PHOTO */}
               <Dialog open={isScannerOpen} onOpenChange={(o) => { setIsScannerOpen(o); if(o) setTimeout(startCamera,100); else stopCamera(); }}>
                 <DialogTrigger asChild><Button className="h-14 w-14 border-accent text-accent rounded-[12px]"><Camera size={20} /></Button></DialogTrigger>
                 <DialogContent className="bg-black border-accent/40 text-white rounded-[24px] p-0 overflow-hidden max-w-sm">
-                  <DialogHeader>
-                    <DialogTitle className="sr-only">Scanner Optique</DialogTitle>
-                    <DialogDescription className="sr-only">Analyse moléculaire de plat.</DialogDescription>
-                  </DialogHeader>
+                  <DialogHeader><DialogTitle className="sr-only">Scanner Optique</DialogTitle></DialogHeader>
                   <div className="relative h-[70vh]">
                     {!scanningImage ? (
                       <>
@@ -371,16 +349,11 @@ export default function JournalPage() {
                 </DialogContent>
               </Dialog>
 
-              {/* SCANNER CODE-BARRES */}
               <Dialog open={isBarcodeOpen} onOpenChange={setIsBarcodeOpen}>
                 <DialogTrigger asChild><Button className="h-14 w-14 border-primary text-primary rounded-[12px]"><Barcode size={20} /></Button></DialogTrigger>
                 <DialogContent className="bg-black border-primary/40 text-white rounded-[24px] max-w-sm">
-                   <DialogHeader>
-                     <DialogTitle className="sr-only">Scanner Code-Barres</DialogTitle>
-                     <DialogDescription className="sr-only">Liaison OpenFoodFacts.</DialogDescription>
-                   </DialogHeader>
+                   <DialogHeader><DialogTitle className="sr-only">Scanner Code-Barres</DialogTitle></DialogHeader>
                    <div className="space-y-4">
-                     {/* ÉLÉMENT READER PRÉSENT DANS LE DOM */}
                      <div id="reader" className="w-full overflow-hidden rounded-xl border border-white/10 min-h-[250px] bg-white/5" />
                      {aiEstimating && (
                         <div className="flex items-center justify-center gap-3 p-4">
@@ -391,16 +364,6 @@ export default function JournalPage() {
                      {aiResult && (
                        <div className="p-4 border border-primary/20 bg-primary/5 rounded-xl animate-in fade-in slide-in-from-top-2">
                          <p className="text-xs font-black uppercase text-primary mb-3">{aiResult.name}</p>
-                         <div className="grid grid-cols-2 gap-2 mb-4">
-                            <div className="p-2 bg-black/40 rounded border border-white/5">
-                              <span className="text-[8px] text-muted-foreground block uppercase font-black">Calories</span>
-                              <span className="text-sm font-black text-white">{aiResult.calories}</span>
-                            </div>
-                            <div className="p-2 bg-black/40 rounded border border-white/5">
-                              <span className="text-[8px] text-muted-foreground block uppercase font-black">Protéines</span>
-                              <span className="text-sm font-black text-white">{aiResult.protein}g</span>
-                            </div>
-                         </div>
                          <Button className="w-full bg-primary text-black font-black" onClick={() => addMeal(aiResult, true)}>AJOUTER À L'ARCHIVE</Button>
                        </div>
                      )}
@@ -419,10 +382,10 @@ export default function JournalPage() {
                 {globalSearchResults.length > 0 ? globalSearchResults.map((meal: any) => (
                   <div key={meal.id} onClick={() => openDetails(meal)} className="cyber-card-blue p-4 flex justify-between items-center cursor-pointer hover:border-accent group transition-all">
                     <div className="flex items-center gap-4">
-                      <img src={meal.imageUrl || getFallbackImage(meal.name)} className="w-12 h-12 object-cover border border-accent/20 rounded-xl" alt="" />
+                      <img src={getFallbackImage(meal)} className="w-12 h-12 object-cover border border-accent/20 rounded-xl" alt="" />
                       <div>
                         <h3 className="font-black text-xs uppercase">{meal.name || 'ALIMENT INCONNU'}</h3>
-                        <p className="text-[9px] text-muted-foreground uppercase font-black">{meal.calories} KCAL | {meal.date}</p>
+                        <p className="text-[9px] text-muted-foreground uppercase font-black">{meal.calories} {meal.unit || 'KCAL'} | {meal.date}</p>
                       </div>
                     </div>
                   </div>
@@ -443,13 +406,13 @@ export default function JournalPage() {
                     {sectionMeals.length > 0 ? sectionMeals.map((meal: any) => (
                       <div key={meal.id} onClick={() => openDetails(meal)} className="cyber-card-blue p-4 flex justify-between items-center cursor-pointer hover:border-accent group transition-all">
                         <div className="flex items-center gap-4">
-                          <img src={meal.imageUrl || getFallbackImage(meal.name)} className="w-12 h-12 object-cover border border-accent/20 rounded-xl" alt="" />
+                          <img src={getFallbackImage(meal)} className="w-12 h-12 object-cover border border-accent/20 rounded-xl" alt="" />
                           <div>
                             <div className="flex items-center gap-2">
                                {meal.isLiquid ? <Droplet size={10} className="text-accent" /> : <Soup size={10} className="text-primary" />}
                                <h3 className="font-black text-xs uppercase">{meal.name || 'ALIMENT INCONNU'}</h3>
                             </div>
-                            <p className="text-[9px] text-muted-foreground uppercase font-black">{meal.calories} KCAL | {meal.sugar || 0}g SUCRE</p>
+                            <p className="text-[9px] text-muted-foreground uppercase font-black">{meal.calories} {meal.unit || (meal.isLiquid ? 'ML' : 'KCAL')}</p>
                           </div>
                         </div>
                         <Button variant="ghost" size="icon" className="text-white/10 hover:text-destructive" onClick={(e) => { e.stopPropagation(); deleteMeal(meal.id); }}><Trash2 size={14} /></Button>
@@ -466,12 +429,9 @@ export default function JournalPage() {
           <DialogContent className="bg-black/95 border-accent/40 text-white rounded-[32px] p-0 overflow-hidden shadow-[0_0_80px_rgba(0,242,255,0.15)] max-w-sm">
             {selectedMeal && (
               <div className="relative">
-                <DialogHeader>
-                  <DialogTitle className="sr-only">Détails de l'aliment</DialogTitle>
-                  <DialogDescription className="sr-only">Analyse nutritionnelle complète et micro-nutriments.</DialogDescription>
-                </DialogHeader>
+                <DialogHeader><DialogTitle className="sr-only">Détails de l'aliment</DialogTitle></DialogHeader>
                 <div className="h-60 w-full relative">
-                  <img src={selectedMeal.imageUrl || getFallbackImage(selectedMeal.name)} className="w-full h-full object-cover" alt="" />
+                  <img src={getFallbackImage(selectedMeal)} className="w-full h-full object-cover" alt="" />
                   <DialogClose className="absolute right-5 top-5 w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-white/80">
                     <X size={20} />
                   </DialogClose>
@@ -481,7 +441,7 @@ export default function JournalPage() {
                   <div className="space-y-2">
                     <h2 className="text-2xl font-black tracking-tighter uppercase neon-text-blue">{selectedMeal.name || 'ALIMENT INCONNU'}</h2>
                     {selectedMeal.isLiquid && selectedMeal.sugar > 10 && (
-                      <Badge className="bg-destructive/20 border-destructive text-destructive neon-text-red text-[8px] animate-pulse">HIGH SUGAR ALERT</Badge>
+                      <Badge className="bg-orange-500/20 border-orange-500 text-orange-500 neon-text-yellow text-[8px] animate-pulse">HIGH SUGAR ALERT</Badge>
                     )}
                   </div>
                   

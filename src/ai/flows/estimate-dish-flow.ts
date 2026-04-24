@@ -1,7 +1,7 @@
+
 'use server';
 /**
- * @fileOverview Flux de reconstruction moléculaire textuelle via Llama-4 Scout (Groq).
- * Extraction stricte de données micro-nutritionnelles.
+ * @fileOverview Flux de reconstruction moléculaire via Llama-4 Scout (Groq).
  */
 
 import { z } from 'genkit';
@@ -37,10 +37,9 @@ export async function estimateDish(input: { dishName: string }): Promise<Estimat
         messages: [
           {
             role: "user",
-            content: `Analyse nutritionnelle textuelle pour : "${input.dishName}".
-            Estime les macros et micros (Vitamines, Minéraux, Fibres).
+            content: `Génère uniquement le JSON des micro-nutriments et une description courte pour cet aliment : "${input.dishName}".
             
-            Réponds EXCLUSIVEMENT avec un objet JSON pur sans texte additionnel, respectant cette structure :
+            Réponds EXCLUSIVEMENT avec un objet JSON pur sans texte additionnel :
             {
               "name": "nom",
               "calories": nombre,
@@ -48,8 +47,8 @@ export async function estimateDish(input: { dishName: string }): Promise<Estimat
               "carbs": nombre,
               "fat": nombre,
               "fiber": nombre,
-              "vitamins": "liste",
-              "minerals": "liste",
+              "vitamins": "liste séparée par des virgules",
+              "minerals": "liste séparée par des virgules",
               "aiAnalysis": "phrase courte",
               "healthAdvice": "conseil"
             }`
@@ -64,8 +63,6 @@ export async function estimateDish(input: { dishName: string }): Promise<Estimat
 
     const data = await response.json();
     const content = data.choices[0].message.content;
-    
-    // Parsing robuste avec Regex pour isoler le JSON
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     const result = JSON.parse(jsonMatch ? jsonMatch[0] : content);
 
