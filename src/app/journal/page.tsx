@@ -81,23 +81,27 @@ export default function JournalPage() {
     window.speechSynthesis.speak(utterance);
   };
 
+  const stopCamera = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+  };
+
   const startCamera = async () => {
     setAiResult(null);
     setScanningImage(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
       setHasCameraPermission(true);
-      if (videoRef.current) videoRef.current.srcObject = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
     } catch (err) {
+      console.error("Camera error:", err);
       setHasCameraPermission(false);
       toast({ variant: "destructive", title: "ACCÈS CAMÉRA REFUSÉ" });
-    }
-  };
-
-  const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-      tracks.forEach(track => track.stop());
     }
   };
 
@@ -144,6 +148,7 @@ export default function JournalPage() {
 
   const startBarcodeScanner = () => {
     setTimeout(() => {
+      if (barcodeScannerRef.current) barcodeScannerRef.current.clear();
       barcodeScannerRef.current = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
       barcodeScannerRef.current.render((decodedText) => {
         barcodeScannerRef.current?.clear();
@@ -217,7 +222,9 @@ export default function JournalPage() {
   useEffect(() => {
     return () => {
       stopCamera();
-      barcodeScannerRef.current?.clear();
+      if (barcodeScannerRef.current) {
+        barcodeScannerRef.current.clear();
+      }
     };
   }, []);
 
@@ -256,9 +263,19 @@ export default function JournalPage() {
               </div>
               
               <div className="flex gap-2">
-                <Dialog open={isScannerOpen} onOpenChange={(open) => { setIsScannerOpen(open); if (!open) stopCamera(); }}>
+                <Dialog open={isScannerOpen} onOpenChange={(open) => { 
+                  setIsScannerOpen(open); 
+                  if (!open) {
+                    stopCamera();
+                    setAiResult(null);
+                    setScanningImage(null);
+                  } else {
+                    // Délai pour s'assurer que le ref videoRef est monté
+                    setTimeout(startCamera, 100);
+                  }
+                }}>
                   <DialogTrigger asChild>
-                    <Button className="h-14 w-14 border-accent bg-black text-accent neon-glow-blue rounded-[12px]" onClick={startCamera}><Camera size={20} /></Button>
+                    <Button className="h-14 w-14 border-accent bg-black text-accent neon-glow-blue rounded-[12px]"><Camera size={20} /></Button>
                   </DialogTrigger>
                   <DialogContent className="bg-black border-accent/40 text-white rounded-[20px] max-w-[95vw] sm:max-w-md p-0 overflow-hidden">
                     <DialogHeader>
@@ -296,7 +313,7 @@ export default function JournalPage() {
                                 </div>
                                 <Button className="border-accent neon-glow-blue h-12 w-12 shrink-0" onClick={() => addMeal(aiResult, true)}><Check size={24} /></Button>
                               </div>
-                              <Button variant="outline" className="w-full text-[10px] font-black" onClick={() => { setScanningImage(null); setAiResult(null); }}>RESCANNER</Button>
+                              <Button variant="outline" className="w-full text-[10px] font-black" onClick={() => { setScanningImage(null); setAiResult(null); startCamera(); }}>RESCANNER</Button>
                             </div>
                           ) : (
                             <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center gap-4 px-6">
@@ -309,9 +326,17 @@ export default function JournalPage() {
                   </DialogContent>
                 </Dialog>
 
-                <Dialog open={isBarcodeOpen} onOpenChange={(open) => { setIsBarcodeOpen(open); if (!open) barcodeScannerRef.current?.clear(); }}>
+                <Dialog open={isBarcodeOpen} onOpenChange={(open) => { 
+                  setIsBarcodeOpen(open); 
+                  if (!open) {
+                    if (barcodeScannerRef.current) barcodeScannerRef.current.clear();
+                    setBarcodeResult(null);
+                  } else {
+                    startBarcodeScanner();
+                  }
+                }}>
                   <DialogTrigger asChild>
-                    <Button className="h-14 w-14 border-primary bg-black text-primary neon-glow-yellow rounded-[12px]" onClick={startBarcodeScanner}><Barcode size={20} /></Button>
+                    <Button className="h-14 w-14 border-primary bg-black text-primary neon-glow-yellow rounded-[12px]"><Barcode size={20} /></Button>
                   </DialogTrigger>
                   <DialogContent className="bg-black border-primary/40 text-white rounded-[20px] max-w-[95vw] sm:max-w-md p-6">
                     <DialogHeader>
@@ -376,6 +401,7 @@ export default function JournalPage() {
           })}
         </div>
         <BottomNav />
+        <canvas ref={canvasRef} className="hidden" />
       </main>
     </TooltipProvider>
   );
