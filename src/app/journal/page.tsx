@@ -32,7 +32,6 @@ export default function JournalPage() {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState<any>(null);
   const [isMuted, setIsMuted] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
   
   const [aiEstimating, setAiEstimating] = useState(false);
   const [aiResult, setAiResult] = useState<any>(null);
@@ -215,7 +214,7 @@ export default function JournalPage() {
     setAiEstimating(true);
     try {
       const result = await estimateDish({ dishName: searchTerm });
-      setAiResult({ ...result, imageUrl: getFallbackImage(result.name) });
+      setAiResult({ ...result, imageUrl: null });
     } catch (e) {
       toast({ variant: "destructive", title: "ERREUR SYSTÈME" });
     } finally {
@@ -257,17 +256,22 @@ export default function JournalPage() {
 
   const getFallbackImage = (name: string) => {
     const term = name.toLowerCase();
-    let query = `food,${encodeURIComponent(term)}`;
-    if (term.includes('poulet')) query = 'meat,chicken,grilled';
-    if (term.includes('boeuf')) query = 'meat,beef,steak';
-    return `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=400&h=300&${query}`;
+    let keywords = `food,${encodeURIComponent(term)}`;
+    if (term.includes('poulet')) keywords = 'meat,chicken,grilled';
+    if (term.includes('boeuf')) keywords = 'meat,beef,steak';
+    // Use a clean search-based placeholder to avoid tofu salad
+    return `https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=400&h=300&sig=${encodeURIComponent(term)}`;
   };
 
-  const renderBadges = (str: string | null) => {
-    if (!str || str === "Non détecté" || str === "Non répertorié") return null;
-    return str.split(',').map((item, i) => (
+  const renderBadges = (data: string | string[] | null) => {
+    if (!data || data === "Non détecté" || data === "Non répertorié") return null;
+    
+    // Support for both comma-separated strings and pre-parsed arrays
+    const items = Array.isArray(data) ? data : data.split(',');
+    
+    return items.map((item, i) => (
       <Badge key={i} variant="outline" className="bg-white/5 border-white/10 text-[8px] uppercase font-black py-0.5 px-2 mr-1 mb-1">
-        {item.trim()}
+        {String(item).trim()}
       </Badge>
     ));
   };
@@ -303,7 +307,7 @@ export default function JournalPage() {
                 <DialogContent className="bg-black border-accent/40 text-white rounded-[24px] p-0 overflow-hidden max-w-sm">
                   <DialogHeader>
                     <DialogTitle className="sr-only">Scanner de Bio-Données</DialogTitle>
-                    <DialogDescription className="sr-only">Analyse nutritionnelle via Vision Engine.</DialogDescription>
+                    <DialogDescription className="sr-only">Analyse nutritionnelle en cours...</DialogDescription>
                   </DialogHeader>
                   <div className="relative h-[70vh]">
                     {!scanningImage ? (
@@ -429,7 +433,7 @@ export default function JournalPage() {
               <div className="relative">
                 <DialogHeader>
                   <DialogTitle className="sr-only">Détails de l'aliment</DialogTitle>
-                  <DialogDescription className="sr-only">Diagnostic moléculaire complet.</DialogDescription>
+                  <DialogDescription className="sr-only">Analyse nutritionnelle complète et micro-nutriments.</DialogDescription>
                 </DialogHeader>
                 <div className="h-60 w-full relative">
                   <img src={selectedMeal.imageUrl || getFallbackImage(selectedMeal.name)} className="w-full h-full object-cover contrast-125 brightness-90 border-b border-accent/20" alt="" />
@@ -526,4 +530,3 @@ export default function JournalPage() {
     </TooltipProvider>
   );
 }
-
