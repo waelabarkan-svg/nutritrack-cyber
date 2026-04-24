@@ -1,20 +1,23 @@
+
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Droplets, Plus, Minus, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useFirestore, useUser, useDoc } from '@/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { calculateNutritionGoals, UserStats } from '@/lib/nutrition-utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export function HydrationCard() {
   const { user } = useUser();
   const db = useFirestore();
+  const isMobile = useIsMobile();
   const [glasses, setGlasses] = useState(0);
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  // Récupération des stats utilisateur pour l'objectif personnalisé
   const profileRef = useMemo(() => user ? doc(db, 'users', user.uid) : null, [db, user]);
   const { data: stats } = useDoc<UserStats>(profileRef as any);
 
@@ -51,6 +54,8 @@ export function HydrationCard() {
   const progress = Math.min(glasses / targetGlasses, 1);
   const isComplete = glasses >= targetGlasses;
 
+  const infoContent = `SYSTÈME DE REFROIDISSEMENT : (${displayStats.weight}KG * 35ML) + BONUS ACTIVITÉ (${goals.hydrationMl - (displayStats.weight * 35)}ML).`;
+
   return (
     <TooltipProvider delayDuration={0}>
       <div className={`cyber-card-blue p-6 sm:p-8 bg-black relative overflow-hidden rounded-[20px] transition-all duration-1000 ${
@@ -68,15 +73,33 @@ export function HydrationCard() {
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-black text-[10px] uppercase tracking-[0.4em] text-accent neon-text-blue truncate">Liquide de Refroidissement</h3>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info size={12} className="text-accent/40 cursor-help shrink-0" />
-                    </TooltipTrigger>
-                    <TooltipContent className="bg-black/95 border-accent/40 text-[10px] font-black uppercase tracking-widest p-4 max-w-[220px] z-[100]">
-                      SYSTÈME DE REFROIDISSEMENT : ({displayStats.weight}KG * 35ML) + BONUS ACTIVITÉ ({goals.hydrationMl - (displayStats.weight * 35)}ML).
-                    </TooltipContent>
-                  </Tooltip>
+                  <h3 className="font-black text-[10px] uppercase tracking-[0.4em] text-accent neon-text-blue truncate">UNITÉ H2O</h3>
+                  {isMobile ? (
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <button className="flex items-center justify-center p-1 active:scale-125 transition-transform">
+                          <Info size={12} className="text-accent/60" />
+                        </button>
+                      </DialogTrigger>
+                      <DialogContent className="bg-black/95 border-accent neon-glow-blue rounded-2xl p-6 max-w-[90vw]">
+                        <DialogHeader>
+                          <DialogTitle className="text-accent font-black uppercase tracking-widest text-sm mb-4">Infos Refroidissement</DialogTitle>
+                        </DialogHeader>
+                        <p className="text-xs font-medium uppercase leading-relaxed text-white">
+                          {infoContent}
+                        </p>
+                      </DialogContent>
+                    </Dialog>
+                  ) : (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info size={12} className="text-accent/40 cursor-help shrink-0" />
+                      </TooltipTrigger>
+                      <TooltipContent className="bg-black/95 border-accent/40 text-[10px] font-black uppercase tracking-widest p-4 max-w-[220px] z-[100]">
+                        {infoContent}
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                 </div>
                 <p className="text-[8px] text-muted-foreground font-black uppercase tracking-widest mt-2 truncate">Intégrité : {glasses * 250}ml / {targetMl}ml</p>
                 <p className="text-[9px] text-primary font-black uppercase tracking-widest mt-1 neon-text-yellow">Objectif : {(targetMl / 1000).toFixed(1)}L</p>
