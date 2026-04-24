@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -378,7 +377,7 @@ export default function JournalPage() {
                   <DialogContent className="bg-black border-primary/40 text-white rounded-[20px] max-w-[95vw] sm:max-w-md p-6">
                     <DialogHeader>
                       <DialogTitle className="text-primary neon-text-yellow uppercase tracking-widest text-center">Scan Code-Barres</DialogTitle>
-                      <DialogDescription className="sr-only">Interrogation de la base de données OpenFoodFacts...</DialogDescription>
+                      <DialogDescription className="sr-only">Interrogation de la base de données OpenFoodFacts pour extraire les nutriments du produit.</DialogDescription>
                     </DialogHeader>
                     <div id="reader" className="w-full min-h-[300px] bg-black/50 border border-primary/20 mt-4 rounded-xl overflow-hidden" />
                     {isFetchingBarcode && <div className="flex justify-center mt-4"><Loader2 className="animate-spin text-primary" /></div>}
@@ -468,6 +467,10 @@ export default function JournalPage() {
           <DialogContent className="bg-black/95 border-accent/40 text-white rounded-[24px] max-w-[95vw] sm:max-w-md p-0 overflow-hidden shadow-[0_0_50px_rgba(0,242,255,0.2)]">
             {selectedMeal && (
               <div className="relative">
+                <DialogHeader>
+                  <DialogTitle className="sr-only">Détails de l'aliment</DialogTitle>
+                  <DialogDescription className="sr-only">Analyse nutritionnelle complète incluant les micro-nutriments et vitamines.</DialogDescription>
+                </DialogHeader>
                 <div className="h-48 w-full relative">
                   {selectedMeal.imageUrl ? (
                     <img src={selectedMeal.imageUrl} className="w-full h-full object-cover contrast-125 brightness-90 border-b border-accent/20" alt="" />
