@@ -49,21 +49,17 @@ export default function JournalPage() {
   const globalSearchResults = useMemo(() => {
     if (!searchTerm || searchTerm.trim().length < 2) return [];
     try {
-      // Nettoyage des données Firebase
       const firebaseData = (meals as any)?.docs 
         ? (meals as any).docs.map((d: any) => ({ id: d.id, ...d.data() }))
         : (Array.isArray(meals) ? meals : []);
       
       const localHistory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
-      
-      // Fusion des sources
       const allItems = [...(foodDb as any[]), ...localHistory, ...firebaseData];
-      
       const queryLower = searchTerm.toLowerCase();
       const seenNames = new Set();
       
       return allItems.filter((item: any) => {
-        const name = (item.name || item.product_name || "ALIMENT INCONNU").toString();
+        const name = (item.name || item.product_name || "").toString();
         const matches = name.toLowerCase().includes(queryLower);
         if (matches && !seenNames.has(name.toUpperCase())) {
           seenNames.add(name.toUpperCase());
@@ -76,12 +72,11 @@ export default function JournalPage() {
     }
   }, [searchTerm, meals]);
 
-  // Fonction d'ajout de repas
   const addMeal = async (item: any, type: string = 'snack') => {
     if (!user) return;
     try {
       const mealData = {
-        name: item.name || item.product_name || "ALIMENT INCONNU",
+        name: (item.name || item.product_name || "ALIMENT INCONNU").toUpperCase(),
         calories: Number(item.calories) || 0,
         protein: Number(item.protein) || 0,
         carbs: Number(item.carbs) || 0,
@@ -95,34 +90,28 @@ export default function JournalPage() {
       };
 
       await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
-      
-      // Mise à jour de la mémoire locale
       const localHistory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
       localStorage.setItem('biometric_memory', JSON.stringify([mealData, ...localHistory].slice(0, 50)));
       
-      toast({ title: "SYNCHRONISATION RÉUSSIE", description: "Données bio-enregistrées." });
+      toast({ title: "SYNC OK", description: "DATA_LOGGED" });
       setSearchTerm('');
     } catch (e) {
-      toast({ variant: "destructive", title: "ERREUR DE LIAISON", description: "Échec de l'enregistrement." });
+      toast({ variant: "destructive", title: "ERROR", description: "LINK_FAILED" });
     }
   };
 
-  // Logique Caméra
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
+      if (videoRef.current) videoRef.current.srcObject = stream;
     } catch (err) {
-      toast({ variant: "destructive", title: "ERREUR CAPTEUR", description: "Accès caméra refusé." });
+      toast({ variant: "destructive", title: "SENSOR_ERROR", description: "ACCESS_DENIED" });
     }
   };
 
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
+      (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
     }
   };
 
@@ -131,9 +120,7 @@ export default function JournalPage() {
     const canvas = document.createElement('canvas');
     canvas.width = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.drawImage(videoRef.current, 0, 0);
+    canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0);
     const dataUri = canvas.toDataURL('image/jpeg');
     setCapturedImage(dataUri);
     
@@ -143,7 +130,7 @@ export default function JournalPage() {
       await addMeal(result);
       setIsCameraOpen(false);
     } catch (err) {
-      toast({ variant: "destructive", title: "ANALYSE ÉCHOUÉE", description: "Processeur visuel instable." });
+      toast({ variant: "destructive", title: "ANALYSIS_FAILED", description: "STABILITY_LOW" });
     } finally {
       setIsAnalyzing(false);
       setCapturedImage(null);
@@ -151,38 +138,32 @@ export default function JournalPage() {
     }
   };
 
-  // Logique Code-barres
   const handleBarcodeSuccess = async (decodedText: string) => {
-    if (scannerRef.current) {
-      scannerRef.current.clear();
-    }
+    if (scannerRef.current) scannerRef.current.clear();
     setIsBarcodeOpen(false);
     setIsAnalyzing(true);
     try {
-      const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${decodedText}.json`);
-      const data = await response.json();
+      const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${decodedText}.json`);
+      const data = await res.json();
       if (data.status === 1) {
         const p = data.product;
-        const item = {
+        await addMeal({
           name: p.product_name,
           calories: p.nutriments?.['energy-kcal_100g'] || 0,
           protein: p.nutriments?.proteins_100g || 0,
           carbs: p.nutriments?.carbohydrates_100g || 0,
-          fat: p.nutriments?.fat_100g || 0,
-          sugar: p.nutriments?.sugars_100g || 0
-        };
-        await addMeal(item);
+          fat: p.nutriments?.fat_100g || 0
+        });
       } else {
-        toast({ title: "CODE INCONNU", description: "Produit non répertorié." });
+        toast({ title: "UNKNOWN_ID", description: "NOT_IN_ARCHIVES" });
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "ERREUR RÉSEAU", description: "Serveurs OFF injoignables." });
+      toast({ variant: "destructive", title: "NETWORK_ERROR", description: "OFFLINE" });
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  // Reconstruction IA
   const reconstructBioData = async (dishName: string, mealId: string) => {
     if (!user) return;
     setIsAnalyzing(true);
@@ -195,19 +176,16 @@ export default function JournalPage() {
         carbs: result.carbs || 0,
         fat: result.fat || 0,
         sugar: result.sugar || 0,
-        fiber: result.fiber || 0,
-        vitamins: result.vitamins || "Non détecté",
-        minerals: result.minerals || "Non détecté"
+        fiber: result.fiber || 0
       });
-      toast({ title: "SYNTHÈSE TERMINÉE", description: "Profil moléculaire mis à jour." });
+      toast({ title: "SYNTHESIS_COMPLETE", description: "MOLECULAR_SYNC" });
     } catch (e) {
-      toast({ variant: "destructive", title: "ERREUR IA", description: "Liaison neuronale instable." });
+      toast({ variant: "destructive", title: "NEURAL_ERROR", description: "STABILITY_LOST" });
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  // Lifecycle
   useEffect(() => {
     if (isBarcodeOpen) {
       const timer = setTimeout(() => {
@@ -216,8 +194,6 @@ export default function JournalPage() {
         scannerRef.current = scanner;
       }, 300);
       return () => clearTimeout(timer);
-    } else if (scannerRef.current) {
-      scannerRef.current.clear();
     }
   }, [isBarcodeOpen]);
 
@@ -234,44 +210,44 @@ export default function JournalPage() {
   if (loading || !user) return null;
 
   const categories = [
-    { id: 'petit-déjeuner', label: 'Petit-Déjeuner', icon: Coffee },
-    { id: 'déjeuner', label: 'Déjeuner', icon: Sun },
-    { id: 'dîner', label: 'Dîner', icon: Moon },
-    { id: 'snack', label: 'Snack', icon: Cookie },
+    { id: 'petit-déjeuner', label: 'PETIT-DÉJEUNER', icon: Coffee },
+    { id: 'déjeuner', label: 'DÉJEUNER', icon: Sun },
+    { id: 'dîner', label: 'DÎNER', icon: Moon },
+    { id: 'snack', label: 'SNACK', icon: Cookie },
   ];
 
   return (
-    <main className="max-w-md mx-auto min-h-screen bg-black text-white relative shadow-[0_0_50px_rgba(0,0,0,0.8)] pb-32">
+    <main className="max-w-md mx-auto min-h-screen bg-black text-white relative shadow-2xl pb-32 overflow-x-hidden">
       
-      {/* HEADER NÉON */}
-      <div className="p-6 flex justify-between items-center">
+      {/* HEADER : TRANCHANT & NÉON */}
+      <header className="p-6 flex justify-between items-center bg-black">
         <h1 
           className="font-black text-2xl uppercase tracking-[0.2em] text-white"
-          style={{ textShadow: '0 0 15px #00FFFF, 0 0 5px #00FFFF' }}
+          style={{ textShadow: '0 0 10px #00FFFF' }}
         >
           Journal
         </h1>
         
-        <div className="flex gap-3">
+        <div className="flex gap-4">
           <button 
             onClick={() => setIsCameraOpen(true)}
-            className="w-11 h-11 bg-white/5 border border-accent/30 rounded-lg flex items-center justify-center transition-all hover:border-accent hover:shadow-[0_0_15px_rgba(0,242,255,0.4)]"
+            className="text-white/40 hover:text-accent transition-all duration-300"
           >
-            <Camera size={20} className="text-accent" />
+            <Camera size={20} />
           </button>
           <button 
             onClick={() => setIsBarcodeOpen(true)}
-            className="w-11 h-11 bg-white/5 border border-accent/30 rounded-lg flex items-center justify-center transition-all hover:border-accent hover:shadow-[0_0_15px_rgba(0,242,255,0.4)]"
+            className="text-white/40 hover:text-accent transition-all duration-300"
           >
-            <Barcode size={20} className="text-accent" />
+            <Barcode size={20} />
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* RECHERCHE */}
-      <div className="px-6 mb-8">
-        <div className="relative group">
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+      {/* RECHERCHE : FENTE DISCRÈTE */}
+      <div className="px-6 mb-10">
+        <div className="relative border-b border-white/10 group">
+          <div className="absolute inset-y-0 left-0 flex items-center pointer-events-none">
             <Search size={14} className="text-white/20 group-focus-within:text-accent" />
           </div>
           <Input 
@@ -279,7 +255,7 @@ export default function JournalPage() {
             placeholder="RECHERCHER UN ALIMENT..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-black/40 border-white/10 pl-11 h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] focus:border-accent focus:ring-accent/30"
+            className="w-full bg-transparent border-none pl-8 h-12 rounded-none text-[10px] font-bold uppercase tracking-[0.2em] focus:ring-0 placeholder:text-white/20"
           />
         </div>
       </div>
@@ -287,63 +263,64 @@ export default function JournalPage() {
       {/* CONTENU PRINCIPAL */}
       <div className="px-6">
         {searchTerm ? (
-          <div className="space-y-4">
-            <h2 className="text-[9px] font-black uppercase tracking-[0.4em] text-accent neon-text-blue">
-              Résultats de Recherche
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <h2 className="text-[9px] font-black uppercase tracking-[0.3em] text-accent opacity-60">
+              RÉSULTATS_INDEX
             </h2>
-            {globalSearchResults.length > 0 ? (
-              <div className="grid gap-3">
-                {globalSearchResults.map((item: any, idx: number) => (
-                  <div 
-                    key={idx}
-                    onClick={() => addMeal(item)}
-                    className="bg-blue-500/5 border border-blue-500/20 p-4 rounded-xl flex items-center justify-between group cursor-pointer hover:bg-blue-500/10"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-blue-500/10 border border-blue-500/30 rounded-lg flex items-center justify-center text-blue-400">
-                        {item.isDish ? <Soup size={18} /> : (item.isLiquid ? <Beer size={18} /> : <Pizza size={18} />)}
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-white">{item.name || item.product_name || "ALIMENT INCONNU"}</p>
-                        <p className="text-[8px] text-white/40 uppercase font-black mt-1">{item.calories} kcal</p>
-                      </div>
+            <div className="grid gap-2">
+              {globalSearchResults.map((item: any, idx: number) => (
+                <div 
+                  key={idx}
+                  onClick={() => addMeal(item)}
+                  className="bg-accent/5 border border-accent/10 p-4 flex items-center justify-between group cursor-pointer hover:bg-accent/10 transition-all"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="text-accent/40">
+                      {item.isDish ? <Soup size={16} /> : (item.isLiquid ? <Beer size={16} /> : <Pizza size={16} />)}
                     </div>
-                    <Plus size={16} className="text-accent" />
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-white">{(item.name || item.product_name).toUpperCase()}</p>
+                      <p className="text-[8px] text-accent font-black uppercase mt-1 tracking-tighter">{item.calories} KCAL</p>
+                    </div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-[9px] text-white/20 font-black uppercase italic text-center py-10">SÉQUENCE NON TROUVÉE DANS LES ARCHIVES</p>
+                  <Plus size={14} className="text-accent opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              ))}
+            </div>
+            {globalSearchResults.length === 0 && (
+              <p className="text-[8px] text-white/20 font-black uppercase italic text-center py-10 tracking-[0.2em]">SÉQUENCE NON TROUVÉE</p>
             )}
           </div>
         ) : (
-          <div className="space-y-10 pb-24">
+          <div className="space-y-12 pb-20">
             {categories.map((category) => {
-              const CategoryIcon = category.icon;
               const sectionMeals = Array.isArray(meals) ? meals.filter((m: any) => m.type === category.id) : [];
 
               return (
                 <div key={category.id} className="space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b border-white/5">
-                    <CategoryIcon size={12} className="text-white/40" />
-                    <h2 className="text-[9px] font-black uppercase tracking-[0.4em] text-white/40">{category.label}</h2>
+                  <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">{category.label}</h2>
+                    <span className="text-[8px] font-black text-white/20 tracking-widest">{sectionMeals.length} ITEMS</span>
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     {sectionMeals.length > 0 ? sectionMeals.map((meal: any) => (
-                      <div key={meal.id} className="flex justify-between items-center py-3 border-b border-white/5 hover:bg-white/[0.02]">
+                      <div key={meal.id} className="flex justify-between items-center py-4 border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors group">
                         <div className="flex items-center gap-3">
-                          {meal.isLiquid ? <Droplets size={12} className="text-accent" /> : <Circle size={8} className="text-primary" />}
-                          <span className="text-[10px] font-black uppercase tracking-widest text-white/90">{meal.name}</span>
+                          {meal.isLiquid ? <Droplets size={12} className="text-accent" /> : <div className="w-1 h-1 bg-white/20 rounded-full" />}
+                          <span className="text-[11px] font-bold uppercase tracking-widest text-white/90">{meal.name}</span>
                         </div>
-                        <div className="flex items-center gap-4">
-                          <span className="text-[10px] font-black text-accent neon-text-blue">{meal.calories} KCAL</span>
-                          <button onClick={() => reconstructBioData(meal.name, meal.id)} className="p-1.5 bg-white/5 rounded-md">
-                            {isAnalyzing ? <Loader2 size={12} className="animate-spin text-accent" /> : <RefreshCw size={12} className="text-primary" />}
+                        <div className="flex items-center gap-6">
+                          <span className="text-[11px] font-black text-[#00FFFF] tracking-tight" style={{ textShadow: '0 0 8px rgba(0,255,255,0.4)' }}>{meal.calories} KCAL</span>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); reconstructBioData(meal.name, meal.id); }}
+                            className="p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            {isAnalyzing ? <Loader2 size={12} className="animate-spin text-accent" /> : <RefreshCw size={12} className="text-white/20 hover:text-white" />}
                           </button>
                         </div>
                       </div>
                     )) : (
-                      <p className="text-[8px] text-white/10 font-black uppercase italic py-3">Veuillez scanner ou rechercher un aliment</p>
+                      <p className="text-[8px] text-white/10 font-black uppercase italic py-4 tracking-[0.1em]">Veuillez scanner ou rechercher un aliment</p>
                     )}
                   </div>
                 </div>
@@ -353,34 +330,34 @@ export default function JournalPage() {
         )}
       </div>
 
-      {/* DIALOGUES DE SCAN */}
+      {/* DIALOGUES DE SCAN : NOIR & CYAN */}
       <Dialog open={isCameraOpen} onOpenChange={setIsCameraOpen}>
-        <DialogContent className="bg-black border-accent/50 max-w-sm rounded-[24px]">
-          <DialogHeader><DialogTitle className="text-accent text-center uppercase tracking-widest font-black text-xs">Analyse Optique</DialogTitle></DialogHeader>
-          <div className="relative aspect-video bg-black/40 rounded-xl overflow-hidden border border-white/10">
+        <DialogContent className="bg-black border-accent/40 rounded-none max-w-sm">
+          <DialogHeader><DialogTitle className="text-accent text-center uppercase tracking-[0.4em] font-black text-[10px]">Analyse Optique</DialogTitle></DialogHeader>
+          <div className="relative aspect-video bg-black rounded-none overflow-hidden border border-white/10">
             <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
             {isAnalyzing && (
-              <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3">
-                <Loader2 className="text-accent animate-spin" size={32} />
-                <span className="text-[10px] text-accent font-black uppercase tracking-widest animate-pulse">Séquençage...</span>
+              <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-4">
+                <div className="w-12 h-1 bg-accent animate-pulse shadow-[0_0_15px_#00FFFF]" />
+                <span className="text-[9px] text-accent font-black uppercase tracking-[0.5em] animate-pulse">Séquençage...</span>
               </div>
             )}
           </div>
           <button 
             onClick={capturePhoto}
             disabled={isAnalyzing}
-            className="w-16 h-16 bg-accent/20 border-4 border-accent rounded-full mx-auto flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+            className="w-16 h-16 border-2 border-accent rounded-none mx-auto flex items-center justify-center hover:bg-accent/10 active:scale-95 transition-all mt-4"
           >
-            <div className="w-10 h-10 bg-accent rounded-full shadow-[0_0_20px_rgba(0,242,255,0.8)]" />
+            <div className="w-10 h-10 bg-accent shadow-[0_0_20px_#00FFFF]" />
           </button>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isBarcodeOpen} onOpenChange={setIsBarcodeOpen}>
-        <DialogContent className="bg-black border-accent/50 max-w-sm rounded-[24px]">
-          <DialogHeader><DialogTitle className="text-accent text-center uppercase tracking-widest font-black text-xs">Scan Industriel</DialogTitle></DialogHeader>
-          <div id="reader" className="w-full overflow-hidden rounded-xl border border-white/10 min-h-[250px]" />
-          <p className="text-[8px] text-white/40 text-center uppercase tracking-widest">Pointez le capteur vers le code-barres</p>
+        <DialogContent className="bg-black border-accent/40 rounded-none max-w-sm">
+          <DialogHeader><DialogTitle className="text-accent text-center uppercase tracking-[0.4em] font-black text-[10px]">Scan Industriel</DialogTitle></DialogHeader>
+          <div id="reader" className="w-full overflow-hidden border border-white/10 min-h-[250px]" />
+          <p className="text-[8px] text-white/20 text-center uppercase tracking-[0.3em] mt-2">Alignement du code-barres requis</p>
         </DialogContent>
       </Dialog>
 
