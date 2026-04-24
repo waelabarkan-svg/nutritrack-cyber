@@ -8,8 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Label } from '@/components/ui/label';
-import { Plus, Trash2, Search, Coffee, Utensils, Moon, Apple, Zap, Sparkles, Loader2, Camera, Upload, X, Check, AlertCircle, Scan, Volume2, VolumeX } from 'lucide-react';
+import { Plus, Trash2, Search, Camera, Upload, X, Check, Loader2, Scan, Volume2, VolumeX, Sparkles } from 'lucide-react';
 import { collection, addDoc, query, where, deleteDoc, doc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import foodDb from '@/lib/food-db.json';
@@ -25,9 +24,9 @@ export default function JournalPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<MealType>('petit-déjeuner');
-  const [isCustomOpen, setIsCustomOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   
   const [aiEstimating, setAiEstimating] = useState(false);
   const [aiResult, setAiResult] = useState<any>(null);
@@ -57,14 +56,26 @@ export default function JournalPage() {
   const speak = (text: string) => {
     if (isMuted || typeof window === 'undefined' || !window.speechSynthesis) return;
     
-    // Annule toute lecture en cours
     window.speechSynthesis.cancel();
     
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'fr-FR';
-    utterance.pitch = 0.7; // Tonalité basse pour effet SF/Robotique
-    utterance.rate = 0.9;  // Rythme légèrement lent pour plus de poids
+    utterance.pitch = 0.7; // Tonalité grave SF
+    utterance.rate = 0.9;  // Rythme calculé
     utterance.volume = 1;
+
+    // Sélection de voix premium
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v => 
+      (v.lang.includes('fr')) && 
+      (v.name.includes('Google') || v.name.includes('Neural') || v.name.includes('Female'))
+    ) || voices.find(v => v.lang.includes('fr'));
+
+    if (preferredVoice) utterance.voice = preferredVoice;
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
     
     window.speechSynthesis.speak(utterance);
   };
@@ -125,7 +136,6 @@ export default function JournalPage() {
       const result = await scanDish({ photoDataUri: scanningImage });
       setAiResult(result);
       
-      // Déclenchement vocal du conseil
       if (result.healthAdvice) {
         speak(result.healthAdvice);
       }
@@ -196,18 +206,28 @@ export default function JournalPage() {
             <h1 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase neon-text-yellow">Journal de Bord</h1>
           </div>
           
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className={`w-10 h-10 border transition-all ${isMuted ? 'text-destructive border-destructive/20' : 'text-accent border-accent/20'}`}
-            onClick={() => {
-              const newState = !isMuted;
-              setIsMuted(newState);
-              if (newState) window.speechSynthesis.cancel();
-            }}
-          >
-            {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-          </Button>
+          <div className="flex items-center gap-3">
+            {isSpeaking && (
+              <div className="flex gap-1 h-4 items-center px-2">
+                <div className="eq-bar" />
+                <div className="eq-bar" style={{ animationDelay: '0.1s' }} />
+                <div className="eq-bar" style={{ animationDelay: '0.2s' }} />
+                <div className="eq-bar" style={{ animationDelay: '0.3s' }} />
+              </div>
+            )}
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className={`w-10 h-10 border transition-all ${isMuted ? 'text-destructive border-destructive/20' : 'text-accent border-accent/20'}`}
+              onClick={() => {
+                const newState = !isMuted;
+                setIsMuted(newState);
+                if (newState) window.speechSynthesis.cancel();
+              }}
+            >
+              {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+            </Button>
+          </div>
         </div>
 
         <section className="mb-12 space-y-6">
@@ -302,7 +322,7 @@ export default function JournalPage() {
                                 <h3 className="text-xl font-black text-white uppercase tracking-tighter">{aiResult.name}</h3>
                                 {aiResult.healthAdvice && (
                                   <p className="text-[10px] text-primary font-bold uppercase tracking-tight mt-1 flex items-center gap-1">
-                                    <Volume2 size={10} className="animate-pulse" /> {aiResult.healthAdvice}
+                                    <Sparkles size={10} className={isSpeaking ? "animate-pulse text-accent" : ""} /> {aiResult.healthAdvice}
                                   </p>
                                 )}
                               </div>
