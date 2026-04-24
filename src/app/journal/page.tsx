@@ -16,7 +16,11 @@ export default function JournalPage() {
   const db = useFirestore();
   const router = useRouter();
 
-  // États pour la recherche et les scanners (Phase 2)
+  // États pour les dialogues de scan
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [isBarcodeOpen, setIsBarcodeOpen] = useState(false);
+  
+  // États pour la recherche (Phase suivante)
   const [searchTerm, setSearchTerm] = useState('');
 
   // Protection d'authentification
@@ -29,7 +33,7 @@ export default function JournalPage() {
   return (
     <main className="max-w-md mx-auto min-h-screen bg-black text-white relative shadow-[0_0_50px_rgba(0,0,0,0.8)] pb-32">
       {/* SECTION HEADER NÉON */}
-      <div className="p-6 flex justify-between items-start">
+      <div className="p-6 flex justify-between items-center">
         <h1 
           className="font-black text-2xl uppercase tracking-[0.2em] text-white"
           style={{ textShadow: '0 0 15px #00FFFF, 0 0 5px #00FFFF' }}
@@ -37,23 +41,36 @@ export default function JournalPage() {
           Journal
         </h1>
         
-        {/* EMPLACEMENT FUTUR : BOUTONS ACTIONS (Phase 2) */}
-        <div className="flex gap-2">
-          {/* Les boutons Camera et Barcode seront insérés ici */}
+        {/* BOUTONS ACTIONS CYBER-NÉON */}
+        <div className="flex gap-3">
+          <button 
+            onClick={() => setIsCameraOpen(true)}
+            className="w-11 h-11 bg-white/5 border border-accent/30 rounded-lg flex items-center justify-center transition-all hover:bg-accent/10 hover:border-accent hover:shadow-[0_0_15px_rgba(0,242,255,0.4)] active:scale-95 group"
+            title="Scan Optique"
+          >
+            <Camera size={20} className="text-accent group-hover:scale-110 transition-transform" />
+          </button>
+          <button 
+            onClick={() => setIsBarcodeOpen(true)}
+            className="w-11 h-11 bg-white/5 border border-accent/30 rounded-lg flex items-center justify-center transition-all hover:bg-accent/10 hover:border-accent hover:shadow-[0_0_15px_rgba(0,242,255,0.4)] active:scale-95 group"
+            title="Scan Industriel"
+          >
+            <Barcode size={20} className="text-accent group-hover:scale-110 transition-transform" />
+          </button>
         </div>
       </div>
 
-      {/* SECTION RECHERCHE (Phase 2) */}
+      {/* SECTION RECHERCHE (Phase 3) */}
       <div className="px-6 mb-8">
         {/* L'input de recherche sera inséré ici */}
       </div>
 
-      {/* LISTE DES REPAS / RÉSULTATS (Phase 3) */}
+      {/* LISTE DES REPAS / RÉSULTATS (Phase 4) */}
       <div className="px-6 space-y-6">
         {/* Le flux quotidien ou les résultats de recherche seront affichés ici */}
       </div>
 
-      {/* MODALES DE SCAN ET DÉTAILS (Phase 4) */}
+      {/* MODALES DE SCAN ET DÉTAILS (Phase 5) */}
       {/* Les dialogues DialogContent pour le scan et les détails seront insérés ici */}
 
       <BottomNav />
