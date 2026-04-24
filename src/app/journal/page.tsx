@@ -50,7 +50,7 @@ export default function JournalPage() {
 
   const { data: meals } = useCollection(mealsQuery);
 
-  // RECHERCHE GLOBALE : Sécurisée contre les crashs toLowerCase
+  // RECHERCHE GLOBALE : Blindée contre les types erronés
   const globalSearchResults = useMemo(() => {
     if (!searchTerm) return [];
     try {
@@ -60,14 +60,15 @@ export default function JournalPage() {
         item.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     } catch (e) {
-      console.error("Search Error:", e);
+      console.error("Search Logic Error:", e);
       return [];
     }
   }, [searchTerm]);
 
   const announceResults = (data: any) => {
     if (isMuted || typeof window === 'undefined' || !window.speechSynthesis) return;
-    const script = `Analyse terminée. Produit : ${data.name || 'Aliment Inconnu'}. Apport énergétique : ${data.calories || 'non détecté'} calories.`;
+    const name = data.name || 'Aliment Inconnu';
+    const script = `Analyse terminée. Produit : ${name}. Apport énergétique : ${data.calories || 0} calories.`;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(script);
     utterance.lang = 'fr-FR';
@@ -125,7 +126,11 @@ export default function JournalPage() {
   const handleBarcodeSuccess = async (decodedText: string) => {
     if (aiEstimating) return;
     setAiEstimating(true);
-    if (scannerRef.current) scannerRef.current.clear();
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.clear();
+      } catch (e) {}
+    }
     
     try {
       const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${decodedText}.json`);
@@ -134,7 +139,7 @@ export default function JournalPage() {
       if (data.status === 1) {
         const p = data.product;
         const result = {
-          name: p.product_name || "PRODUIT INCONNU",
+          name: (p.product_name || "PRODUIT INCONNU").toUpperCase(),
           calories: p.nutriments['energy-kcal_100g'] || 0,
           protein: p.nutriments.proteins_100g || 0,
           carbs: p.nutriments.carbohydrates_100g || 0,
@@ -161,8 +166,9 @@ export default function JournalPage() {
   const addMeal = async (food: any, isScan = false) => {
     if (!user) return;
     try {
+      const mealName = (food.name || "ALIMENT INCONNU").toUpperCase();
       const mealData = {
-        name: (food.name || "ALIMENT INCONNU").toUpperCase(),
+        name: mealName,
         calories: Number(food.calories || 0),
         protein: Number(food.protein || 0),
         carbs: Number(food.carbs || 0),
@@ -263,18 +269,32 @@ export default function JournalPage() {
   };
 
   const getFallbackImage = (name: string) => {
-    const term = (name || "food").toLowerCase();
-    return `https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=400&h=300&sig=${encodeURIComponent(term)}`;
+    const term = encodeURIComponent((name || "food").toLowerCase());
+    return `https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=400&h=300&sig=${term}`;
   };
 
+  // INITIALISATION SÉCURISÉE DU SCANNER
   useEffect(() => {
+    let scanner: Html5QrcodeScanner | null = null;
     if (isBarcodeOpen) {
-      scannerRef.current = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 }, false);
-      scannerRef.current.render(handleBarcodeSuccess, (err) => {});
+      // On attend un cycle de rendu pour être sûr que #reader est là
+      const timer = setTimeout(() => {
+        const readerElement = document.getElementById("reader");
+        if (readerElement) {
+          scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 }, false);
+          scannerRef.current = scanner;
+          scanner.render(handleBarcodeSuccess, (err) => {});
+        }
+      }, 300);
+      return () => {
+        clearTimeout(timer);
+        if (scanner) {
+          try {
+            scanner.clear();
+          } catch (e) {}
+        }
+      };
     }
-    return () => {
-      if (scannerRef.current) scannerRef.current.clear();
-    };
   }, [isBarcodeOpen]);
 
   return (
@@ -308,12 +328,13 @@ export default function JournalPage() {
               />
             </div>
             <div className="flex gap-2">
+              {/* SCANNER PHOTO */}
               <Dialog open={isScannerOpen} onOpenChange={(o) => { setIsScannerOpen(o); if(o) setTimeout(startCamera,100); else stopCamera(); }}>
                 <DialogTrigger asChild><Button className="h-14 w-14 border-accent text-accent rounded-[12px]"><Camera size={20} /></Button></DialogTrigger>
                 <DialogContent className="bg-black border-accent/40 text-white rounded-[24px] p-0 overflow-hidden max-w-sm">
                   <DialogHeader>
                     <DialogTitle className="sr-only">Scanner Optique</DialogTitle>
-                    <DialogDescription className="sr-only">Analyse moléculaire en temps réel.</DialogDescription>
+                    <DialogDescription className="sr-only">Analyse moléculaire de plat.</DialogDescription>
                   </DialogHeader>
                   <div className="relative h-[70vh]">
                     {!scanningImage ? (
@@ -350,6 +371,7 @@ export default function JournalPage() {
                 </DialogContent>
               </Dialog>
 
+              {/* SCANNER CODE-BARRES */}
               <Dialog open={isBarcodeOpen} onOpenChange={setIsBarcodeOpen}>
                 <DialogTrigger asChild><Button className="h-14 w-14 border-primary text-primary rounded-[12px]"><Barcode size={20} /></Button></DialogTrigger>
                 <DialogContent className="bg-black border-primary/40 text-white rounded-[24px] max-w-sm">
@@ -357,13 +379,32 @@ export default function JournalPage() {
                      <DialogTitle className="sr-only">Scanner Code-Barres</DialogTitle>
                      <DialogDescription className="sr-only">Liaison OpenFoodFacts.</DialogDescription>
                    </DialogHeader>
-                   <div id="reader" className="w-full" />
-                   {aiResult && (
-                     <div className="mt-4 p-4 border border-primary/20 bg-primary/5 rounded-xl">
-                       <p className="text-xs font-black uppercase text-primary mb-2">{aiResult.name}</p>
-                       <Button className="w-full bg-primary text-black" onClick={() => addMeal(aiResult, true)}>AJOUTER</Button>
-                     </div>
-                   )}
+                   <div className="space-y-4">
+                     {/* ÉLÉMENT READER PRÉSENT DANS LE DOM */}
+                     <div id="reader" className="w-full overflow-hidden rounded-xl border border-white/10 min-h-[250px] bg-white/5" />
+                     {aiEstimating && (
+                        <div className="flex items-center justify-center gap-3 p-4">
+                          <Loader2 className="animate-spin text-primary" size={20} />
+                          <span className="text-[10px] font-black uppercase text-primary">SYNCHRONISATION OFF...</span>
+                        </div>
+                     )}
+                     {aiResult && (
+                       <div className="p-4 border border-primary/20 bg-primary/5 rounded-xl animate-in fade-in slide-in-from-top-2">
+                         <p className="text-xs font-black uppercase text-primary mb-3">{aiResult.name}</p>
+                         <div className="grid grid-cols-2 gap-2 mb-4">
+                            <div className="p-2 bg-black/40 rounded border border-white/5">
+                              <span className="text-[8px] text-muted-foreground block uppercase font-black">Calories</span>
+                              <span className="text-sm font-black text-white">{aiResult.calories}</span>
+                            </div>
+                            <div className="p-2 bg-black/40 rounded border border-white/5">
+                              <span className="text-[8px] text-muted-foreground block uppercase font-black">Protéines</span>
+                              <span className="text-sm font-black text-white">{aiResult.protein}g</span>
+                            </div>
+                         </div>
+                         <Button className="w-full bg-primary text-black font-black" onClick={() => addMeal(aiResult, true)}>AJOUTER À L'ARCHIVE</Button>
+                       </div>
+                     )}
+                   </div>
                 </DialogContent>
               </Dialog>
             </div>
@@ -427,7 +468,7 @@ export default function JournalPage() {
               <div className="relative">
                 <DialogHeader>
                   <DialogTitle className="sr-only">Détails de l'aliment</DialogTitle>
-                  <DialogDescription className="sr-only">Analyse nutritionnelle complète.</DialogDescription>
+                  <DialogDescription className="sr-only">Analyse nutritionnelle complète et micro-nutriments.</DialogDescription>
                 </DialogHeader>
                 <div className="h-60 w-full relative">
                   <img src={selectedMeal.imageUrl || getFallbackImage(selectedMeal.name)} className="w-full h-full object-cover" alt="" />
@@ -437,7 +478,12 @@ export default function JournalPage() {
                 </div>
 
                 <div className="p-8 space-y-8">
-                  <h2 className="text-2xl font-black tracking-tighter uppercase neon-text-blue">{selectedMeal.name || 'ALIMENT INCONNU'}</h2>
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-black tracking-tighter uppercase neon-text-blue">{selectedMeal.name || 'ALIMENT INCONNU'}</h2>
+                    {selectedMeal.isLiquid && selectedMeal.sugar > 10 && (
+                      <Badge className="bg-destructive/20 border-destructive text-destructive neon-text-red text-[8px] animate-pulse">HIGH SUGAR ALERT</Badge>
+                    )}
+                  </div>
                   
                   {(!selectedMeal.vitamins && !selectedMeal.minerals) ? (
                     <div className="bg-orange-500/10 border border-orange-500/40 p-4 rounded-xl space-y-3">
@@ -445,7 +491,7 @@ export default function JournalPage() {
                         <AlertCircle size={14} />
                         <span className="text-[9px] font-black uppercase tracking-widest">Archive Incomplète</span>
                       </div>
-                      <Button onClick={handleReconstruct} disabled={isReconstructing} className="w-full bg-orange-500 text-black">
+                      <Button onClick={handleReconstruct} disabled={isReconstructing} className="w-full bg-orange-500 text-black font-black">
                         {isReconstructing ? <Loader2 className="animate-spin" size={14} /> : "RECONSTRUIRE BIO-DONNÉES"}
                       </Button>
                     </div>
@@ -463,6 +509,12 @@ export default function JournalPage() {
                       {renderBadges(selectedMeal.vitamins)}
                       {renderBadges(selectedMeal.minerals)}
                     </div>
+                    {selectedMeal.caffeine > 0 && (
+                      <div className="flex items-center gap-2 text-accent/60">
+                        <Coffee size={12} />
+                        <span className="text-[10px] font-black uppercase">{selectedMeal.caffeine}mg Caféine</span>
+                      </div>
+                    )}
                     <p className="text-[8px] text-muted-foreground uppercase font-black">
                       {selectedMeal.isAiEstimated ? "ESTIMATION IA" : "CERTIFIÉ INDUSTRIEL"}
                     </p>
