@@ -1,27 +1,68 @@
 "use client"
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useCollection } from '@/firebase';
 import { BottomNav } from '@/components/bottom-nav';
 import { 
   Plus, Search, Camera, Barcode, X, Info, Zap, Flame, Droplets,
   AlertTriangle, CheckCircle2, Beer, Soup, Loader2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { collection, query, where } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
+import foodDb from '@/lib/food-db.json';
 
 export default function JournalPage() {
   const { user, loading } = useUser();
   const db = useFirestore();
   const router = useRouter();
 
-  // États pour les dialogues de scan
+  // États de l'interface
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isBarcodeOpen, setIsBarcodeOpen] = useState(false);
-  
-  // État pour la recherche
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Requête Firebase pour l'historique utilisateur (fusion recherche)
+  const mealsQuery = useMemo(() => {
+    if (!user) return null;
+    return collection(db, 'users', user.uid, 'meals');
+  }, [db, user]);
+
+  const { data: meals } = useCollection(mealsQuery);
+
+  // MOTEUR DE RECHERCHE GLOBAL
+  const globalSearchResults = useMemo(() => {
+    if (!searchTerm || searchTerm.trim().length < 2) return [];
+
+    try {
+      // Transformation des données Firebase avec protection .docs (meals est déjà un tableau via useCollection)
+      const firebaseData = Array.isArray(meals) ? meals : [];
+      
+      // Fusion des sources : JSON statique + Historique Firebase
+      const allItems = [...(foodDb as any[]), ...firebaseData];
+      
+      // Filtrage insensible à la casse
+      const queryLower = searchTerm.toLowerCase();
+      
+      // Utilisation d'un Set pour éviter les doublons par nom
+      const seenNames = new Set();
+      
+      return allItems.filter((item: any) => {
+        const name = (item.name || item.product_name || "ALIMENT INCONNU").toString();
+        const matches = name.toLowerCase().includes(queryLower);
+        
+        if (matches && !seenNames.has(name.toUpperCase())) {
+          seenNames.add(name.toUpperCase());
+          return true;
+        }
+        return false;
+      }).slice(0, 15); // Limite pour performance
+    } catch (e) {
+      console.error("Erreur critique du moteur de recherche:", e);
+      return [];
+    }
+  }, [searchTerm, meals]);
 
   // Protection d'authentification
   useEffect(() => {
@@ -89,13 +130,46 @@ export default function JournalPage() {
         </div>
       </div>
 
-      {/* LISTE DES REPAS / RÉSULTATS (Phase 4) */}
+      {/* RÉSULTATS DE RECHERCHE OU JOURNAL */}
       <div className="px-6 space-y-6">
-        {/* Le flux quotidien ou les résultats de recherche seront affichés ici */}
+        {searchTerm ? (
+          <div className="space-y-4">
+            <h2 className="text-[9px] font-black uppercase tracking-[0.4em] text-accent neon-text-blue">
+              Résultats de Recherche
+            </h2>
+            {globalSearchResults.length > 0 ? (
+              <div className="grid gap-3">
+                {globalSearchResults.map((item: any, idx: number) => (
+                  <div 
+                    key={idx}
+                    className="cyber-card-blue p-4 flex justify-between items-center group cursor-pointer hover:bg-accent/5"
+                  >
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-widest">{item.name || item.product_name}</p>
+                      <p className="text-[8px] text-muted-foreground uppercase font-black mt-1">
+                        {item.calories} kcal • {item.protein}g P • {item.carbs}g G
+                      </p>
+                    </div>
+                    <Plus size={16} className="text-accent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[9px] text-white/20 font-black uppercase tracking-widest italic text-center py-10">
+                Aucune archive correspondante dans la base.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-20">
+            <p className="text-[9px] text-white/20 font-black uppercase tracking-widest italic">
+              Veuillez scanner ou rechercher un aliment
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* MODALES DE SCAN ET DÉTAILS (Phase 5) */}
-      {/* Les dialogues DialogContent pour le scan et les détails seront insérés ici */}
+      {/* LES MODALES DE SCAN SERONT INJECTÉES À LA PROCHAINE ÉTAPE */}
 
       <BottomNav />
     </main>
