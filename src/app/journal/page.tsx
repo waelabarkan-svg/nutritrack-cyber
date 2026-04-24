@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -18,7 +17,6 @@ import { scanDish } from '@/ai/flows/scan-dish-flow';
 import { addXp } from '@/lib/gamification-utils';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 
 type MealType = 'petit-déjeuner' | 'déjeuner' | 'dîner' | 'snack' | 'boisson';
 
@@ -54,27 +52,23 @@ export default function JournalPage() {
 
   const { data: meals } = useCollection(mealsQuery);
 
-  const globalSearchResults = useMemo(() => {
+  const filteredFood = useMemo(() => {
     if (!searchTerm || searchTerm.length < 2) return [];
-    try {
-      const searchLower = searchTerm.toLowerCase();
-      const dbResults = foodDb.filter(f => f.name.toLowerCase().includes(searchLower));
-      const memory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
-      const memoryResults = memory
-        .filter((h: any) => h.name?.toLowerCase().includes(searchLower))
-        .map((h: any) => ({ ...h, isFromHistory: true }));
+    const searchLower = searchTerm.toLowerCase();
+    const dbResults = foodDb.filter(f => f.name.toLowerCase().includes(searchLower));
+    const memory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
+    const memoryResults = memory
+      .filter((h: any) => h.name?.toLowerCase().includes(searchLower))
+      .map((h: any) => ({ ...h, isFromHistory: true }));
 
-      const combined = [...memoryResults, ...dbResults];
-      return Array.from(new Map(combined.map(item => [item.name.toUpperCase(), item])).values()).slice(0, 10);
-    } catch (e) {
-      return [];
-    }
+    const combined = [...memoryResults, ...dbResults];
+    return Array.from(new Map(combined.map(item => [item.name.toUpperCase(), item])).values()).slice(0, 10);
   }, [searchTerm]);
 
   const announceResults = (data: any) => {
     if (isMuted || typeof window === 'undefined' || !window.speechSynthesis) return;
     const formatValue = (val: any) => (val !== undefined && val !== null ? val : 'non détecté');
-    const script = `Analyse terminée. Produit : ${data.name}. Apport énergétique : ${formatValue(data.calories)} calories. Protéines : ${formatValue(data.protein)} grammes. Lipides : ${formatValue(data.fat)} grammes. Glucides : ${formatValue(data.carbs)} grammes.`;
+    const script = `Analyse terminée. Produit : ${data.name}. Apport énergétique : ${formatValue(data.calories)} calories. Protéines : ${formatValue(data.protein)} grammes. Lipides : ${formatValue(data.fat)} grammes. Glucides : ${formatValue(data.carbs)} grammes. Analyse du coach : ${data.healthAdvice || 'en attente'}.`;
     
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(script);
@@ -127,7 +121,7 @@ export default function JournalPage() {
       if (data.status === 1 && data.product) {
         const p = data.product;
         const result = {
-          name: (p.product_name || "PRODUIT INCONNU").toUpperCase(),
+          name: p.product_name || "PRODUIT INCONNU",
           calories: Math.round(p.nutriments['energy-kcal_100g'] || 0),
           protein: Math.round(p.nutriments['proteins_100g'] || 0),
           carbs: Math.round(p.nutriments['carbohydrates_100g'] || 0),
@@ -135,6 +129,7 @@ export default function JournalPage() {
           fiber: Math.round(p.nutriments['fiber_100g'] || 0),
           vitamins: p.vitamins_tags?.map((v: string) => v.split(':').pop()?.toUpperCase()).join(', ') || null,
           minerals: p.minerals_tags?.map((m: string) => m.split(':').pop()?.toUpperCase()).join(', ') || null,
+          healthAdvice: "Produit industriel identifié. Intégrité vérifiée.",
           imageUrl: p.image_front_url || p.image_url || null
         };
         setBarcodeResult(result);
@@ -173,6 +168,13 @@ export default function JournalPage() {
     }
   };
 
+  const updateBiometricMemory = (meal: any) => {
+    const memory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
+    const newEntry = { ...meal, id: Date.now() };
+    memory.push(newEntry);
+    localStorage.setItem('biometric_memory', JSON.stringify(memory.slice(-50)));
+  };
+
   const addMeal = async (food: any, isScan = false) => {
     if (!user) return;
     try {
@@ -192,6 +194,7 @@ export default function JournalPage() {
         isAiEstimated: isScan
       };
       await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
+      updateBiometricMemory(mealData);
       if (isScan) addXp(50, 'scan');
       setAiResult(null);
       setBarcodeResult(null);
@@ -199,20 +202,56 @@ export default function JournalPage() {
       setIsScannerOpen(false);
       setIsBarcodeOpen(false);
       setSearchTerm('');
+      await addXp(15,"scan");
       toast({ title: "SYSTÈME MIS À JOUR" });
     } catch (e) {
       toast({ variant: "destructive", title: "ERREUR SYNCHRO" });
     }
   };
 
+  const handleAiEstimate = async () => {
+    if (!searchTerm || aiEstimating) return;
+    setAiEstimating(true);
+    try {
+      const result = await estimateDish({ dishName: searchTerm });
+      setAiResult({ ...result, imageUrl: null });
+    } catch (e) {
+      toast({ variant: "destructive", title: "ERREUR SYSTÈME" });
+    } finally {
+      setAiEstimating(false);
+    }
+  };
+
+  const repairBioData = async () => {
+    if (!selectedMeal || aiEstimating || !user) return;
+    setAiEstimating(true);
+    try {
+      const result = await estimateDish({ dishName: selectedMeal.name });
+      const mealRef = doc(db, 'users', user.uid, 'meals', selectedMeal.id);
+      const updateData = {
+        vitamins: result.vitamins || "Non détecté",
+        minerals: result.minerals || "Non détecté",
+        fiber: Number(result.fiber) || 0,
+        isAiEstimated: true
+      };
+      await updateDoc(mealRef, updateData);
+      setSelectedMeal({ ...selectedMeal, ...updateData });
+      toast({ title: "RECONSTRUCTION TERMINÉE" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "ÉCHEC RECONSTRUCTION" });
+    } finally {
+      setAiEstimating(false);
+    }
+  };
+
   const deleteMeal = async (id: string) => {
     if (!user) return;
-    try {
-      await deleteDoc(doc(db, 'users', user.uid, 'meals', id));
-      toast({ title: "DONNÉE EFFACÉE" });
-    } catch (e) {
-      toast({ variant: "destructive", title: "ERREUR SUPPRESSION" });
-    }
+    deleteDoc(doc(db, 'users', user.uid, 'meals', id));
+  };
+
+  const openDetails = (meal: any) => {
+    setSelectedMeal(meal);
+    setIsDetailsOpen(true);
   };
 
   const getFallbackImage = (name: string) => {
@@ -220,86 +259,56 @@ export default function JournalPage() {
     return `https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=400&h=300&sig=${encodeURIComponent(term)}`;
   };
 
+  const renderBadges = (data: string | string[] | null) => {
+    if (!data || data === "Non détecté" || data === "Non répertorié") return null;
+    const items = Array.isArray(data) ? data : data.split(',');
+    return items.map((item, i) => (
+      <Badge key={i} variant="outline" className="bg-white/5 border-white/10 text-[8px] uppercase font-black py-0.5 px-2 mr-1 mb-1">
+        {String(item).trim()}
+      </Badge>
+    ));
+  };
+
   return (
     <TooltipProvider>
-      <main className="px-6 pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white selection:bg-primary/30">
-        {/* HEADER CYBER-NEON */}
-        <div className="flex justify-between items-start mb-12">
+      <main className="px-4 sm:px-6 pt-12 sm:pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white">
+        <div className="flex justify-between items-start mb-8 sm:mb-12">
           <div className="space-y-1">
-            <p className="text-primary/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-yellow">Interface Log</p>
-            <h1 className="text-3xl font-black tracking-tighter uppercase neon-text-yellow">Journal de Bord</h1>
+            <p className="text-primary/60 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.5em] neon-text-yellow">Interface Log</p>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase neon-text-yellow" style={{ textShadow: '0 0 10px #fde047, 0 0 20px #fde047' }}>Journal de Bord</h1>
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className={cn(
-              "w-10 h-10 rounded-full border transition-all duration-500",
-              isMuted ? "border-destructive/30 text-destructive" : "border-accent/30 text-accent neon-glow-blue"
-            )}
-            onClick={() => { setIsMuted(!isMuted); window.speechSynthesis.cancel(); }}
-          >
+          <Button variant="ghost" size="icon" className={`w-10 h-10 border transition-all ${isMuted ? 'text-destructive border-destructive/20' : 'text-accent border-accent/20 active:shadow-[0_0_15px_rgba(0,242,255,0.5)]'}`} onClick={() => { setIsMuted(!isMuted); window.speechSynthesis.cancel(); }}>
             {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
           </Button>
         </div>
 
-        {/* REPAS TYPE SELECTOR */}
-        <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-8">
-          {['petit-déjeuner', 'déjeuner', 'dîner', 'snack'].map((type) => (
-            <button 
-              key={type} 
-              onClick={() => setMealType(type as MealType)} 
-              className={cn(
-                "px-5 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all duration-300 rounded-full whitespace-nowrap border",
-                mealType === type 
-                  ? "bg-primary text-black border-primary shadow-[0_0_15px_rgba(253,224,71,0.5)]" 
-                  : "bg-black border-white/10 text-muted-foreground hover:border-primary/40"
-              )}
-            >
-              {type}
-            </button>
-          ))}
-        </div>
-
-        {/* SEARCH & SCAN AREA */}
-        <div className="flex gap-2 mb-12">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/40" size={16} />
-            <Input 
-              className="bg-[#0a0a0a] border-white/10 h-12 pl-12 font-black uppercase text-[10px] tracking-[0.2em] rounded-xl focus:border-primary/60 transition-all placeholder:text-white/20" 
-              placeholder="RECHERCHER..." 
-              value={searchTerm} 
-              onChange={(e) => setSearchTerm(e.target.value)} 
-            />
-          </div>
+        <section className="mb-12 space-y-6">
           <div className="flex gap-2">
-            <Dialog open={isScannerOpen} onOpenChange={(o) => { setIsScannerOpen(o); if(o) setTimeout(startCamera,100); else stopCamera(); }}>
-              <DialogTrigger asChild>
-                <Button className="h-12 w-12 border border-accent/40 bg-black text-accent rounded-xl hover:shadow-[0_0_15px_rgba(0,242,255,0.3)] transition-all">
-                  <Camera size={20} />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-black border-accent/40 text-white rounded-[24px] p-0 overflow-hidden max-w-sm">
-                <div className="relative h-[70vh]">
-                  {!scanningImage ? (
-                    <>
-                      <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-                      <div className="absolute bottom-10 left-0 right-0 flex justify-center">
-                        <button className="w-20 h-20 rounded-full border-8 border-accent/30 bg-black/20 backdrop-blur-md flex items-center justify-center group" onClick={capturePhoto}>
-                          <div className="w-12 h-12 rounded-full bg-accent group-active:scale-90 transition-transform" />
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="w-full h-full relative">
-                      <img src={scanningImage} className="w-full h-full object-cover contrast-125" alt="" />
-                      <div className="absolute bottom-0 left-0 right-0 p-8 bg-black/90 border-t border-accent/40 backdrop-blur-xl">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/40" size={18} />
+              <Input className="bg-black/40 border-white/10 h-14 pl-12 font-black uppercase rounded-none text-[10px] tracking-[0.2em] focus:border-accent transition-all placeholder:text-white/20" placeholder="RECHERCHER UN ALIMENT..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            </div>
+            <div className="flex gap-2">
+              <Dialog open={isScannerOpen} onOpenChange={(o) => { setIsScannerOpen(o); if(o) setTimeout(startCamera,100); else stopCamera(); }}>
+                <DialogTrigger asChild><Button className="h-14 w-14 border-accent/40 bg-black text-accent/70 hover:text-accent hover:border-accent rounded-none transition-all active:shadow-[0_0_15px_rgba(0,242,255,0.4)]"><Camera size={20} /></Button></DialogTrigger>
+                <DialogContent className="bg-black border-accent/40 text-white rounded-none p-0 overflow-hidden max-w-sm">
+                  <div className="relative h-[70vh]">
+                    {!scanningImage ? (
+                      <>
+                        <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                        <div className="absolute bottom-6 left-0 right-0 flex justify-center items-center px-10">
+                          <button className="w-20 h-20 rounded-full border-8 border-accent/30 bg-black/20 backdrop-blur-md flex items-center justify-center group" onClick={capturePhoto}>
+                            <div className="w-12 h-12 rounded-full bg-accent group-active:scale-90 transition-transform" />
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="w-full h-full relative">
+                        <img src={scanningImage} className="w-full h-full object-cover contrast-125" alt="" />
                         {aiEstimating ? (
-                          <div className="flex flex-col items-center gap-4 py-8">
-                            <Loader2 className="animate-spin text-accent" size={48} />
-                            <p className="text-[12px] font-black tracking-[0.6em] text-accent uppercase animate-pulse">LIAISON NEURALE...</p>
-                          </div>
+                          <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-4"><Loader2 className="animate-spin text-accent" size={48} /><p className="text-[12px] font-black tracking-[0.6em] text-accent uppercase animate-pulse">LIAISON NEURALE...</p></div>
                         ) : aiResult ? (
-                          <>
+                          <div className="absolute bottom-0 left-0 right-0 p-8 bg-black/90 border-t border-accent/40 backdrop-blur-xl">
                             <h3 className="text-xl font-black uppercase mb-6 tracking-tight text-accent neon-text-blue">{aiResult.name}</h3>
                             <div className="grid grid-cols-4 gap-4 mb-8">
                               <div className="text-center"><p className="text-sm font-black text-white">{aiResult.calories}</p><p className="text-[7px] text-muted-foreground uppercase font-black">KCAL</p></div>
@@ -307,98 +316,114 @@ export default function JournalPage() {
                               <div className="text-center"><p className="text-sm font-black text-white">{aiResult.carbs}g</p><p className="text-[7px] text-muted-foreground uppercase font-black">GLUC</p></div>
                               <div className="text-center"><p className="text-sm font-black text-white">{aiResult.fat}g</p><p className="text-[7px] text-muted-foreground uppercase font-black">LIPID</p></div>
                             </div>
-                            <Button className="w-full h-14 bg-accent text-black font-black neon-glow-blue rounded-xl" onClick={() => addMeal(aiResult, true)}>ARCHIVER DONNÉES</Button>
-                          </>
+                            <Button className="w-full h-14 bg-accent text-black font-black neon-glow-blue rounded-none" onClick={() => addMeal(aiResult, true)}>ARCHIVER DONNÉES</Button>
+                          </div>
                         ) : (
-                          <div className="flex gap-2">
-                            <Button variant="outline" className="flex-1 h-14 border-white/20 text-white font-black rounded-xl" onClick={() => setScanningImage(null)}>REPRENDRE</Button>
-                            <Button className="flex-[2] h-14 bg-accent text-black font-black rounded-xl" onClick={runImageAnalysis}>ANALYSER</Button>
+                          <div className="absolute bottom-6 left-0 right-0 px-6 flex gap-2">
+                             <Button variant="outline" className="flex-1 h-14 border-white/20 text-white font-black rounded-none" onClick={() => setScanningImage(null)}>REPRENDRE</Button>
+                             <Button className="flex-[2] h-14 bg-accent text-black font-black rounded-none" onClick={runImageAnalysis}>ANALYSER</Button>
                           </div>
                         )}
                       </div>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={isBarcodeOpen} onOpenChange={(o) => { setIsBarcodeOpen(o); if(o) startBarcodeScanner(); else if(barcodeScannerRef.current) barcodeScannerRef.current.clear(); }}>
+                <DialogTrigger asChild><Button className="h-14 w-14 border-primary/40 bg-black text-primary/70 hover:text-primary hover:border-primary rounded-none transition-all active:shadow-[0_0_15px_rgba(253,224,71,0.4)]"><Barcode size={20} /></Button></DialogTrigger>
+                <DialogContent className="bg-black border-primary/40 text-white rounded-none p-6 max-w-sm">
+                  <div id="reader" className="w-full min-h-[300px] bg-black/50 border border-primary/20 rounded-none overflow-hidden" />
+                  {isFetchingBarcode && <div className="flex justify-center mt-6"><Loader2 className="animate-spin text-primary" /></div>}
+                  {barcodeResult && (
+                    <div className="mt-8 p-6 border border-primary/40 bg-primary/5 rounded-none">
+                      <div className="flex gap-5 mb-6">
+                        <img src={barcodeResult.imageUrl || getFallbackImage(barcodeResult.name)} className="w-20 h-20 object-cover border border-primary/40 rounded-none" alt="" />
+                        <div className="flex-1">
+                          <h3 className="font-black uppercase mb-3 text-sm tracking-tight text-primary neon-text-yellow">{barcodeResult.name}</h3>
+                          <div className="grid grid-cols-4 gap-2 text-center">
+                            <div><p className="text-[11px] font-black">{barcodeResult.calories}</p><p className="text-[7px] text-muted-foreground font-black">KCAL</p></div>
+                            <div><p className="text-[11px] font-black">{barcodeResult.protein}g</p><p className="text-[7px] text-muted-foreground font-black">PROT</p></div>
+                            <div><p className="text-[11px] font-black">{barcodeResult.carbs}g</p><p className="text-[7px] text-muted-foreground font-black">GLUC</p></div>
+                            <div><p className="text-[11px] font-black">{barcodeResult.fat}g</p><p className="text-[7px] text-muted-foreground font-black">LIPID</p></div>
+                          </div>
+                        </div>
+                      </div>
+                      <Button className="w-full h-12 bg-primary text-black font-black neon-glow-yellow rounded-none" onClick={() => addMeal(barcodeResult, true)}>ARCHIVER PRODUIT</Button>
                     </div>
                   )}
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={isBarcodeOpen} onOpenChange={(o) => { setIsBarcodeOpen(o); if(o) startBarcodeScanner(); else if(barcodeScannerRef.current) barcodeScannerRef.current.clear(); }}>
-              <DialogTrigger asChild>
-                <Button className="h-12 w-12 border border-primary/40 bg-black text-primary rounded-xl hover:shadow-[0_0_15px_rgba(253,224,71,0.3)] transition-all">
-                  <Barcode size={20} />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-black border-primary/40 text-white rounded-[24px] p-6 max-w-sm">
-                <div id="reader" className="w-full min-h-[300px] bg-black/50 border border-primary/20 rounded-2xl overflow-hidden" />
-                {isFetchingBarcode && <div className="flex justify-center mt-6"><Loader2 className="animate-spin text-primary" /></div>}
-                {barcodeResult && (
-                  <div className="mt-8 p-6 border border-primary/40 bg-primary/5 rounded-2xl">
-                    <h3 className="font-black uppercase mb-3 text-sm tracking-tight text-primary neon-text-yellow">{barcodeResult.name}</h3>
-                    <div className="grid grid-cols-4 gap-2 text-center mb-6">
-                      <div><p className="text-[11px] font-black">{barcodeResult.calories}</p><p className="text-[7px] text-muted-foreground font-black">KCAL</p></div>
-                      <div><p className="text-[11px] font-black">{barcodeResult.protein}g</p><p className="text-[7px] text-muted-foreground font-black">PROT</p></div>
-                      <div><p className="text-[11px] font-black">{barcodeResult.carbs}g</p><p className="text-[7px] text-muted-foreground font-black">GLUC</p></div>
-                      <div><p className="text-[11px] font-black">{barcodeResult.fat}g</p><p className="text-[7px] text-muted-foreground font-black">LIPID</p></div>
-                    </div>
-                    <Button className="w-full h-12 bg-primary text-black font-black neon-glow-yellow rounded-xl" onClick={() => addMeal(barcodeResult, true)}>ARCHIVER PRODUIT</Button>
-                  </div>
-                )}
-              </DialogContent>
-            </Dialog>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
-        </div>
 
-        {/* CONTENU PRINCIPAL (JOURNAL OU RECHERCHE) */}
-        {searchTerm.length >= 2 ? (
-          <div className="space-y-4">
-            <h2 className="text-[10px] font-black text-primary/40 uppercase tracking-[0.4em] px-1 mb-6">Index des Archives</h2>
-            {globalSearchResults.length === 0 ? (
-              <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest text-center py-12 italic">Séquence non trouvée dans les archives</p>
-            ) : (
-              <div className="grid gap-3">
-                {globalSearchResults.map((food: any, idx) => (
-                  <div key={idx} className="flex justify-between items-center p-4 bg-accent/5 border border-accent/20 rounded-xl group hover:border-accent transition-all">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 border border-accent/20 flex items-center justify-center bg-black rounded-lg">
-                        <Soup className="text-accent" size={16} />
-                      </div>
-                      <div>
-                        <p className="font-black text-[11px] uppercase tracking-tight text-white">{food.name}</p>
-                        <p className="text-[8px] text-muted-foreground font-black uppercase">{food.calories} KCAL | P: {food.protein}G</p>
-                      </div>
+          {filteredFood.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-[10px] font-black text-primary/40 uppercase tracking-[0.3em] px-1">Archives Suggestion</h3>
+              {filteredFood.map((food: any, idx) => (
+                <div key={idx} className="flex justify-between items-center py-4 bg-accent/5 border border-accent/20 rounded-none group hover:border-accent transition-all px-4">
+                  <div className="flex items-center gap-4">
+                    <img src={food.imageUrl || getFallbackImage(food.name)} className="w-10 h-10 object-cover border border-accent/20 transition-all" alt="" />
+                    <div>
+                      <p className="font-black text-[10px] uppercase tracking-tight text-white">{food.name}</p>
+                      <p className="text-[8px] text-muted-foreground font-black uppercase">{food.calories} KCAL | P: {food.protein}G</p>
                     </div>
-                    <Button size="icon" className="w-10 h-10 border-accent/40 bg-transparent text-accent shadow-none hover:bg-accent/10" onClick={() => addMeal(food)}>
-                      <Plus size={18} />
-                    </Button>
                   </div>
+                  <Button size="icon" className="w-10 h-10 border-accent/40 bg-transparent text-accent shadow-none hover:bg-accent/10" onClick={() => addMeal(food)}><Plus size={18} /></Button>
+                </div>
+              ))}
+              <div className="grid grid-cols-3 gap-2">
+                {(['petit-déjeuner', 'déjeuner', 'dîner', 'snack', 'boisson'] as MealType[]).map((type) => (
+                  <Button
+                    key={type}
+                    variant={mealType === type ? "default" : "outline"}
+                    onClick={() => setMealType(type)}
+                    className={`h-10 rounded-none text-[8px] font-black uppercase tracking-widest ${
+                      mealType === type ? 'bg-primary text-black' : 'border-white/10 text-white'
+                    }`}
+                  >
+                    {type === 'boisson' && <Coffee size={12} className="mr-1" />}
+                    {type}
+                  </Button> 
                 ))}
               </div>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-12">
-            {['petit-déjeuner', 'déjeuner', 'dîner', 'snack'].map((section) => {
+              {!aiResult && searchTerm.length > 3 && (
+                <Button onClick={handleAiEstimate} disabled={aiEstimating} className="w-full h-14 border-[#00FFFF]/40 bg-black text-[#00FFFF] rounded-none font-black text-[10px] tracking-widest hover:bg-[#00FFFF]/10 active:shadow-[0_0_15px_rgba(0,255,255,0.4)]">
+                  {aiEstimating ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2" />} ESTIMATION MOLÉCULAIRE IA
+                </Button>
+              )}
+            </div>
+          )}
+        </section>
+
+        {searchTerm === '' && (
+          <div className="space-y-10">
+            {['petit-déjeuner', 'déjeuner', 'dîner', 'snack', 'boisson'].map((section) => {
               const sectionMeals = (meals as any)?.filter((m: any) => m.type === section) || [];
               return (
                 <div key={section} className="space-y-4">
-                  <div className="flex items-center gap-2 border-b border-white/10 pb-2 mb-4">
+                  <div className="flex items-center gap-2 border-b border-white/10 pb-1 mb-4">
                     <div className="w-1 h-3 bg-primary" />
-                    <h3 className="text-[10px] font-black text-primary uppercase tracking-[0.4em]">{section}</h3>
+                    <h3 className="text-[10px] font-light text-white/30 uppercase tracking-[0.4em]">{section}</h3>
                   </div>
                   
                   {sectionMeals.length === 0 ? (
-                    <p className="text-[8px] text-white/20 font-black uppercase tracking-widest italic py-2">Veuillez scanner ou rechercher un aliment</p>
+                    <p className="text-[8px] text-white/10 font-black uppercase tracking-widest italic py-2">Veuillez scanner ou rechercher un aliment</p>
                   ) : (
                     <div className="space-y-1">
                       {sectionMeals.map((meal: any) => (
-                        <div key={meal.id} className="flex justify-between items-center py-3 border-b border-white/5 group hover:bg-white/[0.02] transition-all px-1">
+                        <div 
+                          key={meal.id} 
+                          onClick={() => openDetails(meal)}
+                          className="flex justify-between items-center py-2 border-b border-white/5 group hover:bg-white/[0.02] transition-all px-1 cursor-pointer"
+                        >
                           <div className="flex items-center gap-3">
                             <p className="text-[10px] font-black uppercase tracking-tight text-white/90">{meal.name}</p>
                             {meal.isAiEstimated && <Badge variant="outline" className="text-[6px] border-accent/30 text-accent py-0 h-3">IA</Badge>}
                           </div>
                           <div className="flex items-center gap-4">
-                            <span className="text-[11px] font-black text-[#00FFFF]">{meal.calories} <span className="text-[7px] text-white/40 ml-0.5">KCAL</span></span>
-                            <button onClick={() => deleteMeal(meal.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive/40 hover:text-destructive">
+                            <span className="text-[12px] font-black text-[#00FFFF]">{meal.calories} <span className="text-[7px] text-white/40 ml-0.5">KCAL</span></span>
+                            <button onClick={(e) => { e.stopPropagation(); deleteMeal(meal.id); }} className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive/40 hover:text-destructive">
                               <Trash2 size={12} />
                             </button>
                           </div>
@@ -412,35 +437,88 @@ export default function JournalPage() {
           </div>
         )}
 
+        <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+          <DialogContent className="bg-black/90 backdrop-blur-xl border-accent/40 text-white rounded-none p-0 overflow-hidden shadow-[0_0_50px_rgba(0,242,255,0.15)] max-w-sm">
+            {selectedMeal && (
+              <div className="relative">
+                <DialogHeader className="p-4 flex flex-row justify-between items-center border-b border-white/10">
+                  <DialogTitle className="text-[12px] font-black uppercase tracking-[0.2em] neon-text-blue">{selectedMeal.name}</DialogTitle>
+                  <DialogClose className="text-white/40 hover:text-white transition-colors">
+                    <X size={20} />
+                  </DialogClose>
+                  <DialogDescription className="sr-only">Diagnostic nutritionnel complet.</DialogDescription>
+                </DialogHeader>
+
+                <div className="h-48 w-full relative">
+                  <img src={selectedMeal.imageUrl || getFallbackImage(selectedMeal.name)} className="w-full h-full object-cover contrast-110 brightness-75" alt="" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+                </div>
+
+                <div className="p-6 space-y-6">
+                  {/* Macros Section */}
+                  <div className="grid grid-cols-4 gap-2">
+                    <div className="flex flex-col items-center justify-center border border-destructive/20 bg-black/40 p-3">
+                      <Flame size={14} className="text-destructive mb-1" />
+                      <span className="text-[12px] font-black text-white">{selectedMeal.calories}</span>
+                      <span className="text-[6px] font-black text-muted-foreground uppercase">Kcal</span>
+                    </div>
+                    <div className="flex flex-col items-center justify-center border border-accent/20 bg-black/40 p-3">
+                      <Zap size={14} className="text-accent mb-1" />
+                      <span className="text-[12px] font-black text-white">{selectedMeal.protein}g</span>
+                      <span className="text-[6px] font-black text-muted-foreground uppercase">Prot</span>
+                    </div>
+                    <div className="flex flex-col items-center justify-center border border-primary/20 bg-black/40 p-3">
+                      <Wheat size={14} className="text-primary mb-1" />
+                      <span className="text-[12px] font-black text-white">{selectedMeal.carbs}g</span>
+                      <span className="text-[6px] font-black text-muted-foreground uppercase">Gluc</span>
+                    </div>
+                    <div className="flex flex-col items-center justify-center border border-accent/20 bg-black/40 p-3">
+                      <Droplet size={14} className="text-accent mb-1" />
+                      <span className="text-[12px] font-black text-white">{selectedMeal.fat}g</span>
+                      <span className="text-[6px] font-black text-muted-foreground uppercase">Lipid</span>
+                    </div>
+                  </div>
+
+                  {/* Micros Section */}
+                  <div className="space-y-4 pt-4 border-t border-white/10">
+                    <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-accent/70">Bio-Diagnostic</h3>
+                    
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center py-2 border-b border-white/5">
+                        <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Fibres</span>
+                        <span className="text-[11px] font-black text-white">{selectedMeal.fiber || 0} g</span>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <span className="text-[8px] font-black text-accent/60 uppercase tracking-widest block">Vitamines</span>
+                        <div className="flex flex-wrap gap-1">
+                          {renderBadges(selectedMeal.vitamins) || <span className="text-[8px] text-white/20 italic">Non détecté</span>}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <span className="text-[8px] font-black text-primary/60 uppercase tracking-widest block">Sels Minéraux</span>
+                        <div className="flex flex-wrap gap-1">
+                          {renderBadges(selectedMeal.minerals) || <span className="text-[8px] text-white/20 italic">Non détecté</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {!selectedMeal.vitamins && (
+                      <Button onClick={repairBioData} disabled={aiEstimating} className="w-full border-orange-500/30 text-orange-500 bg-black h-10 font-black text-[8px] tracking-widest hover:bg-orange-500/10 rounded-none">
+                        {aiEstimating ? <Loader2 className="animate-spin mr-2" /> : <RefreshCw className="mr-2" />} RECONSTRUIRE ARCHIVE IA
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
         <BottomNav />
         <canvas ref={canvasRef} className="hidden" />
       </main>
     </TooltipProvider>
   );
-}
-
-function Soup(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M12 21a9 9 0 0 0 9-9H3a9 9 0 0 0 9 9Z" />
-      <path d="M7 21h10" />
-      <path d="M19 12v-2" />
-      <path d="M5 12v-2" />
-      <path d="M12 12V7" />
-      <path d="M12 3v1" />
-      <path d="M16 4v1" />
-      <path d="M8 4v1" />
-    </svg>
-  )
 }
