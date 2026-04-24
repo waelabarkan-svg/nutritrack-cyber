@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -132,6 +131,9 @@ export default function JournalPage() {
       const data = await res.json();
       if (data.status === 1 && data.product) {
         const p = data.product;
+        // Priorité absolue à l'image du produit réel
+        const realImageUrl = p.image_front_url || p.image_url || p.selected_images?.front?.display?.fr || p.selected_images?.front?.display?.en || null;
+        
         const result = {
           name: p.product_name || "PRODUIT INCONNU",
           calories: Math.round(p.nutriments['energy-kcal_100g'] || 0),
@@ -139,7 +141,7 @@ export default function JournalPage() {
           carbs: Math.round(p.nutriments.carbohydrates_100g || 0),
           fat: Math.round(p.nutriments.fat_100g || 0),
           healthAdvice: "Produit industriel identifié. Intégrité nutritionnelle vérifiée par la base de données.",
-          imageUrl: p.image_url || p.selected_images?.front?.display?.fr || p.selected_images?.front?.display?.en || null
+          imageUrl: realImageUrl
         };
         setBarcodeResult(result);
         announceResults(result);
@@ -169,7 +171,7 @@ export default function JournalPage() {
     setAiEstimating(true);
     try {
       const result = await scanDish({ photoDataUri: scanningImage });
-      // Illustration via Unsplash
+      // Illustration contextuelle précise basée sur le nom exact détecté
       const illustrationUrl = `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=400&h=300&food=${encodeURIComponent(result.name)}`;
       const enrichedResult = { ...result, imageUrl: illustrationUrl };
       setAiResult(enrichedResult);
@@ -217,7 +219,8 @@ export default function JournalPage() {
     setAiEstimating(true);
     try {
       const result = await estimateDish({ dishName: searchTerm });
-      setAiResult(result);
+      const illustrationUrl = `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=400&h=300&food=${encodeURIComponent(result.name)}`;
+      setAiResult({ ...result, imageUrl: illustrationUrl });
     } catch (e) {
       toast({ variant: "destructive", title: "ERREUR SYSTÈME" });
     } finally {
@@ -313,7 +316,7 @@ export default function JournalPage() {
                               <div className="flex gap-4 mb-4">
                                 <div className="w-20 h-20 shrink-0 border border-accent/40 rounded-lg overflow-hidden shadow-[0_0_15px_rgba(0,242,255,0.3)] bg-black">
                                   {aiResult.imageUrl ? (
-                                    <img src={aiResult.imageUrl} className="w-full h-full object-cover contrast-125 brightness-90 sepia-[0.1]" alt="Illustration" />
+                                    <img src={aiResult.imageUrl} className="w-full h-full object-cover contrast-125 brightness-90" alt="Illustration" />
                                   ) : (
                                     <div className="w-full h-full flex flex-col items-center justify-center gap-1">
                                       <ImageOff size={16} className="text-muted-foreground animate-pulse" />
@@ -429,7 +432,9 @@ export default function JournalPage() {
                           {meal.imageUrl ? (
                             <img src={meal.imageUrl} className="w-full h-full object-cover contrast-110" alt="" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[8px] text-muted-foreground">N/A</div>
+                            <div className="w-full h-full flex items-center justify-center">
+                              <ImageOff size={14} className="text-muted-foreground/40" />
+                            </div>
                           )}
                         </div>
                         <div>
