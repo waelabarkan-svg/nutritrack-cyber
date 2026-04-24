@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Flux IA pour l'estimation nutritionnelle textuelle.
@@ -17,6 +18,9 @@ const EstimateDishOutputSchema = z.object({
   protein: z.number(),
   carbs: z.number(),
   fat: z.number(),
+  fiber: z.number().optional(),
+  vitamins: z.string().optional(),
+  minerals: z.string().optional(),
   aiAnalysis: z.string(),
 });
 export type EstimateDishOutput = z.infer<typeof EstimateDishOutputSchema>;
@@ -31,7 +35,7 @@ const prompt = ai.definePrompt({
   input: { schema: EstimateDishInputSchema },
   prompt: `Tu es un Expert Nutritionniste Cyberpunk. Analyse le plat : "{{{dishName}}}".
   
-  Estime les valeurs pour une portion standard.
+  Estime les valeurs pour une portion standard, incluant les fibres, vitamines et minéraux.
   
   IMPORTANT : Réponds EXCLUSIVEMENT avec un objet JSON brut sans balises Markdown. 
   Ta réponse doit commencer par { et finir par }.
@@ -43,6 +47,9 @@ const prompt = ai.definePrompt({
     "protein": nombre,
     "carbs": nombre,
     "fat": nombre,
+    "fiber": nombre,
+    "vitamins": "liste",
+    "minerals": "liste",
     "aiAnalysis": "phrase courte cyberpunk (max 10 mots)"
   }`,
 });

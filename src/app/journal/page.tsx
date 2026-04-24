@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -6,9 +7,9 @@ import { useUser, useFirestore, useCollection } from '@/firebase';
 import { BottomNav } from '@/components/bottom-nav';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Plus, Trash2, Search, Camera, Upload, X, Check, Loader2, Scan, Volume2, VolumeX, Sparkles, Barcode, ImageOff } from 'lucide-react';
+import { Plus, Trash2, Search, Camera, Upload, X, Check, Loader2, Scan, Volume2, VolumeX, Sparkles, Barcode, ImageOff, Info, Zap, Flame, Wheat, Droplet } from 'lucide-react';
 import { collection, addDoc, query, where, deleteDoc, doc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import foodDb from '@/lib/food-db.json';
@@ -16,6 +17,7 @@ import { estimateDish } from '@/ai/flows/estimate-dish-flow';
 import { scanDish } from '@/ai/flows/scan-dish-flow';
 import { addXp } from '@/lib/gamification-utils';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import { cn } from '@/lib/utils';
 
 type MealType = 'petit-déjeuner' | 'déjeuner' | 'dîner' | 'snack';
 
@@ -27,6 +29,8 @@ export default function JournalPage() {
   const [selectedType, setSelectedType] = useState<MealType>('petit-déjeuner');
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isBarcodeOpen, setIsBarcodeOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [selectedMeal, setSelectedMeal] = useState<any>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   
@@ -131,7 +135,6 @@ export default function JournalPage() {
       const data = await res.json();
       if (data.status === 1 && data.product) {
         const p = data.product;
-        // Priorité absolue à l'image du produit réel
         const realImageUrl = p.image_front_url || p.image_url || p.selected_images?.front?.display?.fr || p.selected_images?.front?.display?.en || null;
         
         const result = {
@@ -140,7 +143,10 @@ export default function JournalPage() {
           protein: Math.round(p.nutriments.proteins_100g || 0),
           carbs: Math.round(p.nutriments.carbohydrates_100g || 0),
           fat: Math.round(p.nutriments.fat_100g || 0),
-          healthAdvice: "Produit industriel identifié. Intégrité nutritionnelle vérifiée par la base de données.",
+          fiber: Math.round(p.nutriments.fiber_100g || 0),
+          vitamins: p.vitamins_tags?.map((v: string) => v.split(':').pop()).join(', ') || "Non répertorié",
+          minerals: p.minerals_tags?.map((m: string) => m.split(':').pop()).join(', ') || "Non répertorié",
+          healthAdvice: "Produit industriel identifié. Intégrité nutritionnelle vérifiée.",
           imageUrl: realImageUrl
         };
         setBarcodeResult(result);
@@ -171,7 +177,6 @@ export default function JournalPage() {
     setAiEstimating(true);
     try {
       const result = await scanDish({ photoDataUri: scanningImage });
-      // Utilisation exclusive de la photo capturée par l'utilisateur
       const enrichedResult = { ...result, imageUrl: scanningImage };
       setAiResult(enrichedResult);
       announceResults(enrichedResult);
@@ -191,6 +196,9 @@ export default function JournalPage() {
         protein: Number(food.protein),
         carbs: Number(food.carbs),
         fat: Number(food.fat),
+        fiber: Number(food.fiber || 0),
+        vitamins: food.vitamins || "Non détecté",
+        minerals: food.minerals || "Non détecté",
         type: selectedType,
         date: today,
         imageUrl: food.imageUrl || null,
@@ -218,7 +226,6 @@ export default function JournalPage() {
     setAiEstimating(true);
     try {
       const result = await estimateDish({ dishName: searchTerm });
-      // Pour l'estimation textuelle uniquement, on garde l'illustration car pas de photo utilisateur
       const illustrationUrl = `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=400&h=300&food=${encodeURIComponent(result.name)}`;
       setAiResult({ ...result, imageUrl: illustrationUrl });
     } catch (e) {
@@ -231,6 +238,11 @@ export default function JournalPage() {
   const deleteMeal = async (id: string) => {
     if (!user) return;
     deleteDoc(doc(db, 'users', user.uid, 'meals', id));
+  };
+
+  const openDetails = (meal: any) => {
+    setSelectedMeal(meal);
+    setIsDetailsOpen(true);
   };
 
   useEffect(() => {
@@ -426,7 +438,7 @@ export default function JournalPage() {
                 <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/70">{type.toUpperCase()}</h2>
                 <div className="space-y-3">
                   {sectionMeals.length > 0 ? sectionMeals.map((meal: any) => (
-                    <div key={meal.id} className="cyber-card-blue p-4 flex justify-between items-center bg-black/40 border-accent/20">
+                    <div key={meal.id} onClick={() => openDetails(meal)} className="cyber-card-blue p-4 flex justify-between items-center bg-black/40 border-accent/20 cursor-pointer hover:border-accent transition-all active:scale-[0.98]">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 shrink-0 border border-accent/20 rounded-md overflow-hidden bg-black/50">
                           {meal.imageUrl ? (
@@ -442,7 +454,7 @@ export default function JournalPage() {
                           <p className="text-[9px] text-muted-foreground uppercase">{meal.calories} KCAL | P: {meal.protein}G</p>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" className="text-white/10" onClick={() => deleteMeal(meal.id)}><Trash2 size={14} /></Button>
+                      <Button variant="ghost" size="icon" className="text-white/10" onClick={(e) => { e.stopPropagation(); deleteMeal(meal.id); }}><Trash2 size={14} /></Button>
                     </div>
                   )) : <div className="h-[1px] w-full bg-white/5" />}
                 </div>
@@ -450,6 +462,80 @@ export default function JournalPage() {
             );
           })}
         </div>
+
+        {/* DIALOG DE DÉTAILS NUTRITIONNELS */}
+        <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+          <DialogContent className="bg-black/95 border-accent/40 text-white rounded-[24px] max-w-[95vw] sm:max-w-md p-0 overflow-hidden shadow-[0_0_50px_rgba(0,242,255,0.2)]">
+            {selectedMeal && (
+              <div className="relative">
+                <div className="h-48 w-full relative">
+                  {selectedMeal.imageUrl ? (
+                    <img src={selectedMeal.imageUrl} className="w-full h-full object-cover contrast-125 brightness-90 border-b border-accent/20" alt="" />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-black">
+                      <ImageOff size={32} className="text-muted-foreground/20" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+                  <DialogClose className="absolute right-4 top-4 w-8 h-8 rounded-full bg-black/60 border border-white/20 flex items-center justify-center text-white/60 hover:text-white">
+                    <X size={16} />
+                  </DialogClose>
+                </div>
+
+                <div className="p-6 space-y-6">
+                  <div className="space-y-1">
+                    <p className="text-accent/60 text-[8px] font-black uppercase tracking-[0.4em] neon-text-blue">Analyse Moléculaire</p>
+                    <h2 className="text-2xl font-black tracking-tighter uppercase neon-text-blue">{selectedMeal.name}</h2>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-4">
+                    <div className="cyber-card-red p-3 flex flex-col items-center justify-center bg-black/40 border-destructive/20">
+                      <Flame size={14} className="text-destructive mb-1" />
+                      <span className="text-sm font-black">{selectedMeal.calories}</span>
+                      <span className="text-[6px] font-black text-muted-foreground uppercase">Kcal</span>
+                    </div>
+                    <div className="cyber-card-blue p-3 flex flex-col items-center justify-center bg-black/40 border-accent/20">
+                      <Zap size={14} className="text-accent mb-1" />
+                      <span className="text-sm font-black">{selectedMeal.protein}g</span>
+                      <span className="text-[6px] font-black text-muted-foreground uppercase">Prot</span>
+                    </div>
+                    <div className="cyber-card-yellow p-3 flex flex-col items-center justify-center bg-black/40 border-primary/20">
+                      <Wheat size={14} className="text-primary mb-1" />
+                      <span className="text-sm font-black">{selectedMeal.carbs}g</span>
+                      <span className="text-[6px] font-black text-muted-foreground uppercase">Gluc</span>
+                    </div>
+                    <div className="cyber-card-blue p-3 flex flex-col items-center justify-center bg-black/40 border-accent/20">
+                      <Droplet size={14} className="text-accent mb-1" />
+                      <span className="text-sm font-black">{selectedMeal.fat}g</span>
+                      <span className="text-[6px] font-black text-muted-foreground uppercase">Lipid</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 pt-4 border-t border-white/5">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary/70 flex items-center gap-2">
+                      <Info size={12} /> Micro-Nutriments
+                    </h3>
+                    <div className="grid grid-cols-1 gap-3">
+                      <div className="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/5">
+                        <span className="text-[9px] font-black text-muted-foreground uppercase">Fibres</span>
+                        <span className="text-xs font-black text-white">{selectedMeal.fiber || 0} g</span>
+                      </div>
+                      <div className="flex flex-col gap-1.5 p-3 bg-white/5 rounded-lg border border-white/5">
+                        <span className="text-[9px] font-black text-muted-foreground uppercase">Vitamines</span>
+                        <span className="text-[10px] font-black text-accent neon-text-blue">{selectedMeal.vitamins || "Non détecté"}</span>
+                      </div>
+                      <div className="flex flex-col gap-1.5 p-3 bg-white/5 rounded-lg border border-white/5">
+                        <span className="text-[9px] font-black text-muted-foreground uppercase">Sels Minéraux</span>
+                        <span className="text-[10px] font-black text-primary neon-text-yellow">{selectedMeal.minerals || "Non détecté"}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
         <BottomNav />
         <canvas ref={canvasRef} className="hidden" />
       </main>
