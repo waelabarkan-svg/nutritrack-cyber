@@ -9,12 +9,34 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { doc, getDoc, setDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { 
+  doc, 
+  getDoc, 
+  setDoc, 
+  collection, 
+  query, 
+  where, 
+  onSnapshot, 
+  updateDoc, 
+  getDocs, 
+  deleteDoc 
+} from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { UserStats, calculateNutritionGoals } from '@/lib/nutrition-utils';
-import { Cpu, Target, CheckCircle2, Circle, Flame, Zap, Award } from 'lucide-react';
+import { Cpu, Target, CheckCircle2, Circle, Flame, Zap, Award, AlertTriangle, Trash2 } from 'lucide-react';
 import { getUserGamification, getRank, getXpProgress, getXpForLevel, addXp, getXpMultiplier, Rank } from '@/lib/gamification-utils';
 import { cn } from '@/lib/utils';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function ProfilePage() {
   const { user, loading } = useUser();
@@ -71,12 +93,10 @@ export default function ProfilePage() {
   const nextLevelXp = useMemo(() => getXpForLevel(gamification.level + 1), [gamification.level]);
   const multiplier = useMemo(() => getXpMultiplier(gamification.streak), [gamification.streak]);
 
-  // Vérification et attribution des bonus XP
   useEffect(() => {
     if (!user) return;
     const targetHydrationGlasses = Math.ceil(goals.hydrationMl / 250);
     
-    // Bonus Eau
     if (dailyProgress.hydration >= targetHydrationGlasses) {
       const res = addXp(100, 'water');
       if (res && res.xp > gamification.xp) {
@@ -85,7 +105,6 @@ export default function ProfilePage() {
       }
     }
 
-    // Bonus Protéines
     if (dailyProgress.protein >= goals.protein) {
       const res = addXp(150, 'protein');
       if (res && res.xp > gamification.xp) {
@@ -115,11 +134,59 @@ export default function ProfilePage() {
     }
   };
 
+  const handleResetAllData = async () => {
+    if (!user) return;
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, {
+        weight: 70,
+        targetWeight: 70,
+        goal: 'maintain',
+        xp: 0,
+        level: 1,
+        streak: 0,
+        lastActiveDate: null
+      });
+
+      const mealsRef = collection(db, 'users', user.uid, 'meals');
+      const mealsSnap = await getDocs(mealsRef);
+      const deleteMeals = mealsSnap.docs.map(d => deleteDoc(d.ref));
+      await Promise.all(deleteMeals);
+
+      const hydRef = collection(db, 'users', user.uid, 'hydration');
+      const hydSnap = await getDocs(hydRef);
+      const deleteHyd = hydSnap.docs.map(d => deleteDoc(d.ref));
+      await Promise.all(deleteHyd);
+
+      localStorage.removeItem('user_gamification');
+      localStorage.removeItem('biometric_memory');
+
+      setGamification({ xp: 0, level: 1, streak: 0, dailyBonuses: {} });
+      setStats({
+        gender: 'male',
+        age: 25,
+        height: 175,
+        weight: 70,
+        targetWeight: 70,
+        activityLevel: 'moderate',
+        goal: 'maintain'
+      });
+
+      toast({ 
+        title: "FORMATAGE USINE TERMINÉ", 
+        description: "Mémoire effacée. Système réinitialisé.",
+        className: "bg-destructive text-white border-none font-black uppercase"
+      });
+      
+    } catch (e) {
+      toast({ variant: "destructive", title: "ERREUR DE FORMATAGE", description: "Échec de la purge système." });
+    }
+  };
+
   if (loading || !user) return null;
 
   const currentBonuses = gamification.dailyBonuses?.[today] || [];
 
-  // Configuration Visuelle par Rang
   const getRankStyles = (r: Rank) => {
     switch (r) {
       case "LEGEND":
@@ -170,7 +237,6 @@ export default function ProfilePage() {
           <h1 className="text-3xl font-black tracking-tighter uppercase neon-text-yellow">Citoyen Bio</h1>
         </div>
 
-        {/* Carte de Profil Évolutive */}
         <div className={cn(
           "p-6 mb-8 relative rounded-[16px] transition-all duration-700 bg-black/40 border",
           rankStyles.cardClass
@@ -188,7 +254,6 @@ export default function ProfilePage() {
                   {user.displayName || 'AGENT'}
                 </h2>
                 
-                {/* Système de Streak */}
                 <div className="flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 w-fit">
                    <div className="flex items-center gap-1.5">
                      <Flame size={14} className={cn(gamification.streak > 0 ? "text-primary animate-pulse" : "text-white/20")} />
@@ -224,7 +289,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Quêtes Journalières */}
         <div className="cyber-card-yellow p-6 mb-10 bg-black border-primary/20">
           <div className="flex items-center gap-2 mb-4">
             <Target size={16} className="text-primary" />
@@ -257,7 +321,7 @@ export default function ProfilePage() {
           </div>
         </div>
         
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-8 mb-12">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Génotype</Label>
@@ -306,6 +370,36 @@ export default function ProfilePage() {
             <span className="relative z-10 group-hover:neon-text-yellow transition-all">MISE_À_JOUR_DES_PARAMÈTRES</span>
           </Button>
         </form>
+
+        <div className="pt-12 border-t border-destructive/20">
+          <div className="flex items-center gap-2 mb-4 px-1">
+            <AlertTriangle className="text-destructive" size={16} />
+            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-destructive">Protocole de Sécurité</h3>
+          </div>
+          
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="w-full h-14 border-destructive/40 text-destructive bg-black hover:bg-destructive/10 font-black text-[10px] tracking-[0.2em] rounded-[12px] flex items-center justify-center gap-2">
+                <Trash2 size={16} />
+                RÉINITIALISER TOUTES LES DONNÉES
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="bg-black border-destructive text-white rounded-[24px]">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-destructive uppercase font-black tracking-widest">ALERTE DANGER</AlertDialogTitle>
+                <AlertDialogDescription className="text-white/60 font-medium">
+                  Cette opération va formater intégralement votre archive biométrique. L'XP, les repas, l'hydratation et vos paramètres de profil seront définitivement effacés. Cette action est irréversible.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-xl">ANNULER</AlertDialogCancel>
+                <AlertDialogAction onClick={handleResetAllData} className="bg-destructive text-white font-black hover:bg-destructive/80 rounded-xl">
+                  CONFIRMER LA PURGE
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
 
         <BottomNav />
       </main>
