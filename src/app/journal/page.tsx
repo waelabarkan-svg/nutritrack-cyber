@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -7,7 +6,8 @@ import { useUser, useFirestore, useCollection } from '@/firebase';
 import { BottomNav } from '@/components/bottom-nav';
 import { 
   Plus, Search, Camera, Barcode, X, Info, Zap, Flame, Droplets,
-  AlertTriangle, CheckCircle2, Beer, Soup, Pizza, Loader2
+  AlertTriangle, CheckCircle2, Beer, Soup, Pizza, Loader2,
+  Circle, Sparkles, Coffee, Sun, Moon, Cookie
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { collection, query, where } from 'firebase/firestore';
@@ -74,10 +74,18 @@ export default function JournalPage() {
 
   if (loading || !user) return null;
 
+  // SECTIONS DU JOURNAL
+  const categories = [
+    { id: 'petit-déjeuner', label: 'Petit-Déjeuner', icon: Coffee },
+    { id: 'déjeuner', label: 'Déjeuner', icon: Sun },
+    { id: 'dîner', label: 'Dîner', icon: Moon },
+    { id: 'snack', label: 'Snack', icon: Cookie },
+  ];
+
   return (
     <main className="max-w-md mx-auto min-h-screen bg-black text-white relative shadow-[0_0_50px_rgba(0,0,0,0.8)] pb-32">
       
-      {/* SECTION 1 : HEADER NÉON (PHASE 1 & 2) */}
+      {/* SECTION 1 : HEADER NÉON */}
       <div className="p-6 flex justify-between items-center">
         <h1 
           className="font-black text-2xl uppercase tracking-[0.2em] text-white"
@@ -102,7 +110,7 @@ export default function JournalPage() {
         </div>
       </div>
 
-      {/* SECTION 2 : BARRE DE RECHERCHE (PHASE 3) */}
+      {/* SECTION 2 : BARRE DE RECHERCHE */}
       <div className="px-6 mb-8">
         <div className="relative group">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
@@ -131,8 +139,8 @@ export default function JournalPage() {
         </div>
       </div>
 
-      {/* SECTION 3 : AFFICHAGE DES RÉSULTATS (PHASE 5) */}
-      <div className="px-6 space-y-6">
+      {/* SECTION 3 : AFFICHAGE DES RÉSULTATS OU JOURNAL QUOTIDIEN */}
+      <div className="px-6 space-y-8">
         {searchTerm ? (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -151,7 +159,7 @@ export default function JournalPage() {
                   >
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-blue-500/10 border border-blue-500/30 rounded-lg flex items-center justify-center text-blue-400">
-                        {item.isDish ? <Soup size={18} /> : <Pizza size={18} />}
+                        {item.isDish ? <Soup size={18} /> : (item.isLiquid ? <Beer size={18} /> : <Pizza size={18} />)}
                       </div>
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-white">
@@ -178,11 +186,47 @@ export default function JournalPage() {
             )}
           </div>
         ) : (
-          /* JOURNAL QUOTIDIEN (À REMPLIR EN PHASE 6) */
-          <div className="text-center py-20 opacity-40">
-            <p className="text-[9px] text-white/40 font-black uppercase tracking-widest italic">
-              Veuillez scanner ou rechercher un aliment pour initialiser le cycle.
-            </p>
+          /* JOURNAL QUOTIDIEN PAR SECTIONS */
+          <div className="space-y-10">
+            {categories.map((category) => {
+              const CategoryIcon = category.icon;
+              const sectionMeals = Array.isArray(meals) 
+                ? meals.filter((m: any) => m.type === category.id)
+                : [];
+
+              return (
+                <div key={category.id} className="space-y-4">
+                  <div className="flex items-center gap-2 pb-2 border-b border-white/5">
+                    <CategoryIcon size={12} className="text-white/40" />
+                    <h2 className="text-[9px] font-black uppercase tracking-[0.4em] text-white/40">
+                      {category.label}
+                    </h2>
+                  </div>
+
+                  <div className="space-y-2">
+                    {sectionMeals.length > 0 ? (
+                      sectionMeals.map((meal: any) => (
+                        <div key={meal.id} className="flex justify-between items-center py-2 group">
+                          <div className="flex items-center gap-3">
+                            {meal.isLiquid ? <Droplets size={12} className="text-accent" /> : <Circle size={10} className="text-primary" />}
+                            <span className="text-[10px] font-black uppercase tracking-widest text-white/90 group-hover:text-white transition-colors">
+                              {meal.name}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-black text-accent neon-text-blue">
+                            {meal.calories} KCAL
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-[8px] text-white/10 font-black uppercase tracking-widest italic py-2">
+                        Veuillez scanner ou rechercher un aliment
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
