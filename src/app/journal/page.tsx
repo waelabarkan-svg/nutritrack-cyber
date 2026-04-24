@@ -68,7 +68,7 @@ export default function JournalPage() {
   const announceResults = (data: any) => {
     if (isMuted || typeof window === 'undefined' || !window.speechSynthesis) return;
     const formatValue = (val: any) => (val !== undefined && val !== null ? val : 'non détecté');
-    const script = `Analyse terminée. Produit : ${data.name}. Apport énergétique : ${formatValue(data.calories)} calories. Protéines : ${formatValue(data.protein)} grammes. Lipides : ${formatValue(data.fat)} grammes. Glucides : ${formatValue(data.carbs)} grammes. Analyse du coach : ${data.healthAdvice || 'en attente'}.`;
+    const script = `Analyse terminée. Produit : ${data.name}. Apport énergétique : ${formatValue(data.calories)} calories. Protéines : ${formatValue(data.protein)} grammes. Lipides : ${formatValue(data.fat)} grammes. Glucides : ${formatValue(data.carbs)} grammes.`;
     
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(script);
@@ -168,13 +168,6 @@ export default function JournalPage() {
     }
   };
 
-  const updateBiometricMemory = (meal: any) => {
-    const memory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
-    const newEntry = { ...meal, id: Date.now() };
-    memory.push(newEntry);
-    localStorage.setItem('biometric_memory', JSON.stringify(memory.slice(-50)));
-  };
-
   const addMeal = async (food: any, isScan = false) => {
     if (!user) return;
     try {
@@ -194,7 +187,6 @@ export default function JournalPage() {
         isAiEstimated: isScan
       };
       await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
-      updateBiometricMemory(mealData);
       if (isScan) addXp(50, 'scan');
       setAiResult(null);
       setBarcodeResult(null);
@@ -202,7 +194,6 @@ export default function JournalPage() {
       setIsScannerOpen(false);
       setIsBarcodeOpen(false);
       setSearchTerm('');
-      await addXp(15,"scan");
       toast({ title: "SYSTÈME MIS À JOUR" });
     } catch (e) {
       toast({ variant: "destructive", title: "ERREUR SYNCHRO" });
@@ -283,22 +274,50 @@ export default function JournalPage() {
         </div>
 
         <section className="mb-12 space-y-6">
-          <div className="flex gap-2">
+          {/* Menu de sélection de type de repas néon */}
+          <div className="grid grid-cols-3 gap-2">
+            {(['petit-déjeuner', 'déjeuner', 'dîner', 'snack', 'boisson'] as MealType[]).map((type) => (
+              <Button
+                key={type}
+                variant={mealType === type ? "default" : "outline"}
+                onClick={() => setMealType(type)}
+                className={`h-10 rounded-none text-[8px] font-black uppercase tracking-widest transition-all ${
+                  mealType === type 
+                    ? 'bg-primary text-black shadow-[0_0_15px_rgba(253,224,71,0.5)] border-primary' 
+                    : 'border-white/10 text-muted-foreground hover:text-white'
+                }`}
+              >
+                {type === 'boisson' && <Coffee size={12} className="mr-1" />}
+                {type}
+              </Button>
+            ))}
+          </div>
+
+          <div className="flex gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/40" size={18} />
-              <Input className="bg-black/40 border-white/10 h-14 pl-12 font-black uppercase rounded-none text-[10px] tracking-[0.2em] focus:border-accent transition-all placeholder:text-white/20" placeholder="RECHERCHER UN ALIMENT..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <Input 
+                className="bg-black border-white/10 h-14 pl-12 font-black uppercase rounded-none text-[10px] tracking-[0.2em] focus:border-accent transition-all placeholder:text-white/20" 
+                placeholder="RECHERCHER UN ALIMENT..." 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)} 
+              />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <Dialog open={isScannerOpen} onOpenChange={(o) => { setIsScannerOpen(o); if(o) setTimeout(startCamera,100); else stopCamera(); }}>
-                <DialogTrigger asChild><Button className="h-14 w-14 border-accent/40 bg-black text-accent/70 hover:text-accent hover:border-accent rounded-none transition-all active:shadow-[0_0_15px_rgba(0,242,255,0.4)]"><Camera size={20} /></Button></DialogTrigger>
-                <DialogContent className="bg-black border-accent/40 text-white rounded-none p-0 overflow-hidden max-w-sm">
+                <DialogTrigger asChild>
+                  <Button className="h-14 w-14 border-accent bg-black text-accent rounded-full shadow-[0_0_20px_rgba(0,242,255,0.4)] hover:shadow-[0_0_30px_rgba(0,242,255,0.6)] transition-all">
+                    <Camera size={20} />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-black border-accent text-white rounded-none p-0 overflow-hidden max-w-sm">
                   <div className="relative h-[70vh]">
                     {!scanningImage ? (
                       <>
                         <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
                         <div className="absolute bottom-6 left-0 right-0 flex justify-center items-center px-10">
                           <button className="w-20 h-20 rounded-full border-8 border-accent/30 bg-black/20 backdrop-blur-md flex items-center justify-center group" onClick={capturePhoto}>
-                            <div className="w-12 h-12 rounded-full bg-accent group-active:scale-90 transition-transform" />
+                            <div className="w-12 h-12 rounded-full bg-accent group-active:scale-90 transition-transform shadow-[0_0_20px_rgba(0,242,255,0.8)]" />
                           </button>
                         </div>
                       </>
@@ -308,7 +327,7 @@ export default function JournalPage() {
                         {aiEstimating ? (
                           <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-4"><Loader2 className="animate-spin text-accent" size={48} /><p className="text-[12px] font-black tracking-[0.6em] text-accent uppercase animate-pulse">LIAISON NEURALE...</p></div>
                         ) : aiResult ? (
-                          <div className="absolute bottom-0 left-0 right-0 p-8 bg-black/90 border-t border-accent/40 backdrop-blur-xl">
+                          <div className="absolute bottom-0 left-0 right-0 p-8 bg-black/90 border-t border-accent backdrop-blur-xl">
                             <h3 className="text-xl font-black uppercase mb-6 tracking-tight text-accent neon-text-blue">{aiResult.name}</h3>
                             <div className="grid grid-cols-4 gap-4 mb-8">
                               <div className="text-center"><p className="text-sm font-black text-white">{aiResult.calories}</p><p className="text-[7px] text-muted-foreground uppercase font-black">KCAL</p></div>
@@ -331,14 +350,18 @@ export default function JournalPage() {
               </Dialog>
 
               <Dialog open={isBarcodeOpen} onOpenChange={(o) => { setIsBarcodeOpen(o); if(o) startBarcodeScanner(); else if(barcodeScannerRef.current) barcodeScannerRef.current.clear(); }}>
-                <DialogTrigger asChild><Button className="h-14 w-14 border-primary/40 bg-black text-primary/70 hover:text-primary hover:border-primary rounded-none transition-all active:shadow-[0_0_15px_rgba(253,224,71,0.4)]"><Barcode size={20} /></Button></DialogTrigger>
-                <DialogContent className="bg-black border-primary/40 text-white rounded-none p-6 max-w-sm">
+                <DialogTrigger asChild>
+                  <Button className="h-14 w-14 border-primary bg-black text-primary rounded-full shadow-[0_0_20px_rgba(253,224,71,0.4)] hover:shadow-[0_0_30_rgba(253,224,71,0.6)] transition-all">
+                    <Barcode size={20} />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-black border-primary text-white rounded-none p-6 max-w-sm">
                   <div id="reader" className="w-full min-h-[300px] bg-black/50 border border-primary/20 rounded-none overflow-hidden" />
                   {isFetchingBarcode && <div className="flex justify-center mt-6"><Loader2 className="animate-spin text-primary" /></div>}
                   {barcodeResult && (
-                    <div className="mt-8 p-6 border border-primary/40 bg-primary/5 rounded-none">
+                    <div className="mt-8 p-6 border border-primary bg-primary/5 rounded-none">
                       <div className="flex gap-5 mb-6">
-                        <img src={barcodeResult.imageUrl || getFallbackImage(barcodeResult.name)} className="w-20 h-20 object-cover border border-primary/40 rounded-none" alt="" />
+                        <img src={barcodeResult.imageUrl || getFallbackImage(barcodeResult.name)} className="w-20 h-20 object-cover border border-primary rounded-none" alt="" />
                         <div className="flex-1">
                           <h3 className="font-black uppercase mb-3 text-sm tracking-tight text-primary neon-text-yellow">{barcodeResult.name}</h3>
                           <div className="grid grid-cols-4 gap-2 text-center">
@@ -372,21 +395,6 @@ export default function JournalPage() {
                   <Button size="icon" className="w-10 h-10 border-accent/40 bg-transparent text-accent shadow-none hover:bg-accent/10" onClick={() => addMeal(food)}><Plus size={18} /></Button>
                 </div>
               ))}
-              <div className="grid grid-cols-3 gap-2">
-                {(['petit-déjeuner', 'déjeuner', 'dîner', 'snack', 'boisson'] as MealType[]).map((type) => (
-                  <Button
-                    key={type}
-                    variant={mealType === type ? "default" : "outline"}
-                    onClick={() => setMealType(type)}
-                    className={`h-10 rounded-none text-[8px] font-black uppercase tracking-widest ${
-                      mealType === type ? 'bg-primary text-black' : 'border-white/10 text-white'
-                    }`}
-                  >
-                    {type === 'boisson' && <Coffee size={12} className="mr-1" />}
-                    {type}
-                  </Button> 
-                ))}
-              </div>
               {!aiResult && searchTerm.length > 3 && (
                 <Button onClick={handleAiEstimate} disabled={aiEstimating} className="w-full h-14 border-[#00FFFF]/40 bg-black text-[#00FFFF] rounded-none font-black text-[10px] tracking-widest hover:bg-[#00FFFF]/10 active:shadow-[0_0_15px_rgba(0,255,255,0.4)]">
                   {aiEstimating ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2" />} ESTIMATION MOLÉCULAIRE IA
@@ -437,8 +445,9 @@ export default function JournalPage() {
           </div>
         )}
 
+        {/* Diagnostic Dialog (Details) */}
         <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-          <DialogContent className="bg-black/90 backdrop-blur-xl border-accent/40 text-white rounded-none p-0 overflow-hidden shadow-[0_0_50px_rgba(0,242,255,0.15)] max-w-sm">
+          <DialogContent className="bg-black/90 backdrop-blur-xl border-accent text-white rounded-none p-0 overflow-hidden shadow-[0_0_50px_rgba(0,242,255,0.15)] max-w-sm">
             {selectedMeal && (
               <div className="relative">
                 <DialogHeader className="p-4 flex flex-row justify-between items-center border-b border-white/10">
@@ -455,7 +464,6 @@ export default function JournalPage() {
                 </div>
 
                 <div className="p-6 space-y-6">
-                  {/* Macros Section */}
                   <div className="grid grid-cols-4 gap-2">
                     <div className="flex flex-col items-center justify-center border border-destructive/20 bg-black/40 p-3">
                       <Flame size={14} className="text-destructive mb-1" />
@@ -479,7 +487,6 @@ export default function JournalPage() {
                     </div>
                   </div>
 
-                  {/* Micros Section */}
                   <div className="space-y-4 pt-4 border-t border-white/10">
                     <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-accent/70">Bio-Diagnostic</h3>
                     
