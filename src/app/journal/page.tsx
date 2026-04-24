@@ -1,49 +1,53 @@
-
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { BottomNav } from '@/components/bottom-nav';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import { Plus, Trash2, Search, Camera, X, Check, Loader2, Volume2, VolumeX, Sparkles, Barcode, AlertCircle, RefreshCw, Flame, Zap, Wheat, Droplet, Soup, Beer, AlertTriangle, Coffee, Info } from 'lucide-react';
-import { collection, addDoc, query, where, deleteDoc, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
+import { 
+  Plus, Search, Beer, Soup, Sparkles, Loader2, 
+  Camera, Barcode, X, Info, Zap, Flame, Droplets,
+  AlertTriangle, CheckCircle2
+} from 'lucide-react';
+import { collection, addDoc, query, where, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { scanDish } from '@/ai/flows/scan-dish-flow';
 import { estimateDish } from '@/ai/flows/estimate-dish-flow';
-import { addXp } from '@/lib/gamification-utils';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Html5QrcodeScanner } from "html5-qrcode";
+
+// Import de la base de données statique
+import foodDb from '@/lib/food-db.json';
 
 type MealType = 'petit-déjeuner' | 'déjeuner' | 'dîner' | 'snack';
 
 export default function JournalPage() {
-  const { user, loading } = useUser();
+  const { user } = useUser();
   const db = useFirestore();
   const router = useRouter();
+
+  // States
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<MealType>('petit-déjeuner');
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [isBarcodeOpen, setIsBarcodeOpen] = useState(false);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState<any>(null);
-  const [isMuted, setIsMuted] = useState(false);
-  
-  const [aiEstimating, setAiEstimating] = useState(false);
-  const [aiResult, setAiResult] = useState<any>(null);
-  const [scanningImage, setScanningImage] = useState<string | null>(null);
-  const [isReconstructing, setIsReconstructing] = useState(false);
-  
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanMode, setScanMode] = useState<'photo' | 'barcode' | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [hasCameraPermission, setHasCameraPermission] = useState(false);
+
+  // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const scannerRef = useRef<any>(null);
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
+  // Firestore Data
   const mealsQuery = useMemo(() => {
     if (!user) return null;
     return query(collection(db, 'users', user.uid, 'meals'), where('date', '==', today));
@@ -51,201 +55,161 @@ export default function JournalPage() {
 
   const { data: meals } = useCollection(mealsQuery);
 
+  // Fusion Tripartite pour la Recherche Globale
   const globalSearchResults = useMemo(() => {
-    if (!searchTerm) return [];
+    if (!searchTerm || searchTerm.length < 2) return [];
     try {
-      const localHistory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
-      return localHistory.filter((item: any) => 
-        item && item.name && typeof item.name === 'string' && 
-        item.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const localData = localStorage.getItem('biometric_memory');
+      const localHistory = localData ? JSON.parse(localData) : [];
+      const firebaseData = (meals as any) || [];
+      
+      const allItems = [...(foodDb as any[]), ...localHistory, ...firebaseData];
+      
+      return allItems.filter((item: any) => {
+        const name = item?.name || item?.product_name || "";
+        return name.toString().toLowerCase().includes(searchTerm.toLowerCase());
+      }).slice(0, 15); // Limiter pour la performance
     } catch (e) {
       return [];
     }
-  }, [searchTerm]);
+  }, [searchTerm, meals]);
 
-  const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-      tracks.forEach(track => track.stop());
-      videoRef.current.srcObject = null;
+  // --- CAMERA LOGIC ---
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        setHasCameraPermission(true);
+      }
+    } catch (err) {
+      console.error("Camera error:", err);
+      toast({ variant: "destructive", title: "ACCÈS REFUSÉ", description: "Veuillez autoriser la caméra." });
     }
   };
 
-  const startCamera = async () => {
-    setAiResult(null);
-    setScanningImage(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      if (videoRef.current) videoRef.current.srcObject = stream;
-    } catch (err) {
-      toast({ variant: "destructive", title: "ACCÈS CAMÉRA REFUSÉ" });
+  const stopCamera = () => {
+    if (videoRef.current?.srcObject) {
+      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+      tracks.forEach(track => track.stop());
     }
   };
 
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const video = videoRef.current;
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUri = canvas.toDataURL('image/jpeg', 0.8);
-      setScanningImage(dataUri);
+      const context = canvasRef.current.getContext('2d');
+      if (context) {
+        canvasRef.current.width = videoRef.current.videoWidth;
+        canvasRef.current.height = videoRef.current.videoHeight;
+        context.drawImage(videoRef.current, 0, 0);
+        const dataUrl = canvasRef.current.toDataURL('image/jpeg');
+        setCapturedImage(dataUrl);
+        runImageAnalysis(dataUrl);
+      }
+    }
+  };
+
+  const runImageAnalysis = async (dataUri: string) => {
+    setIsAnalyzing(true);
+    try {
+      const result = await scanDish({ photoDataUri: dataUri });
+      setSelectedMeal({ ...result, imageUrl: dataUri });
+    } catch (err) {
+      toast({ variant: "destructive", title: "ERREUR SCAN", description: "Impossible d'analyser l'image." });
+    } finally {
+      setIsAnalyzing(false);
       stopCamera();
     }
   };
 
-  const runImageAnalysis = async () => {
-    if (!scanningImage || aiEstimating) return;
-    setAiEstimating(true);
-    try {
-      const result = await scanDish({ photoDataUri: scanningImage });
-      const enrichedResult = { ...result, imageUrl: scanningImage };
-      setAiResult(enrichedResult);
-    } catch (e) {
-      toast({ variant: "destructive", title: "LIAISON ÉCHOUÉE" });
-    } finally {
-      setAiEstimating(false);
+  // --- BARCODE LOGIC ---
+  useEffect(() => {
+    if (scanMode === 'barcode') {
+      const timer = setTimeout(() => {
+        const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 150 } }, false);
+        scanner.render(onBarcodeSuccess, (err) => {});
+        scannerRef.current = scanner;
+      }, 300);
+      return () => clearTimeout(timer);
     }
-  };
+  }, [scanMode]);
 
-  const handleBarcodeSuccess = async (decodedText: string) => {
-    if (aiEstimating) return;
-    setAiEstimating(true);
-    if (scannerRef.current) {
-      try { await scannerRef.current.clear(); } catch (e) {}
-    }
-    
+  const onBarcodeSuccess = async (decodedText: string) => {
+    if (scannerRef.current) scannerRef.current.clear();
+    setIsAnalyzing(true);
     try {
-      const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${decodedText}.json`);
-      const data = await response.json();
-      
+      const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${decodedText}.json`);
+      const data = await res.json();
       if (data.status === 1) {
         const p = data.product;
         const result = {
-          name: (p.product_name || "PRODUIT INCONNU").toUpperCase(),
-          calories: p.nutriments['energy-kcal_100g'] || 0,
+          name: p.product_name || "Produit Inconnu",
+          calories: Math.round(p.nutriments['energy-kcal_100g'] || 0),
           protein: p.nutriments.proteins_100g || 0,
           carbs: p.nutriments.carbohydrates_100g || 0,
           fat: p.nutriments.fat_100g || 0,
           sugar: p.nutriments.sugars_100g || 0,
-          imageUrl: p.image_url,
-          isLiquid: p.product_quantity_unit === 'ml' || p.categories?.toLowerCase().includes('boissons'),
-          unit: p.product_quantity_unit || 'g',
-          vitamins: p.nutriments.vitamins_tags?.join(', ') || null,
-          minerals: p.nutriments.minerals_tags?.join(', ') || null
+          isLiquid: p.categories?.toLowerCase().includes('boisson') || false,
+          imageUrl: p.image_url
         };
-        setAiResult(result);
+        setSelectedMeal(result);
       } else {
-        toast({ variant: "destructive", title: "PRODUIT NON RÉPERTORIÉ" });
+        toast({ title: "INTROUVABLE", description: "Produit non répertorié." });
       }
-    } catch (e) {
-      toast({ variant: "destructive", title: "ERREUR LIAISON OFF" });
+    } catch (err) {
+      toast({ variant: "destructive", title: "ERREUR RESEAU" });
     } finally {
-      setAiEstimating(false);
+      setIsAnalyzing(false);
+      setScanMode(null);
     }
   };
 
-  const addMeal = async (food: any, isScan = false) => {
-    if (!user) return;
+  // --- PERSISTENCE ---
+  const handleAddMeal = async () => {
+    if (!user || !selectedMeal) return;
     try {
-      const mealName = (food.name || "ALIMENT INCONNU").toUpperCase();
       const mealData = {
-        name: mealName,
-        calories: Number(food.calories || 0),
-        protein: Number(food.protein || 0),
-        carbs: Number(food.carbs || 0),
-        fat: Number(food.fat || 0),
-        sugar: Number(food.sugar || 0),
-        caffeine: Number(food.caffeine || 0),
-        fiber: Number(food.fiber || 0),
-        isLiquid: !!food.isLiquid,
-        unit: food.unit || (food.isLiquid ? 'ml' : 'g'),
-        vitamins: food.vitamins || null,
-        minerals: food.minerals || null,
-        additives: food.additives || null,
-        type: selectedType,
-        date: today,
-        imageUrl: food.imageUrl || null,
-        createdAt: new Date().toISOString(),
-        isAiEstimated: isScan
-      };
-
-      await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
-      
-      const history = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
-      history.push({ ...mealData, id: Date.now().toString() });
-      localStorage.setItem('biometric_memory', JSON.stringify(history));
-
-      if (food.isLiquid) {
-        const rate = food.hydrationRate || 0.85;
-        const hydRef = doc(db, 'users', user.uid, 'hydration', today);
-        const hydSnap = await getDoc(hydRef);
-        const currentAmount = hydSnap.exists() ? hydSnap.data().amount : 0;
-        await setDoc(hydRef, { amount: currentAmount + rate }, { merge: true });
-      }
-
-      if (isScan) addXp(50, 'scan');
-      setAiResult(null);
-      setScanningImage(null);
-      setIsScannerOpen(false);
-      setIsBarcodeOpen(false);
-      setSearchTerm('');
-      toast({ title: "SYSTÈME MIS À JOUR" });
-    } catch (e) {
-      toast({ variant: "destructive", title: "ERREUR SYNCHRO" });
-    }
-  };
-
-  const deleteMeal = async (id: string) => {
-    if (!user) return;
-    try {
-      await deleteDoc(doc(db, 'users', user.uid, 'meals', id));
-      toast({ title: "DONNÉE PURGÉE" });
-    } catch (e) {
-      toast({ variant: "destructive", title: "ERREUR PURGE" });
-    }
-  };
-
-  const handleReconstruct = async () => {
-    if (!selectedMeal || isReconstructing) return;
-    setIsReconstructing(true);
-    try {
-      const result = await estimateDish({ dishName: selectedMeal.name });
-      const updatedMeal = {
         ...selectedMeal,
-        vitamins: result.vitamins,
-        minerals: result.minerals,
-        fiber: result.fiber,
-        aiAnalysis: result.aiAnalysis,
-        healthAdvice: result.healthAdvice,
-        isAiEstimated: true
+        name: selectedMeal.name || "Aliment Inconnu",
+        date: today,
+        type: selectedType,
+        createdAt: new Date().toISOString()
       };
-      
-      if (user) {
-        const mealRef = doc(db, 'users', user.uid, 'meals', selectedMeal.id);
-        await updateDoc(mealRef, updatedMeal);
-      }
-      
-      setSelectedMeal(updatedMeal);
-      toast({ title: "BIO-RÉPARATION TERMINÉE" });
-    } catch (e) {
-      toast({ variant: "destructive", title: "ERREUR RECONSTRUCTION" });
-    } finally {
-      setIsReconstructing(false);
+
+      // 1. Firestore
+      await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
+
+      // 2. Local Memory
+      const localData = localStorage.getItem('biometric_memory');
+      const memory = localData ? JSON.parse(localData) : [];
+      memory.push(mealData);
+      localStorage.setItem('biometric_memory', JSON.stringify(memory));
+
+      toast({ title: "ARCHIVÉ", description: "Données biométriques synchronisées." });
+      setSelectedMeal(null);
+      setSearchTerm('');
+    } catch (err) {
+      toast({ variant: "destructive", title: "ERREUR SAUVEGARDE" });
     }
   };
 
-  const openDetails = (meal: any) => {
-    setSelectedMeal(meal);
-    setIsDetailsOpen(true);
+  const reconstructBioData = async () => {
+    if (!selectedMeal?.name) return;
+    setIsAnalyzing(true);
+    try {
+      const result = await estimateDish({ dishName: selectedMeal.name }) as any;
+      setSelectedMeal({ ...selectedMeal, ...result });
+      toast({ title: "RECONSTRUCTION RÉUSSIE", description: "Micro-données récupérées." });
+    } catch (err) {
+      toast({ variant: "destructive", title: "ÉCHEC RECONSTRUCTION" });
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
-  const renderBadges = (data: string | string[] | null) => {
+  const renderBadges = (data: any) => {
     if (!data || data === "Non détecté" || data === "Non répertorié") return null;
-    const items = Array.isArray(data) ? data : data.split(',');
+    const items = Array.isArray(data) ? data : String(data).split(',');
     return items.map((item, i) => (
       <Badge key={i} variant="outline" className="bg-white/5 border-white/10 text-[8px] uppercase font-black py-0.5 px-2 mr-1 mb-1">
         {String(item).trim()}
@@ -253,241 +217,248 @@ export default function JournalPage() {
     ));
   };
 
-  const getFallbackImage = (meal: any) => {
-    if (meal.imageUrl) return meal.imageUrl;
-    const term = encodeURIComponent((meal.name || "food").toLowerCase());
-    return `https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=400&h=300&sig=${term}`;
-  };
-
-  useEffect(() => {
-    let scanner: Html5QrcodeScanner | null = null;
-    if (isBarcodeOpen) {
-      const timer = setTimeout(() => {
-        const readerElement = document.getElementById("reader");
-        if (readerElement) {
-          scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 }, false);
-          scannerRef.current = scanner;
-          scanner.render(handleBarcodeSuccess, (err) => {});
-        }
-      }, 300);
-      return () => {
-        clearTimeout(timer);
-        if (scanner) { try { scanner.clear(); } catch (e) {} }
-      };
-    }
-  }, [isBarcodeOpen]);
-
-  if (loading || !user) return null;
-
   return (
-    <TooltipProvider>
-      <main className="px-4 sm:px-6 pt-12 sm:pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white">
-        <div className="flex justify-between items-start mb-12">
-          <div className="space-y-1">
-            <p className="text-primary/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-yellow">Interface Log</p>
-            <h1 className="text-3xl font-black tracking-tighter uppercase neon-text-yellow">Journal de Bord</h1>
+    <main className="min-h-screen bg-black text-white pb-32">
+      {/* HEADER & SEARCH */}
+      <div className="p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-black tracking-tighter uppercase neon-text-blue">Journal</h1>
+          <div className="flex gap-2">
+            <Button size="icon" variant="outline" className="rounded-xl border-accent/40" onClick={() => { setIsScanning(true); setScanMode('photo'); startCamera(); }}>
+              <Camera size={18} />
+            </Button>
+            <Button size="icon" variant="outline" className="rounded-xl border-accent/40" onClick={() => { setIsScanning(true); setScanMode('barcode'); }}>
+              <Barcode size={18} />
+            </Button>
           </div>
-          <Button variant="ghost" size="icon" className={`w-10 h-10 border ${isMuted ? 'text-destructive border-destructive/20' : 'text-accent border-accent/20'}`} onClick={() => { setIsMuted(!isMuted); window.speechSynthesis.cancel(); }}>
-            {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-          </Button>
         </div>
 
-        <section className="mb-12 space-y-6">
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {['petit-déjeuner', 'déjeuner', 'dîner', 'snack'].map((type) => (
-              <button key={type} onClick={() => setSelectedType(type as MealType)} className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest border rounded-full transition-all whitespace-nowrap ${selectedType === type ? 'bg-primary text-black border-primary shadow-[0_0_10px_rgba(253,224,71,0.4)]' : 'border-white/10 text-muted-foreground'}`}>{type}</button>
-            ))}
-          </div>
-          
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/40" size={18} />
-              <Input 
-                className="bg-white/5 border-primary/20 h-14 pl-12 font-black uppercase rounded-[12px] focus:ring-primary/40" 
-                placeholder="RECHERCHER..." 
-                value={searchTerm} 
-                onChange={(e) => setSearchTerm(e.target.value)} 
-              />
-            </div>
-            <div className="flex gap-2">
-              <Dialog open={isScannerOpen} onOpenChange={(o) => { setIsScannerOpen(o); if(o) setTimeout(startCamera,100); else stopCamera(); }}>
-                <DialogTrigger asChild><Button className="h-14 w-14 border-accent text-accent rounded-[12px]"><Camera size={20} /></Button></DialogTrigger>
-                <DialogContent className="bg-black border-accent/40 text-white rounded-[24px] p-0 overflow-hidden max-w-sm">
-                  <DialogHeader><DialogTitle className="sr-only">Scanner Optique</DialogTitle></DialogHeader>
-                  <div className="relative h-[70vh]">
-                    {!scanningImage ? (
-                      <>
-                        <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-                        <div className="absolute bottom-6 left-0 right-0 flex justify-center items-center px-10">
-                          <button className="w-20 h-20 rounded-full border-8 border-accent/30 bg-black/20 backdrop-blur-md flex items-center justify-center group" onClick={capturePhoto}>
-                            <div className="w-12 h-12 rounded-full bg-accent group-active:scale-90 transition-transform" />
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="w-full h-full relative">
-                        <img src={scanningImage} className="w-full h-full object-cover" alt="" />
-                        {aiEstimating ? (
-                          <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-4">
-                            <Loader2 className="animate-spin text-accent" size={48} />
-                            <p className="text-[12px] font-black tracking-[0.6em] text-accent uppercase animate-pulse">LIAISON NEURALE...</p>
-                          </div>
-                        ) : aiResult ? (
-                          <div className="absolute bottom-0 left-0 right-0 p-8 bg-black/90 border-t border-accent/40 backdrop-blur-xl">
-                            <h3 className="text-xl font-black uppercase text-accent neon-text-blue mb-4">{aiResult.name}</h3>
-                            <Button className="w-full h-14 bg-accent text-black font-black rounded-xl" onClick={() => addMeal(aiResult, true)}>ARCHIVER</Button>
-                          </div>
-                        ) : (
-                          <div className="absolute bottom-6 left-0 right-0 px-6 flex gap-2">
-                             <Button variant="outline" className="flex-1 h-14 border-white/20" onClick={() => setScanningImage(null)}>REPRENDRE</Button>
-                             <Button className="flex-[2] h-14 bg-accent text-black" onClick={runImageAnalysis}>ANALYSER</Button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" size={16} />
+          <input 
+            className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-10 pr-4 text-sm uppercase font-black tracking-widest focus:border-accent outline-none transition-all"
+            placeholder="RECHERCHER UN ALIMENT..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
 
-              <Dialog open={isBarcodeOpen} onOpenChange={setIsBarcodeOpen}>
-                <DialogTrigger asChild><Button className="h-14 w-14 border-primary text-primary rounded-[12px]"><Barcode size={20} /></Button></DialogTrigger>
-                <DialogContent className="bg-black border-primary/40 text-white rounded-[24px] max-w-sm">
-                   <DialogHeader><DialogTitle className="sr-only">Scanner Code-Barres</DialogTitle></DialogHeader>
-                   <div className="space-y-4">
-                     <div id="reader" className="w-full overflow-hidden rounded-xl border border-white/10 min-h-[250px] bg-white/5" />
-                     {aiEstimating && (
-                        <div className="flex items-center justify-center gap-3 p-4">
-                          <Loader2 className="animate-spin text-primary" size={20} />
-                          <span className="text-[10px] font-black uppercase text-primary">SYNCHRONISATION OFF...</span>
-                        </div>
-                     )}
-                     {aiResult && (
-                       <div className="p-4 border border-primary/20 bg-primary/5 rounded-xl animate-in fade-in slide-in-from-top-2">
-                         <p className="text-xs font-black uppercase text-primary mb-3">{aiResult.name}</p>
-                         <Button className="w-full bg-primary text-black font-black" onClick={() => addMeal(aiResult, true)}>AJOUTER À L'ARCHIVE</Button>
-                       </div>
-                     )}
-                   </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-        </section>
-
-        <div className="space-y-12">
+        {/* DISPLAY ZONE */}
+        <div className="space-y-8">
           {searchTerm ? (
             <div className="space-y-4">
-              <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-accent border-l-2 border-accent pl-3">RÉSULTATS DE RECHERCHE</h2>
-              <div className="space-y-3">
-                {globalSearchResults.length > 0 ? globalSearchResults.map((meal: any) => (
-                  <div key={meal.id} onClick={() => openDetails(meal)} className="cyber-card-blue p-4 flex justify-between items-center cursor-pointer hover:border-accent group transition-all">
-                    <div className="flex items-center gap-4">
-                      <img src={getFallbackImage(meal)} className="w-12 h-12 object-cover border border-accent/20 rounded-xl" alt="" />
-                      <div>
-                        <h3 className="font-black text-xs uppercase">{meal.name || 'ALIMENT INCONNU'}</h3>
-                        <p className="text-[9px] text-muted-foreground uppercase font-black">{meal.calories} {meal.unit || 'KCAL'} | {meal.date}</p>
-                      </div>
+              <p className="text-[10px] font-black text-accent uppercase tracking-[0.3em]">Résultats de recherche</p>
+              {globalSearchResults.length > 0 ? globalSearchResults.map((item: any, idx) => (
+                <div 
+                  key={idx}
+                  onClick={() => setSelectedMeal(item)}
+                  className="cyber-card-blue p-4 flex justify-between items-center cursor-pointer hover:border-accent transition-all"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="text-accent">
+                      {item.isLiquid ? <Beer size={20} /> : <Soup size={20} />}
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase">{item.name || item.product_name}</p>
+                      <p className="text-[8px] opacity-50">{item.calories} KCAL</p>
                     </div>
                   </div>
-                )) : (
-                  <div className="p-12 text-center border border-dashed border-white/10 rounded-2xl">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.4em]">AUCUNE ARCHIVE CORRESPONDANTE</p>
-                  </div>
-                )}
-              </div>
+                  <Plus size={16} className="text-accent" />
+                </div>
+              )) : (
+                <div className="p-8 text-center border border-dashed border-white/10 rounded-2xl">
+                  <p className="text-[9px] font-black uppercase text-white/20">AUCUNE ARCHIVE DANS LA BASE</p>
+                </div>
+              )}
             </div>
           ) : (
             ['petit-déjeuner', 'déjeuner', 'dîner', 'snack'].map((type) => {
-              const sectionMeals = (meals || []).filter((m: any) => m.type === type);
+              const sectionMeals = (meals as any)?.filter((m: any) => m.type === type) || [];
               return (
                 <div key={type} className="space-y-4">
-                  <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/70 border-l-2 border-primary pl-3">{type.toUpperCase()}</h2>
-                  <div className="space-y-3">
-                    {sectionMeals.length > 0 ? sectionMeals.map((meal: any) => (
-                      <div key={meal.id} onClick={() => openDetails(meal)} className="cyber-card-blue p-4 flex justify-between items-center cursor-pointer hover:border-accent group transition-all">
-                        <div className="flex items-center gap-4">
-                          <img src={getFallbackImage(meal)} className="w-12 h-12 object-cover border border-accent/20 rounded-xl" alt="" />
-                          <div>
-                            <div className="flex items-center gap-2">
-                               {meal.isLiquid ? <Droplet size={10} className="text-accent" /> : <Soup size={10} className="text-primary" />}
-                               <h3 className="font-black text-xs uppercase">{meal.name || 'ALIMENT INCONNU'}</h3>
-                            </div>
-                            <p className="text-[9px] text-muted-foreground uppercase font-black">{meal.calories} {meal.unit || (meal.isLiquid ? 'ML' : 'KCAL')}</p>
-                          </div>
-                        </div>
-                        <Button variant="ghost" size="icon" className="text-white/10 hover:text-destructive" onClick={(e) => { e.stopPropagation(); deleteMeal(meal.id); }}><Trash2 size={14} /></Button>
-                      </div>
-                    )) : <div className="h-[1px] w-full bg-white/5" />}
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-[10px] font-black uppercase text-white/40 tracking-widest">{type}</h3>
+                    <div className="h-[1px] flex-1 bg-white/5 mx-4" />
                   </div>
+                  {sectionMeals.length > 0 ? sectionMeals.map((meal: any) => (
+                    <div 
+                      key={meal.id} 
+                      onClick={() => setSelectedMeal(meal)}
+                      className="bg-white/5 border border-white/10 p-4 rounded-2xl flex justify-between items-center hover:bg-white/10 transition-all cursor-pointer"
+                    >
+                       <div className="flex items-center gap-3">
+                         {meal.isLiquid ? <Droplets size={14} className="text-accent" /> : <Soup size={14} className="text-white/40" />}
+                         <p className="text-[10px] font-black uppercase">{meal.name}</p>
+                       </div>
+                       <p className="text-[8px] text-accent font-black">{meal.calories} KCAL</p>
+                    </div>
+                  )) : (
+                    <p className="text-[8px] opacity-20 italic">Veuillez scanner ou rechercher un aliment</p>
+                  )}
                 </div>
               );
             })
           )}
         </div>
+      </div>
 
-        <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-          <DialogContent className="bg-black/95 border-accent/40 text-white rounded-[32px] p-0 overflow-hidden shadow-[0_0_80px_rgba(0,242,255,0.15)] max-w-sm">
-            {selectedMeal && (
-              <div className="relative">
-                <DialogHeader><DialogTitle className="sr-only">Détails de l'aliment</DialogTitle></DialogHeader>
-                <div className="h-60 w-full relative">
-                  <img src={getFallbackImage(selectedMeal)} className="w-full h-full object-cover" alt="" />
-                  <DialogClose className="absolute right-5 top-5 w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-white/80">
-                    <X size={20} />
-                  </DialogClose>
+      {/* SCAN MODAL */}
+      <Dialog open={isScanning} onOpenChange={(open) => { if(!open) { stopCamera(); setIsScanning(false); setScanMode(null); setCapturedImage(null); } }}>
+        <DialogContent className="bg-black border-accent/30 text-white max-w-sm rounded-[24px]">
+          <DialogHeader>
+            <DialogTitle className="text-[10px] font-black text-accent uppercase tracking-widest text-center">
+              {scanMode === 'photo' ? 'Scan Optique' : 'Scan Industriel'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="relative aspect-video bg-white/5 rounded-xl overflow-hidden border border-white/10">
+            {scanMode === 'photo' && (
+              <>
+                <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                <div className="absolute inset-0 border-2 border-accent/20 flex items-center justify-center pointer-events-none">
+                   <div className="w-48 h-48 border-2 border-accent animate-pulse rounded-lg" />
                 </div>
+                <button 
+                  onClick={capturePhoto}
+                  className="absolute bottom-4 left-1/2 -translate-x-1/2 w-14 h-14 bg-accent rounded-full border-4 border-black shadow-lg"
+                />
+              </>
+            )}
+            {scanMode === 'barcode' && (
+              <div id="reader" className="w-full h-full" />
+            )}
+          </div>
 
-                <div className="p-8 space-y-8">
-                  <div className="space-y-2">
-                    <h2 className="text-2xl font-black tracking-tighter uppercase neon-text-blue">{selectedMeal.name || 'ALIMENT INCONNU'}</h2>
-                    {selectedMeal.isLiquid && selectedMeal.sugar > 10 && (
-                      <Badge className="bg-orange-500/20 border-orange-500 text-orange-500 neon-text-yellow text-[8px] animate-pulse">HIGH SUGAR ALERT</Badge>
-                    )}
-                  </div>
-                  
-                  {(!selectedMeal.vitamins && !selectedMeal.minerals) ? (
-                    <div className="bg-orange-500/10 border border-orange-500/40 p-4 rounded-xl space-y-3">
-                      <div className="flex items-center gap-2 text-orange-500">
-                        <AlertCircle size={14} />
-                        <span className="text-[9px] font-black uppercase tracking-widest">Archive Incomplète</span>
-                      </div>
-                      <Button onClick={handleReconstruct} disabled={isReconstructing} className="w-full bg-orange-500 text-black font-black">
-                        {isReconstructing ? <Loader2 className="animate-spin" size={14} /> : "RECONSTRUIRE BIO-DONNÉES"}
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-4 gap-3">
-                      <div className="cyber-card-red p-2 text-center"><Flame size={14} className="mx-auto mb-1"/><span className="text-xs font-black">{selectedMeal.calories}</span></div>
-                      <div className="cyber-card-blue p-2 text-center"><Zap size={14} className="mx-auto mb-1"/><span className="text-xs font-black">{selectedMeal.protein}g</span></div>
-                      <div className="cyber-card-yellow p-2 text-center"><Wheat size={14} className="mx-auto mb-1"/><span className="text-xs font-black">{selectedMeal.sugar || 0}g</span></div>
-                      <div className="cyber-card-blue p-2 text-center"><Droplet size={14} className="mx-auto mb-1"/><span className="text-xs font-black">{selectedMeal.fat || 0}g</span></div>
-                    </div>
-                  )}
+          <p className="text-[8px] text-center text-white/40 uppercase tracking-widest mt-4">
+            ALIGNER L'ÉLÉMENT DANS LE CADRE
+          </p>
+        </DialogContent>
+      </Dialog>
 
-                  <div className="space-y-4 pt-4 border-t border-white/10">
-                    <div className="flex flex-wrap gap-1">
-                      {renderBadges(selectedMeal.vitamins)}
-                      {renderBadges(selectedMeal.minerals)}
-                    </div>
-                    {selectedMeal.caffeine > 0 && (
-                      <div className="flex items-center gap-2 text-accent/60">
-                        <Coffee size={12} />
-                        <span className="text-[10px] font-black uppercase">{selectedMeal.caffeine}mg Caféine</span>
-                      </div>
-                    )}
-                    <p className="text-[8px] text-muted-foreground uppercase font-black">
-                      {selectedMeal.isAiEstimated ? "ESTIMATION IA" : "CERTIFIÉ INDUSTRIEL"}
-                    </p>
-                  </div>
+      {/* DETAILS DIALOG */}
+      <Dialog open={!!selectedMeal} onOpenChange={() => { if(!isAnalyzing) setSelectedMeal(null); }}>
+        <DialogContent className="bg-black/95 border-accent/40 text-white max-w-md p-0 overflow-hidden rounded-[32px]">
+          {isAnalyzing ? (
+            <div className="p-20 flex flex-col items-center justify-center gap-6">
+              <Loader2 className="animate-spin text-accent" size={48} />
+              <p className="text-[10px] font-black text-accent uppercase tracking-[0.5em] animate-pulse">Reconstruction...</p>
+            </div>
+          ) : selectedMeal && (
+            <div className="flex flex-col h-full max-h-[90vh]">
+              {/* Image & Header */}
+              <div className="relative h-64 bg-white/5">
+                <img 
+                  src={selectedMeal.imageUrl || `https://source.unsplash.com/featured/?food,${selectedMeal.name}`} 
+                  className="w-full h-full object-cover" 
+                  alt={selectedMeal.name}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+                <div className="absolute bottom-6 left-6 right-6">
+                   <h2 className="text-2xl font-black uppercase tracking-tighter neon-text-blue">{selectedMeal.name}</h2>
+                   <div className="flex gap-2 mt-2">
+                     <Badge className="bg-accent/20 text-accent border-accent/40 text-[9px] uppercase font-black">
+                       {selectedMeal.isLiquid ? 'Liquide' : 'Solide'}
+                     </Badge>
+                     {selectedMeal.sugar > 10 && (
+                       <Badge className="bg-destructive/20 text-destructive border-destructive/40 text-[9px] uppercase font-black animate-pulse">
+                         Alerte Sucre
+                       </Badge>
+                     )}
+                   </div>
                 </div>
               </div>
-            )}
-          </DialogContent>
-        </Dialog>
 
-        <BottomNav />
-        <canvas ref={canvasRef} className="hidden" />
-      </main>
-    </TooltipProvider>
+              {/* Stats Grid */}
+              <div className="p-6 space-y-8 overflow-y-auto">
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <p className="text-xl font-black text-white">{selectedMeal.calories}</p>
+                    <p className="text-[7px] text-white/40 uppercase font-black">KCAL</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xl font-black text-primary">{selectedMeal.protein}g</p>
+                    <p className="text-[7px] text-white/40 uppercase font-black">PROT</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xl font-black text-accent">{selectedMeal.carbs}g</p>
+                    <p className="text-[7px] text-white/40 uppercase font-black">GLUC</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xl font-black text-destructive">{selectedMeal.fat}g</p>
+                    <p className="text-[7px] text-white/40 uppercase font-black">LIP</p>
+                  </div>
+                </div>
+
+                {/* Micro-nutriments */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-[9px] font-black uppercase text-white/40 tracking-widest">Bio-Archives</h3>
+                    {!selectedMeal.vitamins && (
+                      <Button variant="ghost" size="sm" onClick={reconstructBioData} className="h-6 text-[8px] text-accent hover:bg-accent/10 px-2 rounded-lg border border-accent/20">
+                         RECONSTRUIRE
+                      </Button>
+                    )}
+                  </div>
+
+                  {!selectedMeal.vitamins ? (
+                    <div className="p-4 border border-orange-500/20 bg-orange-500/5 rounded-xl flex items-center gap-3">
+                      <AlertTriangle size={16} className="text-orange-500" />
+                      <p className="text-[8px] text-orange-500/80 font-black uppercase">Archive incomplète - Reconstruction conseillée</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-[8px] font-black text-white/30 uppercase mb-2">Vitamines</p>
+                        <div className="flex flex-wrap">{renderBadges(selectedMeal.vitamins)}</div>
+                      </div>
+                      <div>
+                        <p className="text-[8px] font-black text-white/30 uppercase mb-2">Minéraux</p>
+                        <div className="flex flex-wrap">{renderBadges(selectedMeal.minerals)}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Save Section */}
+                {!selectedMeal.date && (
+                  <div className="space-y-4 pt-4 border-t border-white/5">
+                    <div className="grid grid-cols-2 gap-2">
+                      {['petit-déjeuner', 'déjeuner', 'dîner', 'snack'].map((t) => (
+                        <Button 
+                          key={t}
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            "text-[8px] font-black uppercase tracking-widest h-10",
+                            selectedType === t ? "border-accent text-accent bg-accent/5" : "border-white/10"
+                          )}
+                          onClick={() => setSelectedType(t as any)}
+                        >
+                          {t}
+                        </Button>
+                      ))}
+                    </div>
+                    <Button 
+                      className="w-full h-14 bg-accent text-black font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-accent/80"
+                      onClick={handleAddMeal}
+                    >
+                      ENREGISTRER AU JOURNAL
+                    </Button>
+                  </div>
+                )}
+                
+                {selectedMeal.aiAnalysis && (
+                  <p className="text-[8px] text-accent/60 font-black italic text-center uppercase tracking-widest">
+                    Estimation IA active • Haute Fidélité
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <BottomNav />
+    </main>
   );
 }
