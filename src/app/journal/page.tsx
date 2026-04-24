@@ -5,9 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useCollection } from '@/firebase';
 import { BottomNav } from '@/components/bottom-nav';
 import { 
-  Plus, Search, Camera, Barcode, X, Info, Zap, Flame, Droplets,
-  AlertTriangle, CheckCircle2, Beer, Soup, Pizza, Loader2,
-  Circle, Sparkles, Coffee, Sun, Moon, Cookie
+  Plus, Search, Camera, Barcode, X, Droplets,
+  Circle, Coffee, Sun, Moon, Cookie, Soup, Pizza, Beer
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { collection, query, where } from 'firebase/firestore';
@@ -32,23 +31,17 @@ export default function JournalPage() {
 
   const { data: meals } = useCollection(mealsQuery);
 
-  // MOTEUR DE RECHERCHE GLOBAL (LOGIQUE PHASE 4)
+  // MOTEUR DE RECHERCHE GLOBAL (PHASE 4 & 5)
   const globalSearchResults = useMemo(() => {
     if (!searchTerm || searchTerm.trim().length < 2) return [];
 
     try {
-      // Transformation sécurisée des données Firebase
       const firebaseData = (meals as any)?.docs 
         ? (meals as any).docs.map((d: any) => ({ id: d.id, ...d.data() }))
         : (Array.isArray(meals) ? meals : []);
       
-      // Fusion des sources : JSON statique + Historique Firebase
       const allItems = [...(foodDb as any[]), ...firebaseData];
-      
-      // Filtrage insensible à la casse
       const queryLower = searchTerm.toLowerCase();
-      
-      // Unicité des résultats
       const seenNames = new Set();
       
       return allItems.filter((item: any) => {
@@ -74,7 +67,7 @@ export default function JournalPage() {
 
   if (loading || !user) return null;
 
-  // SECTIONS DU JOURNAL
+  // SECTIONS DU JOURNAL (PHASE 6)
   const categories = [
     { id: 'petit-déjeuner', label: 'Petit-Déjeuner', icon: Coffee },
     { id: 'déjeuner', label: 'Déjeuner', icon: Sun },
@@ -85,7 +78,7 @@ export default function JournalPage() {
   return (
     <main className="max-w-md mx-auto min-h-screen bg-black text-white relative shadow-[0_0_50px_rgba(0,0,0,0.8)] pb-32">
       
-      {/* SECTION 1 : HEADER NÉON */}
+      {/* SECTION 1 : HEADER NÉON (PHASE 1 & 2) */}
       <div className="p-6 flex justify-between items-center">
         <h1 
           className="font-black text-2xl uppercase tracking-[0.2em] text-white"
@@ -110,7 +103,7 @@ export default function JournalPage() {
         </div>
       </div>
 
-      {/* SECTION 2 : BARRE DE RECHERCHE */}
+      {/* SECTION 2 : BARRE DE RECHERCHE (PHASE 3) */}
       <div className="px-6 mb-8">
         <div className="relative group">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
@@ -139,7 +132,7 @@ export default function JournalPage() {
         </div>
       </div>
 
-      {/* SECTION 3 : AFFICHAGE DES RÉSULTATS OU JOURNAL QUOTIDIEN */}
+      {/* SECTION 3 : AFFICHAGE DES RÉSULTATS (PHASE 5) OU JOURNAL QUOTIDIEN (PHASE 6 & 7) */}
       <div className="px-6 space-y-8">
         {searchTerm ? (
           <div className="space-y-4">
@@ -186,8 +179,8 @@ export default function JournalPage() {
             )}
           </div>
         ) : (
-          /* JOURNAL QUOTIDIEN PAR SECTIONS */
-          <div className="space-y-10">
+          /* JOURNAL QUOTIDIEN (PHASE 6 & 7) */
+          <div className="space-y-10 pb-24">
             {categories.map((category) => {
               const CategoryIcon = category.icon;
               const sectionMeals = Array.isArray(meals) 
@@ -203,23 +196,32 @@ export default function JournalPage() {
                     </h2>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     {sectionMeals.length > 0 ? (
                       sectionMeals.map((meal: any) => (
-                        <div key={meal.id} className="flex justify-between items-center py-2 group">
+                        <div 
+                          key={meal.id} 
+                          className="flex justify-between items-center py-3 border-b border-white/5 group transition-all duration-300 hover:bg-white/[0.02] cursor-pointer"
+                        >
                           <div className="flex items-center gap-3">
-                            {meal.isLiquid ? <Droplets size={12} className="text-accent" /> : <Circle size={10} className="text-primary" />}
+                            {meal.isLiquid ? (
+                              <Droplets size={12} className="text-accent animate-pulse" />
+                            ) : (
+                              <Circle size={8} className="text-primary" />
+                            )}
                             <span className="text-[10px] font-black uppercase tracking-widest text-white/90 group-hover:text-white transition-colors">
                               {meal.name}
                             </span>
                           </div>
-                          <span className="text-[10px] font-black text-accent neon-text-blue">
-                            {meal.calories} KCAL
-                          </span>
+                          <div className="text-right">
+                            <span className="text-[10px] font-black text-accent neon-text-blue tracking-tighter">
+                              {meal.calories} KCAL
+                            </span>
+                          </div>
                         </div>
                       ))
                     ) : (
-                      <p className="text-[8px] text-white/10 font-black uppercase tracking-widest italic py-2">
+                      <p className="text-[8px] text-white/10 font-black uppercase tracking-widest italic py-3">
                         Veuillez scanner ou rechercher un aliment
                       </p>
                     )}
