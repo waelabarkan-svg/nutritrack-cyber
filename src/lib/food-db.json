@@ -91,5 +91,13 @@
   { "name": "LAURIER (FEUILLES)", "calories": 313, "protein": 8, "carbs": 75, "fat": 8 },
   { "name": "RAS EL HANOUT", "calories": 320, "protein": 12, "carbs": 50, "fat": 10 },
   { "name": "ZAATAR", "calories": 340, "protein": 10, "carbs": 45, "fat": 15 },
-  { "name": "PIMENT OISEAU", "calories": 324, "protein": 11, "carbs": 55, "fat": 12 }
+  { "name": "PIMENT OISEAU", "calories": 324, "protein": 11, "carbs": 55, "fat": 12 },
+  { "name": "SUCRE BLANC", "calories": 387, "protein": 0, "carbs": 100, "fat": 0 },
+  { "name": "SUCRE ROUX (CASSONADE)", "calories": 380, "protein": 0, "carbs": 98, "fat": 0 },
+  { "name": "MIEL", "calories": 304, "protein": 0, "carbs": 82, "fat": 0 },
+  { "name": "SIROP D'ERABLE", "calories": 260, "protein": 0, "carbs": 67, "fat": 0 },
+  { "name": "SIROP D'AGAVE", "calories": 310, "protein": 0, "carbs": 76, "fat": 0 },
+  { "name": "STEVIA", "calories": 0, "protein": 0, "carbs": 0, "fat": 0 },
+  { "name": "SUCRE VANILLE", "calories": 395, "protein": 0, "carbs": 99, "fat": 0 },
+  { "name": "CONCOCTION GLYCOLYTIQUE (GLUCOSE)", "calories": 400, "protein": 0, "carbs": 100, "fat": 0 }
 ]
