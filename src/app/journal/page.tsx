@@ -274,7 +274,6 @@ export default function JournalPage() {
         </div>
 
         <section className="mb-12 space-y-6">
-          {/* Menu de sélection de type de repas glissant avec effet néon arrondi */}
           <div className="flex gap-3 overflow-x-auto pb-6 px-1 scrollbar-hide -mx-1">
             {(['petit-déjeuner', 'déjeuner', 'dîner', 'snack', 'boisson'] as MealType[]).map((type) => (
               <Button
@@ -311,6 +310,10 @@ export default function JournalPage() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="bg-black border-accent text-white rounded-none p-0 overflow-hidden max-w-sm">
+                  <DialogHeader className="sr-only">
+                    <DialogTitle>Analyse IA</DialogTitle>
+                    <DialogDescription>Capture visuelle pour analyse nutritionnelle.</DialogDescription>
+                  </DialogHeader>
                   <div className="relative h-[70vh]">
                     {!scanningImage ? (
                       <>
@@ -356,6 +359,10 @@ export default function JournalPage() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="bg-black border-primary text-white rounded-none p-6 max-w-sm">
+                  <DialogHeader className="sr-only">
+                    <DialogTitle>Scan Code-Barres</DialogTitle>
+                    <DialogDescription>Liaison avec la base de données mondiale.</DialogDescription>
+                  </DialogHeader>
                   <div id="reader" className="w-full min-h-[300px] bg-black/50 border border-primary/20 rounded-none overflow-hidden" />
                   {isFetchingBarcode && <div className="flex justify-center mt-6"><Loader2 className="animate-spin text-primary" /></div>}
                   {barcodeResult && (
@@ -365,10 +372,10 @@ export default function JournalPage() {
                         <div className="flex-1">
                           <h3 className="font-black uppercase mb-3 text-sm tracking-tight text-primary neon-text-yellow">{barcodeResult.name}</h3>
                           <div className="grid grid-cols-4 gap-2 text-center">
-                            <div><p className="text-[11px] font-black">{barcodeResult.calories}</p><p className="text-[7px] text-muted-foreground font-black">KCAL</p></div>
-                            <div><p className="text-[11px] font-black">{barcodeResult.protein}g</p><p className="text-[7px] text-muted-foreground font-black">PROT</p></div>
-                            <div><p className="text-[11px] font-black">{barcodeResult.carbs}g</p><p className="text-[7px] text-muted-foreground font-black">GLUC</p></div>
-                            <div><p className="text-[11px] font-black">{barcodeResult.fat}g</p><p className="text-[7px] text-muted-foreground font-black">LIPID</p></div>
+                            <div><p className="text-[12px] font-black">{barcodeResult.calories}</p><p className="text-[8px] text-muted-foreground font-black">KCAL</p></div>
+                            <div><p className="text-[12px] font-black">{barcodeResult.protein}g</p><p className="text-[8px] text-muted-foreground font-black">PROT</p></div>
+                            <div><p className="text-[12px] font-black">{barcodeResult.carbs}g</p><p className="text-[8px] text-muted-foreground font-black">GLUC</p></div>
+                            <div><p className="text-[12px] font-black">{barcodeResult.fat}g</p><p className="text-[8px] text-muted-foreground font-black">LIPID</p></div>
                           </div>
                         </div>
                       </div>
@@ -388,15 +395,15 @@ export default function JournalPage() {
                   <div className="flex items-center gap-4">
                     <img src={food.imageUrl || getFallbackImage(food.name)} className="w-10 h-10 object-cover border border-accent/20 transition-all" alt="" />
                     <div>
-                      <p className="font-black text-[10px] uppercase tracking-tight text-white">{food.name}</p>
-                      <p className="text-[8px] text-muted-foreground font-black uppercase">{food.calories} KCAL | P: {food.protein}G</p>
+                      <p className="font-black text-[12px] uppercase tracking-tight text-white">{food.name}</p>
+                      <p className="text-[10px] text-muted-foreground font-black uppercase">{food.calories} KCAL | P: {food.protein}G</p>
                     </div>
                   </div>
                   <Button size="icon" className="w-10 h-10 border-accent/40 bg-transparent text-accent shadow-none hover:bg-accent/10" onClick={() => addMeal(food)}><Plus size={18} /></Button>
                 </div>
               ))}
               {!aiResult && searchTerm.length > 3 && (
-                <Button onClick={handleAiEstimate} disabled={aiEstimating} className="w-full h-14 border-[#00FFFF]/40 bg-black text-[#00FFFF] rounded-none font-black text-[10px] tracking-widest hover:bg-[#00FFFF]/10 active:shadow-[0_0_15px_rgba(0,255,255,0.4)]">
+                <Button onClick={handleAiEstimate} disabled={aiEstimating} className="w-full h-14 border-[#00FFFF]/40 bg-black text-[#00FFFF] rounded-none font-black text-[12px] tracking-widest hover:bg-[#00FFFF]/10 active:shadow-[0_0_15px_rgba(0,255,255,0.4)]">
                   {aiEstimating ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2" />} ESTIMATION MOLÉCULAIRE IA
                 </Button>
               )}
@@ -412,11 +419,11 @@ export default function JournalPage() {
                 <div key={section} className="space-y-4">
                   <div className="flex items-center gap-2 border-b border-white/10 pb-1 mb-4">
                     <div className="w-1 h-3 bg-primary" />
-                    <h3 className="text-[10px] font-light text-white/30 uppercase tracking-[0.4em]">{section}</h3>
+                    <h3 className="text-[12px] font-light text-white/30 uppercase tracking-[0.4em]">{section}</h3>
                   </div>
                   
                   {sectionMeals.length === 0 ? (
-                    <p className="text-[8px] text-white/10 font-black uppercase tracking-widest italic py-2">Veuillez scanner ou rechercher un aliment</p>
+                    <p className="text-[10px] text-white/10 font-black uppercase tracking-widest italic py-2">Veuillez scanner ou rechercher un aliment</p>
                   ) : (
                     <div className="space-y-1">
                       {sectionMeals.map((meal: any) => (
@@ -427,10 +434,10 @@ export default function JournalPage() {
                         >
                           <div className="flex items-center gap-3">
                             <p className="text-[10px] font-black uppercase tracking-tight text-white/90">{meal.name}</p>
-                            {meal.isAiEstimated && <Badge variant="outline" className="text-[6px] border-accent/30 text-accent py-0 h-3">IA</Badge>}
+                            {meal.isAiEstimated && <Badge variant="outline" className="text-[8px] border-accent/30 text-accent py-0 h-3">IA</Badge>}
                           </div>
                           <div className="flex items-center gap-4">
-                            <span className="text-[12px] font-black text-[#00FFFF]">{meal.calories} <span className="text-[7px] text-white/40 ml-0.5">KCAL</span></span>
+                            <span className="text-[14px] font-black text-[#00FFFF]">{meal.calories} <span className="text-[7px] text-white/40 ml-0.5">KCAL</span></span>
                             <button onClick={(e) => { e.stopPropagation(); deleteMeal(meal.id); }} className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive/40 hover:text-destructive">
                               <Trash2 size={12} />
                             </button>
@@ -445,18 +452,20 @@ export default function JournalPage() {
           </div>
         )}
 
-        {/* Diagnostic Dialog (Details) */}
         <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
           <DialogContent className="bg-black/90 backdrop-blur-xl border-accent text-white rounded-none p-0 overflow-hidden shadow-[0_0_50px_rgba(0,242,255,0.15)] max-w-sm">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Détails du repas</DialogTitle>
+              <DialogDescription>Diagnostic nutritionnel complet.</DialogDescription>
+            </DialogHeader>
             {selectedMeal && (
               <div className="relative">
-                <DialogHeader className="p-4 flex flex-row justify-between items-center border-b border-white/10">
-                  <DialogTitle className="text-[12px] font-black uppercase tracking-[0.2em] neon-text-blue">{selectedMeal.name}</DialogTitle>
+                <header className="p-4 flex flex-row justify-between items-center border-b border-white/10">
+                  <span className="text-[12px] font-black uppercase tracking-[0.2em] neon-text-blue">{selectedMeal.name}</span>
                   <DialogClose className="text-white/40 hover:text-white transition-colors">
                     <X size={20} />
                   </DialogClose>
-                  <DialogDescription className="sr-only">Diagnostic nutritionnel complet.</DialogDescription>
-                </DialogHeader>
+                </header>
 
                 <div className="h-48 w-full relative">
                   <img src={selectedMeal.imageUrl || getFallbackImage(selectedMeal.name)} className="w-full h-full object-cover contrast-110 brightness-75" alt="" />
