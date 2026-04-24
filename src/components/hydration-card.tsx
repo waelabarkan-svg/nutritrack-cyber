@@ -60,7 +60,7 @@ export function HydrationCard() {
       }`}>
         <div className="relative z-10">
           <div className="flex justify-between items-center mb-10">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 pl-2 sm:pl-0">
               <div className={`w-10 h-10 sm:w-12 sm:h-12 border-2 flex items-center justify-center bg-black rounded-[12px] transition-all duration-500 ${
                 isComplete ? 'border-accent neon-glow-blue' : 'border-accent/50'
               }`}>
@@ -82,7 +82,7 @@ export function HydrationCard() {
                 <p className="text-[9px] text-primary font-black uppercase tracking-widest mt-1 neon-text-yellow">Objectif : {(targetMl / 1000).toFixed(1)}L</p>
               </div>
             </div>
-            <div className="text-right pr-1 sm:pr-0">
+            <div className="text-right pr-2 sm:pr-0">
               <span className={`font-black text-4xl sm:text-5xl tracking-tighter transition-all duration-500 ${isComplete ? 'text-accent neon-text-blue' : 'text-accent/80'}`}>
                 {glasses}
               </span>
