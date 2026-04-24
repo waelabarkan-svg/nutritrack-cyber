@@ -13,9 +13,11 @@ import { Plus, Trash2, Search, Camera, X, Check, Loader2, Volume2, VolumeX, Spar
 import { collection, addDoc, query, where, deleteDoc, doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { scanDish } from '@/ai/flows/scan-dish-flow';
+import { estimateDish } from '@/ai/flows/estimate-dish-flow';
 import { addXp } from '@/lib/gamification-utils';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 type MealType = 'petit-déjeuner' | 'déjeuner' | 'dîner' | 'snack';
 
@@ -36,6 +38,7 @@ export default function JournalPage() {
   const [scanningImage, setScanningImage] = useState<string | null>(null);
   const [barcodeResult, setBarcodeResult] = useState<any>(null);
   const [isFetchingBarcode, setIsFetchingBarcode] = useState(false);
+  const [isReconstructing, setIsReconstructing] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -50,11 +53,22 @@ export default function JournalPage() {
 
   const { data: meals } = useCollection(mealsQuery);
 
+  // Recherche Globale : Combine Firestore Today + LocalStorage History
+  const searchableMeals = useMemo(() => {
+    if (typeof window === 'undefined') return [];
+    const todayList = meals || [];
+    const localHistory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
+    
+    // Filtrer pour éviter les doublons si l'historique local contient déjà aujourd'hui
+    const historyOthers = localHistory.filter((h: any) => h.date !== today);
+    
+    return [...todayList, ...historyOthers];
+  }, [meals, today]);
+
   const announceResults = (data: any) => {
     if (isMuted || typeof window === 'undefined' || !window.speechSynthesis) return;
     const formatValue = (val: any) => (val !== undefined && val !== null ? val : 'non détecté');
-    const unit = data.isLiquid ? 'millilitres' : 'grammes';
-    const script = `Analyse terminée. Produit : ${data.name}. Apport énergétique : ${formatValue(data.calories)} calories. Sucre : ${formatValue(data.sugar)} grammes. Analyse du coach : ${data.healthAdvice || 'en attente'}.`;
+    const script = `Analyse terminée. Produit : ${data.name}. Apport énergétique : ${formatValue(data.calories)} calories. Sucre : ${formatValue(data.sugar)} grammes.`;
     
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(script);
@@ -97,60 +111,6 @@ export default function JournalPage() {
     }
   };
 
-  const fetchBarcodeData = async (code: string) => {
-    setIsFetchingBarcode(true);
-    try {
-      const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
-      const data = await res.json();
-      if (data.status === 1 && data.product) {
-        const p = data.product;
-        const isDrink = p.categories_tags?.some((c: string) => c.includes('beverage') || c.includes('drink'));
-        
-        // Calcul hydratation
-        let hRate = 1.0;
-        const name = (p.product_name || "").toLowerCase();
-        if (name.includes('cafe') || name.includes('coffee') || name.includes('thé') || name.includes('tea')) hRate = 0.7;
-        else if (isDrink && (p.nutriments['sugars_100g'] > 5 || name.includes('soda') || name.includes('jus'))) hRate = 0.85;
-
-        const result = {
-          name: p.product_name || "PRODUIT INCONNU",
-          calories: Math.round(p.nutriments['energy-kcal_100g'] || 0),
-          protein: Math.round(p.nutriments['proteins_100g'] || 0),
-          carbs: Math.round(p.nutriments['carbohydrates_100g'] || 0),
-          fat: Math.round(p.nutriments['fat_100g'] || 0),
-          sugar: Math.round(p.nutriments['sugars_100g'] || 0),
-          caffeine: Math.round(p.nutriments['caffeine_100g'] * 1000 || 0), // openfoodfacts stocke souvent en g/100g
-          fiber: Math.round(p.nutriments['fiber_100g'] || 0),
-          isLiquid: isDrink,
-          unit: isDrink ? 'ml' : 'g',
-          hydrationRate: hRate,
-          vitamins: p.vitamins_tags?.map((v: string) => v.split(':').pop()?.toUpperCase()).join(', ') || null,
-          minerals: p.minerals_tags?.map((m: string) => m.split(':').pop()?.toUpperCase()).join(', ') || null,
-          additives: p.additives_tags?.map((a: string) => a.split(':').pop()?.toUpperCase()).join(', ') || null,
-          healthAdvice: "Produit industriel identifié. Intégrité vérifiée.",
-          imageUrl: p.image_front_url || p.image_url || null
-        };
-        setBarcodeResult(result);
-        announceResults(result);
-      }
-    } catch (e) {
-      toast({ variant: "destructive", title: "ERREUR LIAISON" });
-    } finally {
-      setIsFetchingBarcode(false);
-    }
-  };
-
-  const startBarcodeScanner = () => {
-    setTimeout(() => {
-      if (barcodeScannerRef.current) barcodeScannerRef.current.clear();
-      barcodeScannerRef.current = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 }, false);
-      barcodeScannerRef.current.render((decodedText) => {
-        barcodeScannerRef.current?.clear();
-        fetchBarcodeData(decodedText);
-      }, () => {});
-    }, 100);
-  };
-
   const runImageAnalysis = async () => {
     if (!scanningImage || aiEstimating) return;
     setAiEstimating(true);
@@ -160,7 +120,7 @@ export default function JournalPage() {
       setAiResult(enrichedResult);
       announceResults(enrichedResult);
     } catch (e) {
-      toast({ variant: "destructive", title: "DATA LINK OVERLOAD" });
+      toast({ variant: "destructive", title: "LIAISON ÉCHOUÉE" });
     } finally {
       setAiEstimating(false);
     }
@@ -189,23 +149,27 @@ export default function JournalPage() {
         createdAt: new Date().toISOString(),
         isAiEstimated: isScan
       };
+
+      // 1. Sauvegarde Firestore
       await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
       
+      // 2. Indexation LocalStorage (pour recherche et graphiques)
+      const history = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
+      history.push({ ...mealData, id: Date.now().toString() });
+      localStorage.setItem('biometric_memory', JSON.stringify(history));
+
       if (food.isLiquid) {
         const rate = food.hydrationRate || 1.0;
         const hydRef = doc(db, 'users', user.uid, 'hydration', today);
         const hydSnap = await getDoc(hydRef);
         const currentAmount = hydSnap.exists() ? hydSnap.data().amount : 0;
-        // 1 unité d'hydratation = 250ml d'eau pure. On pondère par le taux d'hydratation.
         await setDoc(hydRef, { amount: currentAmount + rate }, { merge: true });
       }
 
       if (isScan) addXp(50, 'scan');
       setAiResult(null);
-      setBarcodeResult(null);
       setScanningImage(null);
       setIsScannerOpen(false);
-      setIsBarcodeOpen(false);
       setSearchTerm('');
       toast({ title: "SYSTÈME MIS À JOUR" });
     } catch (e) {
@@ -220,6 +184,35 @@ export default function JournalPage() {
       toast({ title: "DONNÉE PURGÉE" });
     } catch (e) {
       toast({ variant: "destructive", title: "ERREUR PURGE" });
+    }
+  };
+
+  const handleReconstruct = async () => {
+    if (!selectedMeal || isReconstructing) return;
+    setIsReconstructing(true);
+    try {
+      const result = await estimateDish({ dishName: selectedMeal.name });
+      const updatedMeal = {
+        ...selectedMeal,
+        vitamins: result.vitamins,
+        minerals: result.minerals,
+        fiber: result.fiber,
+        aiAnalysis: result.aiAnalysis,
+        healthAdvice: result.healthAdvice,
+        isAiEstimated: true
+      };
+      
+      if (user) {
+        const mealRef = doc(db, 'users', user.uid, 'meals', selectedMeal.id);
+        await updateDoc(mealRef, updatedMeal);
+      }
+      
+      setSelectedMeal(updatedMeal);
+      toast({ title: "BIO-RÉPARATION TERMINÉE" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "ERREUR RECONSTRUCTION" });
+    } finally {
+      setIsReconstructing(false);
     }
   };
 
@@ -240,16 +233,23 @@ export default function JournalPage() {
 
   const getFallbackImage = (name: string) => {
     const term = name.toLowerCase();
+    // Recherche Unsplash ciblée pour éviter les salades génériques
+    let keywords = "food";
+    if (term.includes('poulet')) keywords = "meat,chicken,grilled";
+    else if (term.includes('boeuf')) keywords = "meat,beef,steak";
+    else if (term.includes('burger')) keywords = "burger,fastfood";
+    else if (term.includes('riz')) keywords = "rice,bowl";
+    
     return `https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=400&h=300&sig=${encodeURIComponent(term)}`;
   };
 
   return (
     <TooltipProvider>
       <main className="px-4 sm:px-6 pt-12 sm:pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white">
-        <div className="flex justify-between items-start mb-8 sm:mb-12">
+        <div className="flex justify-between items-start mb-12">
           <div className="space-y-1">
-            <p className="text-primary/60 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.5em] neon-text-yellow">Interface Log</p>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase neon-text-yellow">Journal de Bord</h1>
+            <p className="text-primary/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-yellow">Interface Log</p>
+            <h1 className="text-3xl font-black tracking-tighter uppercase neon-text-yellow">Journal de Bord</h1>
           </div>
           <Button variant="ghost" size="icon" className={`w-10 h-10 border ${isMuted ? 'text-destructive border-destructive/20' : 'text-accent border-accent/20'}`} onClick={() => { setIsMuted(!isMuted); window.speechSynthesis.cancel(); }}>
             {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
@@ -266,104 +266,70 @@ export default function JournalPage() {
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/40" size={18} />
-              <Input className="bg-white/5 border-primary/20 h-14 pl-12 font-black uppercase rounded-[12px] focus:ring-primary/40" placeholder="RECHERCHER..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <Input 
+                className="bg-white/5 border-primary/20 h-14 pl-12 font-black uppercase rounded-[12px] focus:ring-primary/40" 
+                placeholder="RECHERCHER..." 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)} 
+              />
             </div>
-            <div className="flex gap-2">
-              <Dialog open={isScannerOpen} onOpenChange={(o) => { setIsScannerOpen(o); if(o) setTimeout(startCamera,100); else stopCamera(); }}>
-                <DialogTrigger asChild><Button className="h-14 w-14 border-accent text-accent rounded-[12px]"><Camera size={20} /></Button></DialogTrigger>
-                <DialogContent className="bg-black border-accent/40 text-white rounded-[24px] p-0 overflow-hidden max-w-sm">
-                  <DialogHeader>
-                    <DialogTitle className="sr-only">Scanner de Bio-Données</DialogTitle>
-                    <DialogDescription className="sr-only">Analyse nutritionnelle en cours...</DialogDescription>
-                  </DialogHeader>
-                  <div className="relative h-[70vh]">
-                    {!scanningImage ? (
-                      <>
-                        <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-                        <div className="absolute bottom-6 left-0 right-0 flex justify-center items-center px-10">
-                          <button className="w-20 h-20 rounded-full border-8 border-accent/30 bg-black/20 backdrop-blur-md flex items-center justify-center group" onClick={capturePhoto}>
-                            <div className="w-12 h-12 rounded-full bg-accent group-active:scale-90 transition-transform" />
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="w-full h-full relative">
-                        <img src={scanningImage} className="w-full h-full object-cover contrast-125" alt="" />
-                        {aiEstimating ? (
-                          <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-4"><Loader2 className="animate-spin text-accent" size={48} /><p className="text-[12px] font-black tracking-[0.6em] text-accent uppercase animate-pulse">LIAISON NEURALE...</p></div>
-                        ) : aiResult ? (
-                          <div className="absolute bottom-0 left-0 right-0 p-8 bg-black/90 border-t border-accent/40 backdrop-blur-xl">
-                            <div className="flex items-center gap-2 mb-2">
-                              {aiResult.isLiquid ? <Droplet size={14} className="text-accent" /> : <Soup size={14} className="text-primary" />}
-                              <h3 className="text-xl font-black uppercase tracking-tight text-accent neon-text-blue">{aiResult.name}</h3>
-                            </div>
-                            <div className="grid grid-cols-4 gap-4 mb-4">
-                              <div className="text-center"><p className="text-sm font-black text-white">{aiResult.calories}</p><p className="text-[7px] text-muted-foreground uppercase font-black">KCAL</p></div>
-                              <div className="text-center"><p className="text-sm font-black text-white">{aiResult.protein}g</p><p className="text-[7px] text-muted-foreground uppercase font-black">PROT</p></div>
-                              <div className="text-center"><p className="text-sm font-black text-white">{aiResult.carbs}g</p><p className="text-[7px] text-muted-foreground uppercase font-black">GLUC</p></div>
-                              <div className="text-center"><p className="text-sm font-black text-white">{aiResult.sugar}g</p><p className="text-[7px] text-muted-foreground uppercase font-black">SUCRE</p></div>
-                            </div>
-                            {aiResult.sugar > 10 && (
-                              <div className="bg-destructive/10 border border-destructive/40 p-2 rounded-lg mb-4 flex items-center gap-2">
-                                <AlertTriangle size={14} className="text-destructive animate-pulse" />
-                                <span className="text-[9px] font-black text-destructive uppercase tracking-widest neon-text-red">HIGH SUGAR ALERT</span>
-                              </div>
-                            )}
-                            <Button className="w-full h-14 bg-accent text-black font-black neon-glow-blue rounded-xl" onClick={() => addMeal(aiResult, true)}>ARCHIVER DONNÉES</Button>
-                          </div>
-                        ) : (
-                          <div className="absolute bottom-6 left-0 right-0 px-6 flex gap-2">
-                             <Button variant="outline" className="flex-1 h-14 border-white/20 text-white font-black rounded-xl" onClick={() => setScanningImage(null)}>REPRENDRE</Button>
-                             <Button className="flex-[2] h-14 bg-accent text-black font-black rounded-xl" onClick={runImageAnalysis}>ANALYSER</Button>
-                          </div>
-                        )}
+            <Dialog open={isScannerOpen} onOpenChange={(o) => { setIsScannerOpen(o); if(o) setTimeout(startCamera,100); else stopCamera(); }}>
+              <DialogTrigger asChild><Button className="h-14 w-14 border-accent text-accent rounded-[12px]"><Camera size={20} /></Button></DialogTrigger>
+              <DialogContent className="bg-black border-accent/40 text-white rounded-[24px] p-0 overflow-hidden max-w-sm">
+                <DialogHeader>
+                  <DialogTitle className="sr-only">Scanner Optique</DialogTitle>
+                  <DialogDescription className="sr-only">Analyse moléculaire en temps réel via Llama 4 Scout.</DialogDescription>
+                </DialogHeader>
+                <div className="relative h-[70vh]">
+                  {!scanningImage ? (
+                    <>
+                      <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                      <div className="absolute bottom-6 left-0 right-0 flex justify-center items-center px-10">
+                        <button className="w-20 h-20 rounded-full border-8 border-accent/30 bg-black/20 backdrop-blur-md flex items-center justify-center group" onClick={capturePhoto}>
+                          <div className="w-12 h-12 rounded-full bg-accent group-active:scale-90 transition-transform" />
+                        </button>
                       </div>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
-
-              <Dialog open={isBarcodeOpen} onOpenChange={(o) => { setIsBarcodeOpen(o); if(o) startBarcodeScanner(); else if(barcodeScannerRef.current) barcodeScannerRef.current.clear(); }}>
-                <DialogTrigger asChild><Button className="h-14 w-14 border-primary text-primary rounded-[12px]"><Barcode size={20} /></Button></DialogTrigger>
-                <DialogContent className="bg-black border-primary/40 text-white rounded-[24px] p-6 max-w-sm">
-                  <DialogHeader>
-                    <DialogTitle className="sr-only">Scan Code-Barres</DialogTitle>
-                    <DialogDescription className="sr-only">Liaison avec la base de données mondiale.</DialogDescription>
-                  </DialogHeader>
-                  <div id="reader" className="w-full min-h-[300px] bg-black/50 border border-primary/20 rounded-2xl overflow-hidden" />
-                  {isFetchingBarcode && <div className="flex justify-center mt-6"><Loader2 className="animate-spin text-primary" /></div>}
-                  {barcodeResult && (
-                    <div className="mt-8 p-6 border border-primary/40 bg-primary/5 rounded-2xl">
-                      <div className="flex gap-5 mb-6">
-                        <img src={barcodeResult.imageUrl || getFallbackImage(barcodeResult.name)} className="w-20 h-20 object-cover border border-primary/40 rounded-xl" alt="" />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            {barcodeResult.isLiquid ? <Beer size={12} className="text-accent" /> : <Soup size={12} className="text-primary" />}
-                            <h3 className="font-black uppercase text-xs tracking-tight text-primary neon-text-yellow">{barcodeResult.name}</h3>
-                          </div>
-                          <div className="grid grid-cols-4 gap-2 text-center mb-2">
-                            <div><p className="text-[11px] font-black">{barcodeResult.calories}</p><p className="text-[7px] text-muted-foreground font-black">KCAL</p></div>
-                            <div><p className="text-[11px] font-black">{barcodeResult.protein}g</p><p className="text-[7px] text-muted-foreground font-black">PROT</p></div>
-                            <div><p className="text-[11px] font-black">{barcodeResult.sugar}g</p><p className="text-[7px] text-muted-foreground font-black">SUCRE</p></div>
-                            <div><p className="text-[11px] font-black">{barcodeResult.caffeine}mg</p><p className="text-[7px] text-muted-foreground font-black">CAFÉINE</p></div>
-                          </div>
-                          {barcodeResult.sugar > 10 && (
-                            <div className="text-[8px] font-black text-destructive uppercase tracking-tighter border border-destructive/20 p-1 rounded text-center">HIGH SUGAR ALERT</div>
-                          )}
+                    </>
+                  ) : (
+                    <div className="w-full h-full relative">
+                      <img src={scanningImage} className="w-full h-full object-cover contrast-125" alt="" />
+                      {aiEstimating ? (
+                        <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-4">
+                          <Loader2 className="animate-spin text-accent" size={48} />
+                          <p className="text-[12px] font-black tracking-[0.6em] text-accent uppercase animate-pulse">LIAISON NEURALE...</p>
                         </div>
-                      </div>
-                      <Button className="w-full h-12 bg-primary text-black font-black neon-glow-yellow rounded-xl" onClick={() => addMeal(barcodeResult, true)}>ARCHIVER PRODUIT</Button>
+                      ) : aiResult ? (
+                        <div className="absolute bottom-0 left-0 right-0 p-8 bg-black/90 border-t border-accent/40 backdrop-blur-xl">
+                          <h3 className="text-xl font-black uppercase text-accent neon-text-blue mb-4">{aiResult.name}</h3>
+                          <div className="grid grid-cols-4 gap-4 mb-6">
+                            <div className="text-center"><p className="text-sm font-black text-white">{aiResult.calories}</p><p className="text-[7px] text-muted-foreground uppercase font-black">KCAL</p></div>
+                            <div className="text-center"><p className="text-sm font-black text-white">{aiResult.protein}g</p><p className="text-[7px] text-muted-foreground uppercase font-black">PROT</p></div>
+                            <div className="text-center"><p className="text-sm font-black text-white">{aiResult.carbs}g</p><p className="text-[7px] text-muted-foreground uppercase font-black">GLUC</p></div>
+                            <div className="text-center"><p className="text-sm font-black text-white">{aiResult.sugar}g</p><p className="text-[7px] text-muted-foreground uppercase font-black">SUCRE</p></div>
+                          </div>
+                          <Button className="w-full h-14 bg-accent text-black font-black rounded-xl" onClick={() => addMeal(aiResult, true)}>ARCHIVER DONNÉES</Button>
+                        </div>
+                      ) : (
+                        <div className="absolute bottom-6 left-0 right-0 px-6 flex gap-2">
+                           <Button variant="outline" className="flex-1 h-14 border-white/20 text-white font-black rounded-xl" onClick={() => setScanningImage(null)}>REPRENDRE</Button>
+                           <Button className="flex-[2] h-14 bg-accent text-black font-black rounded-xl" onClick={runImageAnalysis}>ANALYSER</Button>
+                        </div>
+                      )}
                     </div>
                   )}
-                </DialogContent>
-              </Dialog>
-            </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </section>
 
         <div className="space-y-12">
           {['petit-déjeuner', 'déjeuner', 'dîner', 'snack'].map((type) => {
-            const sectionMeals = (meals || []).filter((m: any) => m.type === type);
+            // Filtrage dynamique incluant la recherche globale
+            const sectionMeals = (searchTerm ? searchableMeals : (meals || []))
+              .filter((m: any) => m.type === type)
+              .filter((m: any) => !searchTerm || m.name.toLowerCase().includes(searchTerm.toLowerCase()));
+
             return (
               <div key={type} className="space-y-4">
                 <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/70 border-l-2 border-primary pl-3">{type.toUpperCase()}</h2>
@@ -371,13 +337,17 @@ export default function JournalPage() {
                   {sectionMeals.length > 0 ? sectionMeals.map((meal: any) => (
                     <div key={meal.id} onClick={() => openDetails(meal)} className="cyber-card-blue p-4 flex justify-between items-center cursor-pointer hover:border-accent group transition-all">
                       <div className="flex items-center gap-4">
-                        <img src={meal.imageUrl || getFallbackImage(meal.name)} className="w-12 h-12 object-cover border border-accent/20 rounded-xl group-hover:border-accent/60 transition-all" alt="" />
+                        <img 
+                          src={meal.imageUrl || getFallbackImage(meal.name)} 
+                          className="w-12 h-12 object-cover border border-accent/20 rounded-xl group-hover:border-accent/60 transition-all" 
+                          alt="" 
+                        />
                         <div>
                           <div className="flex items-center gap-2">
                              {meal.isLiquid ? <Droplet size={10} className="text-accent" /> : <Soup size={10} className="text-primary" />}
                              <h3 className="font-black text-xs uppercase tracking-tight">{meal.name}</h3>
                           </div>
-                          <p className="text-[9px] text-muted-foreground uppercase font-black">{meal.calories} KCAL | {meal.sugar}g SUCRE</p>
+                          <p className="text-[9px] text-muted-foreground uppercase font-black">{meal.calories} KCAL | {meal.sugar || 0}g SUCRE</p>
                         </div>
                       </div>
                       <Button variant="ghost" size="icon" className="text-white/10 hover:text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); deleteMeal(meal.id); }}><Trash2 size={14} /></Button>
@@ -395,12 +365,12 @@ export default function JournalPage() {
               <div className="relative">
                 <DialogHeader>
                   <DialogTitle className="sr-only">Détails de l'aliment</DialogTitle>
-                  <DialogDescription className="sr-only">Analyse nutritionnelle complète et micro-nutriments.</DialogDescription>
+                  <DialogDescription className="sr-only">Diagnostic moléculaire complet et micro-données.</DialogDescription>
                 </DialogHeader>
                 <div className="h-60 w-full relative">
                   <img src={selectedMeal.imageUrl || getFallbackImage(selectedMeal.name)} className="w-full h-full object-cover contrast-125 brightness-90 border-b border-accent/20" alt="" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
-                  <DialogClose className="absolute right-5 top-5 w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-white/80 hover:text-white transition-colors">
+                  <DialogClose className="absolute right-5 top-5 w-10 h-10 rounded-full bg-black/60 backdrop-blur-md border border-white/20 flex items-center justify-center text-white/80">
                     <X size={20} />
                   </DialogClose>
                 </div>
@@ -412,48 +382,50 @@ export default function JournalPage() {
                       <p className="text-accent/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-blue">Diagnostic Moléculaire</p>
                     </div>
                     <h2 className="text-2xl font-black tracking-tighter uppercase neon-text-blue leading-none">{selectedMeal.name}</h2>
-                    {selectedMeal.isLiquid && selectedMeal.sugar > 10 && (
-                      <Badge className="bg-destructive text-white border-none font-black text-[8px] animate-pulse">HIGH SUGAR ALERT</Badge>
-                    )}
                   </div>
 
-                  <div className="grid grid-cols-4 gap-3">
-                    <div className="cyber-card-red p-4 flex flex-col items-center justify-center bg-black/40 border-destructive/20 rounded-2xl text-center">
-                      <Flame size={16} className="text-destructive mb-2" />
-                      <span className="text-sm font-black text-white">{selectedMeal.calories}</span>
-                      <span className="text-[7px] font-black text-muted-foreground uppercase">Kcal</span>
+                  {(!selectedMeal.vitamins && !selectedMeal.minerals) ? (
+                    <div className="bg-orange-500/10 border border-orange-500/40 p-4 rounded-xl space-y-3">
+                      <div className="flex items-center gap-2 text-orange-500">
+                        <AlertCircle size={14} />
+                        <span className="text-[9px] font-black uppercase tracking-widest">Archive Incomplète</span>
+                      </div>
+                      <Button 
+                        onClick={handleReconstruct} 
+                        disabled={isReconstructing}
+                        className="w-full h-10 bg-orange-500 text-black font-black text-[9px] tracking-widest hover:bg-orange-600 transition-all rounded-lg"
+                      >
+                        {isReconstructing ? <Loader2 className="animate-spin" size={14} /> : "RECONSTRUIRE BIO-DONNÉES"}
+                      </Button>
                     </div>
-                    <div className="cyber-card-blue p-4 flex flex-col items-center justify-center bg-black/40 border-accent/20 rounded-2xl text-center">
-                      <Zap size={16} className="text-accent mb-2" />
-                      <span className="text-sm font-black text-white">{selectedMeal.protein}g</span>
-                      <span className="text-[7px] font-black text-muted-foreground uppercase">Prot</span>
+                  ) : (
+                    <div className="grid grid-cols-4 gap-3">
+                      <div className="cyber-card-red p-4 flex flex-col items-center justify-center bg-black/40 border-destructive/20 rounded-2xl text-center">
+                        <Flame size={16} className="text-destructive mb-2" />
+                        <span className="text-sm font-black text-white">{selectedMeal.calories}</span>
+                        <span className="text-[7px] font-black text-muted-foreground uppercase">Kcal</span>
+                      </div>
+                      <div className="cyber-card-blue p-4 flex flex-col items-center justify-center bg-black/40 border-accent/20 rounded-2xl text-center">
+                        <Zap size={16} className="text-accent mb-2" />
+                        <span className="text-sm font-black text-white">{selectedMeal.protein}g</span>
+                        <span className="text-[7px] font-black text-muted-foreground uppercase">Prot</span>
+                      </div>
+                      <div className="cyber-card-yellow p-4 flex flex-col items-center justify-center bg-black/40 border-primary/20 rounded-2xl text-center">
+                        <Wheat size={16} className="text-primary mb-2" />
+                        <span className="text-sm font-black text-white">{selectedMeal.sugar || 0}g</span>
+                        <span className="text-[7px] font-black text-muted-foreground uppercase">Sucre</span>
+                      </div>
+                      <div className="cyber-card-blue p-4 flex flex-col items-center justify-center bg-black/40 border-accent/20 rounded-2xl text-center">
+                        {selectedMeal.isLiquid ? <Coffee size={16} className="text-accent mb-2" /> : <Droplet size={16} className="text-accent mb-2" />}
+                        <span className="text-sm font-black text-white">{selectedMeal.isLiquid ? selectedMeal.caffeine || 0 : selectedMeal.fat || 0}</span>
+                        <span className="text-[7px] font-black text-muted-foreground uppercase">{selectedMeal.isLiquid ? 'mg' : 'g Fat'}</span>
+                      </div>
                     </div>
-                    <div className="cyber-card-yellow p-4 flex flex-col items-center justify-center bg-black/40 border-primary/20 rounded-2xl text-center">
-                      <Wheat size={16} className="text-primary mb-2" />
-                      <span className="text-sm font-black text-white">{selectedMeal.sugar}g</span>
-                      <span className="text-[7px] font-black text-muted-foreground uppercase">Sucre</span>
-                    </div>
-                    <div className="cyber-card-blue p-4 flex flex-col items-center justify-center bg-black/40 border-accent/20 rounded-2xl text-center">
-                      {selectedMeal.isLiquid ? <Coffee size={16} className="text-accent mb-2" /> : <Droplet size={16} className="text-accent mb-2" />}
-                      <span className="text-sm font-black text-white">{selectedMeal.isLiquid ? selectedMeal.caffeine || 0 : selectedMeal.fat || 0}</span>
-                      <span className="text-[7px] font-black text-muted-foreground uppercase">{selectedMeal.isLiquid ? 'mg' : 'g Fat'}</span>
-                    </div>
-                  </div>
+                  )}
 
                   <div className="space-y-6 pt-6 border-t border-white/10">
                     <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary/70">Bio-Micro-Données</h3>
                     <div className="space-y-5">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="p-4 bg-white/5 rounded-2xl border border-white/10 flex flex-col items-center">
-                          <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-1">Unités</span>
-                          <span className="text-sm font-black text-white uppercase">{selectedMeal.unit || (selectedMeal.isLiquid ? 'ml' : 'g')}</span>
-                        </div>
-                        <div className="p-4 bg-white/5 rounded-2xl border border-white/10 flex flex-col items-center">
-                          <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mb-1">Fibres</span>
-                          <span className="text-sm font-black text-white">{selectedMeal.fiber || 0} g</span>
-                        </div>
-                      </div>
-                      
                       <div className="space-y-3">
                         <span className="text-[10px] font-black text-accent/60 uppercase tracking-widest flex items-center gap-2 mb-2"><Zap size={12} className="text-accent" /> Vitamines / Minéraux</span>
                         <div className="flex flex-wrap gap-1">
@@ -461,15 +433,10 @@ export default function JournalPage() {
                           {renderBadges(selectedMeal.minerals)}
                         </div>
                       </div>
-
-                      {selectedMeal.additives && (
-                        <div className="space-y-3">
-                          <span className="text-[10px] font-black text-destructive/60 uppercase tracking-widest flex items-center gap-2 mb-2"><Info size={12} className="text-destructive" /> Additifs / Édulcorants</span>
-                          <div className="flex flex-wrap gap-1">
-                            {renderBadges(selectedMeal.additives)}
-                          </div>
-                        </div>
-                      )}
+                      <div className="flex justify-between items-center text-[10px] font-black text-muted-foreground">
+                        <span className="uppercase tracking-widest">Source de données :</span>
+                        <span className="text-primary neon-text-yellow">{selectedMeal.isAiEstimated ? "ESTIMATION IA" : "CERTIFIÉ INDUSTRIEL"}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
