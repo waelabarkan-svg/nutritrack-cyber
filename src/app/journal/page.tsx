@@ -24,16 +24,20 @@ export default function JournalPage() {
   const db = useFirestore();
   const router = useRouter();
 
+  // États de l'interface
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isBarcodeOpen, setIsBarcodeOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   
+  // Références techniques
   const videoRef = useRef<HTMLVideoElement>(null);
   const scannerRef = useRef<any>(null);
 
   const today = new Date().toISOString().split('T')[0];
+
+  // Récupération des repas Firestore
   const mealsQuery = useMemo(() => {
     if (!user) return null;
     return query(collection(db, 'users', user.uid, 'meals'), where('date', '==', today));
@@ -41,14 +45,18 @@ export default function JournalPage() {
 
   const { data: meals } = useCollection(mealsQuery);
 
+  // Moteur de Recherche Global (Fusion JSON + Local + Firebase)
   const globalSearchResults = useMemo(() => {
     if (!searchTerm || searchTerm.trim().length < 2) return [];
     try {
+      // Nettoyage des données Firebase
       const firebaseData = (meals as any)?.docs 
         ? (meals as any).docs.map((d: any) => ({ id: d.id, ...d.data() }))
         : (Array.isArray(meals) ? meals : []);
       
       const localHistory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
+      
+      // Fusion des sources
       const allItems = [...(foodDb as any[]), ...localHistory, ...firebaseData];
       
       const queryLower = searchTerm.toLowerCase();
@@ -68,6 +76,7 @@ export default function JournalPage() {
     }
   }, [searchTerm, meals]);
 
+  // Fonction d'ajout de repas
   const addMeal = async (item: any, type: string = 'snack') => {
     if (!user) return;
     try {
@@ -84,9 +93,13 @@ export default function JournalPage() {
         isLiquid: !!item.isLiquid,
         createdAt: new Date().toISOString()
       };
+
       await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
+      
+      // Mise à jour de la mémoire locale
       const localHistory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
       localStorage.setItem('biometric_memory', JSON.stringify([mealData, ...localHistory].slice(0, 50)));
+      
       toast({ title: "SYNCHRONISATION RÉUSSIE", description: "Données bio-enregistrées." });
       setSearchTerm('');
     } catch (e) {
@@ -94,6 +107,7 @@ export default function JournalPage() {
     }
   };
 
+  // Logique Caméra
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
@@ -101,7 +115,7 @@ export default function JournalPage() {
         videoRef.current.srcObject = stream;
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "ERREUR CAPTEUR", description: "Impossible d'accéder à la caméra." });
+      toast({ variant: "destructive", title: "ERREUR CAPTEUR", description: "Accès caméra refusé." });
     }
   };
 
@@ -122,7 +136,6 @@ export default function JournalPage() {
     ctx.drawImage(videoRef.current, 0, 0);
     const dataUri = canvas.toDataURL('image/jpeg');
     setCapturedImage(dataUri);
-    stopCamera();
     
     setIsAnalyzing(true);
     try {
@@ -130,13 +143,15 @@ export default function JournalPage() {
       await addMeal(result);
       setIsCameraOpen(false);
     } catch (err) {
-      toast({ variant: "destructive", title: "ANALYSE ÉCHOUÉE", description: "Le processeur visuel a rencontré une erreur." });
+      toast({ variant: "destructive", title: "ANALYSE ÉCHOUÉE", description: "Processeur visuel instable." });
     } finally {
       setIsAnalyzing(false);
       setCapturedImage(null);
+      stopCamera();
     }
   };
 
+  // Logique Code-barres
   const handleBarcodeSuccess = async (decodedText: string) => {
     if (scannerRef.current) {
       scannerRef.current.clear();
@@ -161,12 +176,13 @@ export default function JournalPage() {
         toast({ title: "CODE INCONNU", description: "Produit non répertorié." });
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "ERREUR RÉSEAU", description: "Connexion aux serveurs OFF impossible." });
+      toast({ variant: "destructive", title: "ERREUR RÉSEAU", description: "Serveurs OFF injoignables." });
     } finally {
       setIsAnalyzing(false);
     }
   };
 
+  // Reconstruction IA
   const reconstructBioData = async (dishName: string, mealId: string) => {
     if (!user) return;
     setIsAnalyzing(true);
@@ -183,7 +199,7 @@ export default function JournalPage() {
         vitamins: result.vitamins || "Non détecté",
         minerals: result.minerals || "Non détecté"
       });
-      toast({ title: "RÉGÉNÉRATION TERMINÉE", description: "Profil moléculaire mis à jour." });
+      toast({ title: "SYNTHÈSE TERMINÉE", description: "Profil moléculaire mis à jour." });
     } catch (e) {
       toast({ variant: "destructive", title: "ERREUR IA", description: "Liaison neuronale instable." });
     } finally {
@@ -191,23 +207,24 @@ export default function JournalPage() {
     }
   };
 
+  // Lifecycle
   useEffect(() => {
     if (isBarcodeOpen) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
         const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
-        scanner.render(handleBarcodeSuccess, (err) => {});
+        scanner.render(handleBarcodeSuccess, () => {});
         scannerRef.current = scanner;
       }, 300);
-    } else {
-      if (scannerRef.current) {
-        scannerRef.current.clear();
-      }
+      return () => clearTimeout(timer);
+    } else if (scannerRef.current) {
+      scannerRef.current.clear();
     }
   }, [isBarcodeOpen]);
 
   useEffect(() => {
     if (isCameraOpen) startCamera();
     else stopCamera();
+    return () => stopCamera();
   }, [isCameraOpen]);
 
   useEffect(() => {
@@ -226,6 +243,7 @@ export default function JournalPage() {
   return (
     <main className="max-w-md mx-auto min-h-screen bg-black text-white relative shadow-[0_0_50px_rgba(0,0,0,0.8)] pb-32">
       
+      {/* HEADER NÉON */}
       <div className="p-6 flex justify-between items-center">
         <h1 
           className="font-black text-2xl uppercase tracking-[0.2em] text-white"
@@ -237,19 +255,20 @@ export default function JournalPage() {
         <div className="flex gap-3">
           <button 
             onClick={() => setIsCameraOpen(true)}
-            className="w-11 h-11 bg-white/5 border border-accent/30 rounded-lg flex items-center justify-center transition-all hover:bg-accent/10 hover:border-accent hover:shadow-[0_0_15px_rgba(0,242,255,0.4)]"
+            className="w-11 h-11 bg-white/5 border border-accent/30 rounded-lg flex items-center justify-center transition-all hover:border-accent hover:shadow-[0_0_15px_rgba(0,242,255,0.4)]"
           >
             <Camera size={20} className="text-accent" />
           </button>
           <button 
             onClick={() => setIsBarcodeOpen(true)}
-            className="w-11 h-11 bg-white/5 border border-accent/30 rounded-lg flex items-center justify-center transition-all hover:bg-accent/10 hover:border-accent hover:shadow-[0_0_15px_rgba(0,242,255,0.4)]"
+            className="w-11 h-11 bg-white/5 border border-accent/30 rounded-lg flex items-center justify-center transition-all hover:border-accent hover:shadow-[0_0_15px_rgba(0,242,255,0.4)]"
           >
             <Barcode size={20} className="text-accent" />
           </button>
         </div>
       </div>
 
+      {/* RECHERCHE */}
       <div className="px-6 mb-8">
         <div className="relative group">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
@@ -260,11 +279,12 @@ export default function JournalPage() {
             placeholder="RECHERCHER UN ALIMENT..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-black/40 border-white/10 pl-11 h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] focus:border-accent focus:ring-1 focus:ring-accent/30"
+            className="w-full bg-black/40 border-white/10 pl-11 h-12 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] focus:border-accent focus:ring-accent/30"
           />
         </div>
       </div>
 
+      {/* CONTENU PRINCIPAL */}
       <div className="px-6">
         {searchTerm ? (
           <div className="space-y-4">
@@ -318,7 +338,7 @@ export default function JournalPage() {
                         <div className="flex items-center gap-4">
                           <span className="text-[10px] font-black text-accent neon-text-blue">{meal.calories} KCAL</span>
                           <button onClick={() => reconstructBioData(meal.name, meal.id)} className="p-1.5 bg-white/5 rounded-md">
-                            {isAnalyzing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} className="text-primary" />}
+                            {isAnalyzing ? <Loader2 size={12} className="animate-spin text-accent" /> : <RefreshCw size={12} className="text-primary" />}
                           </button>
                         </div>
                       </div>
@@ -333,6 +353,7 @@ export default function JournalPage() {
         )}
       </div>
 
+      {/* DIALOGUES DE SCAN */}
       <Dialog open={isCameraOpen} onOpenChange={setIsCameraOpen}>
         <DialogContent className="bg-black border-accent/50 max-w-sm rounded-[24px]">
           <DialogHeader><DialogTitle className="text-accent text-center uppercase tracking-widest font-black text-xs">Analyse Optique</DialogTitle></DialogHeader>
