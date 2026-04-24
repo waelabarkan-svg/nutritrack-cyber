@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -64,14 +65,25 @@ export default function JournalPage() {
     utterance.rate = 0.9;  // Rythme calculé
     utterance.volume = 1;
 
-    // Sélection de voix premium
+    // Sélection de voix "Hacker" sophistiquée
     const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(v => 
-      (v.lang.includes('fr')) && 
-      (v.name.includes('Google') || v.name.includes('Neural') || v.name.includes('Female'))
-    ) || voices.find(v => v.lang.includes('fr'));
+    
+    // Algorithme de sélection prioritaire
+    const preferredVoice = 
+      // 1. Google French
+      voices.find(v => v.lang.includes('fr') && v.name.includes('Google')) ||
+      // 2. Natural French
+      voices.find(v => v.lang.includes('fr') && v.name.includes('Natural')) ||
+      // 3. Google/Natural English (pour l'accent sophistiqué)
+      voices.find(v => (v.lang.includes('en')) && (v.name.includes('Google') || v.name.includes('Natural'))) ||
+      // 4. Any Neural/Female French
+      voices.find(v => v.lang.includes('fr') && (v.name.includes('Neural') || v.name.includes('Female'))) ||
+      // 5. Fallback Any French
+      voices.find(v => v.lang.includes('fr'));
 
-    if (preferredVoice) utterance.voice = preferredVoice;
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
 
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
@@ -196,6 +208,13 @@ export default function JournalPage() {
     if (!user) return;
     deleteDoc(doc(db, 'users', user.uid, 'meals', id));
   };
+
+  // S'assurer que les voix sont chargées
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.getVoices();
+    }
+  }, []);
 
   return (
     <TooltipProvider>
