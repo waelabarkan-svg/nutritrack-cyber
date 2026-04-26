@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -230,179 +231,177 @@ export default function ProfilePage() {
   const rankStyles = getRankStyles(rank);
 
   return (
-    <TooltipProvider delayDuration={0}>
-      <main className="px-6 pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white">
-        <div className="space-y-1 mb-8">
-          <p className="text-primary/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-yellow">Interface: Archiviste</p>
-          <h1 className="text-3xl font-black tracking-tighter uppercase neon-text-yellow">Citoyen Bio</h1>
-        </div>
+    <main className="px-6 pt-16 max-w-md mx-auto pb-32 min-h-screen bg-black text-white">
+      <div className="space-y-1 mb-8">
+        <p className="text-primary/60 text-[9px] font-black uppercase tracking-[0.5em] neon-text-yellow">Interface: Archiviste</p>
+        <h1 className="text-3xl font-black tracking-tighter uppercase neon-text-yellow">Citoyen Bio</h1>
+      </div>
 
-        <div className={cn(
-          "p-6 mb-8 relative rounded-[16px] transition-all duration-700 bg-black/40 border",
-          rankStyles.cardClass
-        )}>
-          <div className="relative z-10">
-            <div className="flex justify-between items-start mb-6">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                   <span className={cn("text-[9px] font-black tracking-[0.4em] block", rank === "LEGEND" ? "text-primary neon-text-yellow" : "text-accent neon-text-blue")}>
-                    {rank}
-                  </span>
-                  {rankStyles.badge}
-                </div>
-                <h2 className={cn("text-2xl tracking-tighter", rankStyles.nameClass, rankStyles.font)}>
-                  {user.displayName || 'AGENT'}
-                </h2>
-                
-                <div className="flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 w-fit">
-                   <div className="flex items-center gap-1.5">
-                     <Flame size={14} className={cn(gamification.streak > 0 ? "text-primary animate-pulse" : "text-white/20")} />
-                     <span className="text-[10px] font-black text-white">{gamification.streak}D SERIE</span>
-                   </div>
-                   {multiplier > 1 && (
-                     <div className="h-3 w-[1px] bg-white/10" />
-                   )}
-                   {multiplier > 1 && (
-                     <span className="text-[10px] font-black text-primary">x{multiplier} XP</span>
-                   )}
-                </div>
+      <div className={cn(
+        "p-6 mb-8 relative rounded-[16px] transition-all duration-700 bg-black/40 border",
+        rankStyles.cardClass
+      )}>
+        <div className="relative z-10">
+          <div className="flex justify-between items-start mb-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                  <span className={cn("text-[9px] font-black tracking-[0.4em] block", rank === "LEGEND" ? "text-primary neon-text-yellow" : "text-accent neon-text-blue")}>
+                  {rank}
+                </span>
+                {rankStyles.badge}
               </div>
+              <h2 className={cn("text-2xl tracking-tighter", rankStyles.nameClass, rankStyles.font)}>
+                {user.displayName || 'AGENT'}
+              </h2>
               
-              <div className="w-16 h-16 border-2 border-accent/30 flex flex-col items-center justify-center bg-black rounded-xl shadow-[0_0_15px_rgba(0,242,255,0.2)]">
-                <span className="text-[8px] font-black text-accent/60 uppercase">NIV</span>
-                <span className="text-2xl font-black neon-text-blue">{gamification.level}</span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between items-end">
-                <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Évolution Neurale</span>
-                <span className="text-[9px] font-black text-accent uppercase tracking-widest">{Math.floor(gamification.xp)} / {nextLevelXp} XP</span>
-              </div>
-              <div className="h-3 w-full bg-white/5 border border-white/10 rounded-full overflow-hidden p-[2px]">
-                <div 
-                  className="h-full bg-gradient-to-r from-accent via-primary to-accent rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(0,242,255,0.8)]"
-                  style={{ width: `${xpProgress}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="cyber-card-yellow p-6 mb-10 bg-black border-primary/20">
-          <div className="flex items-center gap-2 mb-4">
-            <Target size={16} className="text-primary" />
-            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Contrats du Cycle</h3>
-          </div>
-          <div className="space-y-3">
-            {[
-              { type: 'water', label: 'Refroidissement', xp: 100, current: dailyProgress.hydration, target: Math.ceil(goals.hydrationMl / 250), unit: 'verres' },
-              { type: 'protein', label: 'Synthèse Protéique', xp: 150, current: dailyProgress.protein, target: goals.protein, unit: 'g' },
-              { type: 'calories', label: 'Flux Énergie', xp: 100, current: dailyProgress.calories, target: goals.calories, unit: 'kcal' }
-            ].map((quest) => {
-              const isDone = currentBonuses.includes(quest.type);
-              const bonusXp = Math.floor(quest.xp * multiplier);
-              return (
-                <div key={quest.type} className={cn(
-                  "flex items-center justify-between p-3 border rounded-lg transition-all",
-                  isDone ? "bg-primary/10 border-primary/40 shadow-[0_0_10px_rgba(253,224,71,0.1)]" : "bg-white/5 border-white/5"
-                )}>
-                  <div className="space-y-1">
-                    <p className={cn("text-[10px] font-black uppercase tracking-widest", isDone ? "text-primary" : "text-white/60")}>{quest.label}</p>
-                    <p className="text-[8px] text-muted-foreground font-black uppercase">{quest.current} / {quest.target} {quest.unit}</p>
+              <div className="flex items-center gap-3 bg-white/5 px-3 py-1.5 rounded-full border border-white/10 w-fit">
+                  <div className="flex items-center gap-1.5">
+                    <Flame size={14} className={cn(gamification.streak > 0 ? "text-primary animate-pulse" : "text-white/20")} />
+                    <span className="text-[10px] font-black text-white">{gamification.streak}D SERIE</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className={cn("text-[9px] font-black", isDone ? "text-primary" : "text-white/40")}>+{bonusXp} XP</span>
-                    {isDone ? <CheckCircle2 size={16} className="text-primary" /> : <Circle size={16} className="text-white/10" />}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="space-y-8 mb-12">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Génotype</Label>
-              <Select value={stats.gender} onValueChange={(v: any) => setStats({...stats, gender: v})}>
-                <SelectTrigger className="bg-white/5 border-primary/20 h-12 font-black uppercase text-[10px] tracking-widest focus:border-primary transition-all rounded-[10px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-black border-primary/20 text-white">
-                  <SelectItem value="male">HOMME</SelectItem>
-                  <SelectItem value="female">FEMME</SelectItem>
-                </SelectContent>
-              </Select>
+                  {multiplier > 1 && (
+                    <div className="h-3 w-[1px] bg-white/10" />
+                  )}
+                  {multiplier > 1 && (
+                    <span className="text-[10px] font-black text-primary">x{multiplier} XP</span>
+                  )}
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Âge Chrono</Label>
-              <Input type="number" className="bg-white/5 border-primary/20 h-12 font-black uppercase text-[10px] tracking-widest focus:border-primary transition-all rounded-[10px]" value={stats.age} onChange={(e) => setStats({...stats, age: parseInt(e.target.value) || 0})} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Altitude (CM)</Label>
-              <Input type="number" className="bg-white/5 border-primary/20 h-12 font-black uppercase text-[10px] tracking-widest focus:border-primary transition-all rounded-[10px]" value={stats.height} onChange={(e) => setStats({...stats, height: parseInt(e.target.value) || 0})} />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Masse (KG)</Label>
-              <Input type="number" className="bg-white/5 border-primary/20 h-12 font-black uppercase text-[10px] tracking-widest focus:border-primary transition-all rounded-[10px]" value={stats.weight} onChange={(e) => setStats({...stats, weight: parseInt(e.target.value) || 0})} />
+            
+            <div className="w-16 h-16 border-2 border-accent/30 flex flex-col items-center justify-center bg-black rounded-xl shadow-[0_0_15px_rgba(0,242,255,0.2)]">
+              <span className="text-[8px] font-black text-accent/60 uppercase">NIV</span>
+              <span className="text-2xl font-black neon-text-blue">{gamification.level}</span>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Objectif Primaire</Label>
-            <Select value={stats.goal} onValueChange={(v: any) => setStats({...stats, goal: v})}>
+            <div className="flex justify-between items-end">
+              <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">Évolution Neurale</span>
+              <span className="text-[9px] font-black text-accent uppercase tracking-widest">{Math.floor(gamification.xp)} / {nextLevelXp} XP</span>
+            </div>
+            <div className="h-3 w-full bg-white/5 border border-white/10 rounded-full overflow-hidden p-[2px]">
+              <div 
+                className="h-full bg-gradient-to-r from-accent via-primary to-accent rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(0,242,255,0.8)]"
+                style={{ width: `${xpProgress}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="cyber-card-yellow p-6 mb-10 bg-black border-primary/20">
+        <div className="flex items-center gap-2 mb-4">
+          <Target size={16} className="text-primary" />
+          <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Contrats du Cycle</h3>
+        </div>
+        <div className="space-y-3">
+          {[
+            { type: 'water', label: 'Refroidissement', xp: 100, current: dailyProgress.hydration, target: Math.ceil(goals.hydrationMl / 250), unit: 'verres' },
+            { type: 'protein', label: 'Synthèse Protéique', xp: 150, current: dailyProgress.protein, target: goals.protein, unit: 'g' },
+            { type: 'calories', label: 'Flux Énergie', xp: 100, current: dailyProgress.calories, target: goals.calories, unit: 'kcal' }
+          ].map((quest) => {
+            const isDone = currentBonuses.includes(quest.type);
+            const bonusXp = Math.floor(quest.xp * multiplier);
+            return (
+              <div key={quest.type} className={cn(
+                "flex items-center justify-between p-3 border rounded-lg transition-all",
+                isDone ? "bg-primary/10 border-primary/40 shadow-[0_0_10px_rgba(253,224,71,0.1)]" : "bg-white/5 border-white/5"
+              )}>
+                <div className="space-y-1">
+                  <p className={cn("text-[10px] font-black uppercase tracking-[0.2em]", isDone ? "text-primary" : "text-white")}>{quest.label}</p>
+                  <p className="text-[8px] text-zinc-300 font-black uppercase tracking-widest">{quest.current} / {quest.target} {quest.unit}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={cn("text-[9px] font-black", isDone ? "text-primary" : "text-white/80")}>+{bonusXp} XP</span>
+                  {isDone ? <CheckCircle2 size={16} className="text-primary" /> : <Circle size={16} className="text-white/20" />}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      
+      <form onSubmit={handleSubmit} className="space-y-8 mb-12">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Génotype</Label>
+            <Select value={stats.gender} onValueChange={(v: any) => setStats({...stats, gender: v})}>
               <SelectTrigger className="bg-white/5 border-primary/20 h-12 font-black uppercase text-[10px] tracking-widest focus:border-primary transition-all rounded-[10px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-black border-primary/20 text-white">
-                <SelectItem value="lose">PERTE_DE_POIDS</SelectItem>
-                <SelectItem value="maintain">MAINTENANCE</SelectItem>
-                <SelectItem value="gain">PRISE_DE_MASSE</SelectItem>
+                <SelectItem value="male">HOMME</SelectItem>
+                <SelectItem value="female">FEMME</SelectItem>
               </SelectContent>
             </Select>
           </div>
-
-          <Button type="submit" className="w-full h-16 font-black text-xs tracking-[0.4em] border-primary neon-glow-yellow mt-6 rounded-[12px] group relative overflow-hidden">
-            <span className="relative z-10 group-hover:neon-text-yellow transition-all">MISE_À_JOUR_DES_PARAMÈTRES</span>
-          </Button>
-        </form>
-
-        <div className="pt-12 border-t border-destructive/20">
-          <div className="flex items-center gap-2 mb-4 px-1">
-            <AlertTriangle className="text-destructive" size={16} />
-            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-destructive">Protocole de Sécurité</h3>
+          <div className="space-y-2">
+            <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Âge Chrono</Label>
+            <Input type="number" className="bg-white/5 border-primary/20 h-12 font-black uppercase text-[10px] tracking-widest focus:border-primary transition-all rounded-[10px]" value={stats.age} onChange={(e) => setStats({...stats, age: parseInt(e.target.value) || 0})} />
           </div>
-          
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" className="w-full h-14 border-destructive/40 text-destructive bg-black hover:bg-destructive/10 font-black text-[10px] tracking-[0.2em] rounded-[12px] flex items-center justify-center gap-2">
-                <Trash2 size={16} />
-                RÉINITIALISER TOUTES LES DONNÉES
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="bg-black border-destructive text-white rounded-[24px]">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="text-destructive uppercase font-black tracking-widest">ALERTE DANGER</AlertDialogTitle>
-                <AlertDialogDescription className="text-white/60 font-medium">
-                  Cette opération va formater intégralement votre archive biométrique. L'XP, les repas, l'hydratation et vos paramètres de profil seront définitivement effacés. Cette action est irréversible.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-xl">ANNULER</AlertDialogCancel>
-                <AlertDialogAction onClick={handleResetAllData} className="bg-destructive text-white font-black hover:bg-destructive/80 rounded-xl">
-                  CONFIRMER LA PURGE
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </div>
 
-        <BottomNav />
-      </main>
-    </TooltipProvider>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Altitude (CM)</Label>
+            <Input type="number" className="bg-white/5 border-primary/20 h-12 font-black uppercase text-[10px] tracking-widest focus:border-primary transition-all rounded-[10px]" value={stats.height} onChange={(e) => setStats({...stats, height: parseInt(e.target.value) || 0})} />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Masse (KG)</Label>
+            <Input type="number" className="bg-white/5 border-primary/20 h-12 font-black uppercase text-[10px] tracking-widest focus:border-primary transition-all rounded-[10px]" value={stats.weight} onChange={(e) => setStats({...stats, weight: parseInt(e.target.value) || 0})} />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Objectif Primaire</Label>
+          <Select value={stats.goal} onValueChange={(v: any) => setStats({...stats, goal: v})}>
+            <SelectTrigger className="bg-white/5 border-primary/20 h-12 font-black uppercase text-[10px] tracking-widest focus:border-primary transition-all rounded-[10px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-black border-primary/20 text-white">
+              <SelectItem value="lose">PERTE_DE_POIDS</SelectItem>
+              <SelectItem value="maintain">MAINTENANCE</SelectItem>
+              <SelectItem value="gain">PRISE_DE_MASSE</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Button type="submit" className="w-full h-16 font-black text-xs tracking-[0.4em] border-primary neon-glow-yellow mt-6 rounded-[12px] group relative overflow-hidden">
+          <span className="relative z-10 group-hover:neon-text-yellow transition-all">MISE_À_JOUR_DES_PARAMÈTRES</span>
+        </Button>
+      </form>
+
+      <div className="pt-12 border-t border-destructive/20">
+        <div className="flex items-center gap-2 mb-4 px-1">
+          <AlertTriangle className="text-destructive" size={16} />
+          <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-destructive">Protocole de Sécurité</h3>
+        </div>
+        
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="outline" className="w-full h-14 border-destructive/40 text-destructive bg-black hover:bg-destructive/10 font-black text-[10px] tracking-[0.2em] rounded-[12px] flex items-center justify-center gap-2">
+              <Trash2 size={16} />
+              RÉINITIALISER TOUTES LES DONNÉES
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="bg-black border-destructive text-white rounded-[24px]">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-destructive uppercase font-black tracking-widest">ALERTE DANGER</AlertDialogTitle>
+              <AlertDialogDescription className="text-white/60 font-medium">
+                Cette opération va formater intégralement votre archive biométrique. L'XP, les repas, l'hydratation et vos paramètres de profil seront définitivement effacés. Cette action est irréversible.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="bg-white/5 border-white/10 text-white hover:bg-white/10 rounded-xl">ANNULER</AlertDialogCancel>
+              <AlertDialogAction onClick={handleResetAllData} className="bg-destructive text-white font-black hover:bg-destructive/80 rounded-xl">
+                CONFIRMER LA PURGE
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
+      <BottomNav />
+    </main>
   );
 }

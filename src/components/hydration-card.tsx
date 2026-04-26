@@ -1,19 +1,17 @@
+
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Droplets, Plus, Minus, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { useFirestore, useUser, useDoc } from '@/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { calculateNutritionGoals, UserStats } from '@/lib/nutrition-utils';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 export function HydrationCard() {
   const { user } = useUser();
   const db = useFirestore();
-  const isMobile = useIsMobile();
   const [glasses, setGlasses] = useState(0);
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
@@ -53,108 +51,101 @@ export function HydrationCard() {
   const progress = Math.min(glasses / targetGlasses, 1);
   const isComplete = glasses >= targetGlasses;
 
-  const infoContent = `SYSTÈME DE REFROIDISSEMENT : (${displayStats.weight}KG * 35ML) + BONUS ACTIVITÉ (${goals.hydrationMl - (displayStats.weight * 35)}ML).`;
+  const infoContent = `SYSTÈME DE REFROIDISSEMENT : (${displayStats.weight}KG * 35ML) + BONUS ACTIVITÉ (${goals.hydrationMl - (displayStats.weight * 35)}ML). UNITÉ STANDARD : 250ML.`;
 
   return (
-    <TooltipProvider delayDuration={0}>
-      <div className={`cyber-card-blue p-6 sm:p-8 bg-black relative overflow-hidden rounded-[20px] transition-all duration-1000 ${
-        isComplete 
-        ? 'border-accent shadow-[0_0_50px_rgba(0,242,255,0.6)]' 
-        : 'border-accent/40 shadow-[0_0_30px_rgba(0,242,255,0.2)]'
-      }`}>
-        <div className="relative z-10">
-          <div className="flex justify-between items-center mb-10">
-            <div className="flex items-center gap-4 pl-2 sm:pl-0">
-              <div className={`w-10 h-10 sm:w-12 sm:h-12 border-2 flex items-center justify-center bg-black rounded-[12px] transition-all duration-500 ${
-                isComplete ? 'border-accent neon-glow-blue' : 'border-accent/50'
-              }`}>
-                <Droplets className={isComplete ? "text-accent animate-pulse" : "text-accent/60"} size={20} />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-black text-[10px] uppercase tracking-[0.4em] text-accent neon-text-blue truncate">UNITÉ H2O</h3>
-                  {isMobile ? (
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <button className="flex items-center justify-center p-1 active:scale-125 transition-transform">
-                          <Info size={12} className="text-accent/60" />
-                        </button>
-                      </DialogTrigger>
-                      <DialogContent className="bg-black/95 border-accent neon-glow-blue rounded-2xl p-6 max-w-[90vw]">
-                        <DialogHeader>
-                          <DialogTitle className="text-accent font-black uppercase tracking-widest text-sm mb-4">Infos Refroidissement</DialogTitle>
-                        </DialogHeader>
-                        <p className="text-xs font-medium uppercase leading-relaxed text-white">
-                          {infoContent}
-                        </p>
-                      </DialogContent>
-                    </Dialog>
-                  ) : (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info size={12} className="text-accent/40 cursor-help shrink-0" />
-                      </TooltipTrigger>
-                      <TooltipContent className="bg-black/95 border-accent/40 text-[10px] font-black uppercase tracking-widest p-4 max-w-[220px] z-[100]">
-                        {infoContent}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
-                </div>
-                <p className="text-[8px] text-muted-foreground font-black uppercase tracking-widest mt-2 truncate">Intégrité : {glasses * 250}ml / {targetMl}ml</p>
-                <p className="text-[9px] text-primary font-black uppercase tracking-widest mt-1 neon-text-yellow">Objectif : {(targetMl / 1000).toFixed(1)}L</p>
-              </div>
+    <div className={`cyber-card-blue p-6 sm:p-8 bg-black relative overflow-hidden rounded-[20px] transition-all duration-1000 ${
+      isComplete 
+      ? 'border-accent shadow-[0_0_50px_rgba(0,242,255,0.6)]' 
+      : 'border-accent/40 shadow-[0_0_30px_rgba(0,242,255,0.2)]'
+    }`}>
+      <div className="relative z-10">
+        <div className="flex justify-between items-center mb-10">
+          <div className="flex items-center gap-4 pl-2 sm:pl-0">
+            <div className={`w-10 h-10 sm:w-12 sm:h-12 border-2 flex items-center justify-center bg-black rounded-[12px] transition-all duration-500 ${
+              isComplete ? 'border-accent neon-glow-blue' : 'border-accent/50'
+            }`}>
+              <Droplets className={isComplete ? "text-accent animate-pulse" : "text-accent/60"} size={20} />
             </div>
-            <div className="text-right pr-6 sm:pr-0">
-              <span className={`font-black text-4xl sm:text-5xl tracking-tighter transition-all duration-500 ${isComplete ? 'text-accent neon-text-blue' : 'text-accent/80'}`}>
-                {glasses}
-              </span>
-              <span className="text-[10px] text-muted-foreground block font-black uppercase tracking-widest">UNITÉS</span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-[10px] uppercase tracking-[0.4em] text-accent neon-text-blue truncate">UNITÉ H2O</h3>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button className="flex items-center justify-center p-1 active:scale-125 transition-transform hover:text-accent">
+                      <Info size={14} className="text-accent/60" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-black/95 border-accent neon-glow-blue rounded-none p-8 max-w-[90vw] border-2 font-mono">
+                    <DialogHeader>
+                      <DialogTitle className="text-accent font-black uppercase tracking-[0.4em] text-sm mb-4">Infos Refroidissement</DialogTitle>
+                      <DialogDescription className="sr-only">Algorithme de calcul de l'hydratation optimale.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <p className="text-xs font-black uppercase leading-relaxed text-white">
+                        PROTOCOLE : {infoContent}
+                      </p>
+                      <p className="text-[10px] text-accent/70 font-black uppercase tracking-widest border-t border-accent/20 pt-4">
+                        UNE HYDRATATION STABLE EST CRITIQUE POUR LA SYNTHÈSE PROTÉIQUE ET LE REFROIDISSEMENT NEURAL.
+                      </p>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              <p className="text-[8px] text-zinc-300 font-black uppercase tracking-widest mt-2 truncate">Intégrité : {glasses * 250}ml / {targetMl}ml</p>
+              <p className="text-[9px] text-primary font-black uppercase tracking-widest mt-1 neon-text-yellow">Objectif : {(targetMl / 1000).toFixed(1)}L</p>
             </div>
           </div>
-
-          <div className="flex justify-center items-center gap-4 sm:gap-8">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="text-white/20 h-10 w-10 hover:bg-accent/10 border-none"
-              onClick={() => updateHydration(glasses - 1)}
-            >
-              <Minus size={18} />
-            </Button>
-
-            <div className="flex-1 h-2 bg-white/5 relative rounded-full overflow-hidden border border-white/5">
-              <div 
-                className={`h-full transition-all duration-1000 ${
-                  isComplete 
-                  ? 'bg-accent shadow-[0_0_25px_rgba(0,242,255,1)]' 
-                  : 'bg-accent/60'
-                }`}
-                style={{ width: `${progress * 100}%` }}
-              />
-            </div>
-
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className={`h-14 w-14 sm:h-16 sm:w-16 border-2 transition-all duration-500 rounded-[12px] flex flex-col items-center justify-center gap-1 ${
-                isComplete 
-                ? 'border-accent text-accent shadow-[0_0_30px_rgba(0,242,255,0.5)]' 
-                : 'border-primary text-primary shadow-[0_0_20px_rgba(253,224,71,0.3)]'
-              }`}
-              onClick={() => updateHydration(glasses + 1)}
-            >
-              <Plus size={24} strokeWidth={3} />
-              <span className="text-[7px] font-black uppercase tracking-tighter">250ML</span>
-            </Button>
+          <div className="text-right pr-6 sm:pr-0">
+            <span className={`font-black text-4xl sm:text-5xl tracking-tighter transition-all duration-500 ${isComplete ? 'text-accent neon-text-blue' : 'text-accent/80'}`}>
+              {glasses}
+            </span>
+            <span className="text-[10px] text-muted-foreground block font-black uppercase tracking-widest">UNITÉS</span>
           </div>
-
-          {isComplete && (
-            <p className="text-center text-[8px] font-black text-accent uppercase tracking-[0.5em] mt-6 animate-pulse neon-text-blue">
-              SYSTÈME OPTIMAL - TEMPÉRATURE STABLE
-            </p>
-          )}
         </div>
+
+        <div className="flex justify-center items-center gap-4 sm:gap-8">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="text-white/20 h-10 w-10 hover:bg-accent/10 border-none"
+            onClick={() => updateHydration(glasses - 1)}
+          >
+            <Minus size={18} />
+          </Button>
+
+          <div className="flex-1 h-2 bg-white/5 relative rounded-full overflow-hidden border border-white/5">
+            <div 
+              className={`h-full transition-all duration-1000 ${
+                isComplete 
+                ? 'bg-accent shadow-[0_0_25px_rgba(0,242,255,1)]' 
+                : 'bg-accent/60'
+              }`}
+              style={{ width: `${progress * 100}%` }}
+            />
+          </div>
+
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={`h-14 w-14 sm:h-16 sm:w-16 border-2 transition-all duration-500 rounded-[12px] flex flex-col items-center justify-center gap-1 ${
+              isComplete 
+              ? 'border-accent text-accent shadow-[0_0_30px_rgba(0,242,255,0.5)]' 
+              : 'border-primary text-primary shadow-[0_0_20px_rgba(253,224,71,0.3)]'
+            }`}
+            onClick={() => updateHydration(glasses + 1)}
+          >
+            <Plus size={24} strokeWidth={3} />
+            <span className="text-[7px] font-black uppercase tracking-tighter">250ML</span>
+          </Button>
+        </div>
+
+        {isComplete && (
+          <p className="text-center text-[8px] font-black text-accent uppercase tracking-[0.5em] mt-6 animate-pulse neon-text-blue">
+            SYSTÈME OPTIMAL - TEMPÉRATURE STABLE
+          </p>
+        )}
       </div>
-    </TooltipProvider>
+    </div>
   );
 }
