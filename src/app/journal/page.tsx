@@ -64,6 +64,7 @@ export default function JournalPage() {
 
   const { data: meals } = useCollection(mealsQuery);
 
+  // Sécurité : Réinitialise l'état de sauvegarde à l'ouverture de la modale de portion
   useEffect(() => {
     if (isPortionOpen) {
       setIsSaving(false);
@@ -190,8 +191,7 @@ export default function JournalPage() {
       setAiResult(enrichedResult);
       announceResults(enrichedResult);
     } catch (e: any) {
-      alert("ERREUR VISION: " + e.message);
-      toast({ variant: "destructive", title: "DATA LINK OVERLOAD" });
+      toast({ variant: "destructive", title: "ÉCHEC ANALYSE VISION" });
     } finally {
       setAiEstimating(false);
     }
@@ -218,33 +218,39 @@ export default function JournalPage() {
   };
 
   const addMeal = async (meal: any, isQuickAdd = false, weight = null) => {
-    window.alert('1. Fonction lancée');
-    try {
-      if (!user) {
-        window.alert('ERREUR : Pas d\'utilisateur connecté');
-        return;
-      }
-      window.alert('2. Utilisateur OK : ' + user.uid);
+    if (isSaving) return;
+    setIsSaving(true);
+    
+    // Fermer le clavier mobile
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
 
+    try {
+      if (!user) return;
+
+      const finalWeight = weight || 100;
       const mealData = {
         name: meal.name.toUpperCase(),
-        calories: Math.round(Number(meal.calories) * (weight ? Number(weight) / 100 : 1)),
-        protein: Math.round(Number(meal.protein) * (weight ? Number(weight) / 100 : 1)),
-        carbs: Math.round(Number(meal.carbs) * (weight ? Number(weight) / 100 : 1)),
-        fat: Math.round(Number(meal.fat) * (weight ? Number(weight) / 100 : 1)),
-        fiber: Math.round(Number(meal.fiber || 0) * (weight ? Number(weight) / 100 : 1)),
+        calories: Math.round(Number(meal.calories) * (finalWeight / 100)),
+        protein: Math.round(Number(meal.protein) * (finalWeight / 100)),
+        carbs: Math.round(Number(meal.carbs) * (finalWeight / 100)),
+        fat: Math.round(Number(meal.fat) * (finalWeight / 100)),
+        fiber: Math.round(Number(meal.fiber || 0) * (finalWeight / 100)),
         vitamins: meal.vitamins || null,
         minerals: meal.minerals || null,
         type: mealType,
         date: today,
         imageUrl: meal.imageUrl || null,
         createdAt: new Date().toISOString(),
-        weight: weight || 100
+        weight: finalWeight
       };
-      window.alert('3. Données prêtes');
 
       await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
-      window.alert('4. SUCCÈS : Enregistré dans Firebase');
+      updateBiometricMemory(mealData);
+      addXp(25, 'scan');
+      
+      toast({ title: "ARCHIVAGE RÉUSSI", description: "Données injectées dans le journal." });
       
       setIsScannerOpen(false);
       setIsBarcodeOpen(false);
@@ -252,8 +258,10 @@ export default function JournalPage() {
       setSearchTerm('');
       
     } catch (error: any) {
-      window.alert('STOP ! Erreur détectée : ' + error.message);
-      console.error(error);
+      console.error("Erreur archivage:", error);
+      toast({ variant: "destructive", title: "ERREUR D'ENREGISTREMENT" });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -264,8 +272,7 @@ export default function JournalPage() {
       const result = await estimateDish({ dishName: searchTerm });
       setAiResult({ ...result, imageUrl: null });
     } catch (e: any) {
-      alert("ERREUR IA: " + e.message);
-      toast({ variant: "destructive", title: "ERREUR SYSTÈME" });
+      toast({ variant: "destructive", title: "ERREUR ESTIMATION IA" });
     } finally {
       setAiEstimating(false);
     }
@@ -287,7 +294,6 @@ export default function JournalPage() {
       setSelectedMeal({ ...selectedMeal, ...updateData });
       toast({ title: "RECONSTRUCTION TERMINÉE" });
     } catch (e: any) {
-      alert("ERREUR REPAIR: " + e.message);
       toast({ variant: "destructive", title: "ÉCHEC RECONSTRUCTION" });
     } finally {
       setAiEstimating(false);
@@ -550,6 +556,7 @@ export default function JournalPage() {
           </div>
         )}
 
+        {/* MODALE DE PORTION OPTIMISÉE POUR MOBILE */}
         <Dialog open={isPortionOpen} onOpenChange={setIsPortionOpen}>
           <DialogContent className="bg-black border-primary text-white rounded-[32px] p-8 max-w-sm z-[110]">
             <DialogTitle className="sr-only">Calibration de la Dose</DialogTitle>
@@ -601,10 +608,11 @@ export default function JournalPage() {
 
                 <button 
                   type="button" 
-                  className="w-full h-14 bg-primary text-black font-black neon-glow-yellow rounded-xl active:scale-95 transition-transform"
-                  onPointerDown={() => { window.alert('BOUTON TOUCHÉ'); addMeal(selectedFoodForPortion, false, customQuantity); }}
+                  disabled={isSaving}
+                  className="w-full h-14 bg-primary text-black font-black neon-glow-yellow rounded-xl active:scale-95 transition-all flex items-center justify-center gap-2"
+                  onPointerDown={() => addMeal(selectedFoodForPortion, false, customQuantity)}
                 >
-                  ARCHIVER LA DOSE
+                  {isSaving ? <Loader2 className="animate-spin" size={18} /> : "ARCHIVER LA DOSE"}
                 </button>
               </div>
             )}
