@@ -212,18 +212,11 @@ export default function JournalPage() {
   };
 
   const addMeal = async (food: any, isScan = false, weight = 100) => {
-    // DIAGNOSTIC FORCÉ MOBILE
-    window.alert("CLIC DÉTECTÉ - LANCEMENT ARCHIVAGE");
-
-    if (!user) {
-      window.alert("ERREUR: Utilisateur non détecté");
-      return;
-    }
-    if (isSaving) return;
+    if (!user || isSaving) return;
 
     setIsSaving(true);
     
-    // Libération immédiate du clavier mobile
+    // Fermer le clavier sur mobile
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
@@ -247,25 +240,24 @@ export default function JournalPage() {
         weight: weight
       };
       
-      // Fermeture immédiate pour l'Optimistic UI
+      // Optimistic close pour fluidité mobile
       setIsPortionOpen(false);
       setIsScannerOpen(false);
       setIsBarcodeOpen(false);
       setSearchTerm('');
 
-      const docRef = await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
+      await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
       
-      if (docRef.id) {
-        window.alert("SUCCÈS: ARCHIVE CRÉÉE !");
-        updateBiometricMemory({ ...food, weight: 100 });
-        addXp(isScan ? 50 : 15, 'scan');
-        setAiResult(null);
-        setBarcodeResult(null);
-        setScanningImage(null);
-      }
+      updateBiometricMemory({ ...food, weight: 100 });
+      addXp(isScan ? 50 : 15, 'scan');
+      setAiResult(null);
+      setBarcodeResult(null);
+      setScanningImage(null);
+      
+      toast({ title: "ARCHIVE BIOMÉTRIQUE MISE À JOUR" });
     } catch (e: any) {
-      window.alert("ERREUR CRITIQUE: " + e.message);
-      toast({ variant: "destructive", title: "ÉCHEC ENREGISTREMENT" });
+      console.error("Erreur archivage:", e);
+      toast({ variant: "destructive", title: "ÉCHEC DE L'ARCHIVAGE", description: e.message });
     } finally {
       setIsSaving(false);
     }
@@ -443,8 +435,13 @@ export default function JournalPage() {
                   <div className="flex justify-between items-end"><span className="text-[9px] font-black text-muted-foreground uppercase">Quantité</span><span className="text-xl font-black text-white">{customQuantity}G/ML</span></div>
                   <Slider value={[customQuantity]} onValueChange={([v]) => setCustomQuantity(v)} max={500} step={1} />
                 </div>
-                <Button type="button" disabled={isSaving} className="w-full h-16 bg-primary text-black font-black neon-glow-yellow rounded-xl active:scale-95 transition-all text-[11px] tracking-widest" onClick={() => addMeal(selectedFoodForPortion, false, customQuantity)}>
-                  {isSaving ? "ARCHIVAGE EN COURS..." : "ARCHIVER LA DOSE"}
+                <Button 
+                  type="button" 
+                  disabled={isSaving} 
+                  className="w-full h-16 bg-primary text-black font-black neon-glow-yellow rounded-xl active:scale-95 transition-all text-[11px] tracking-widest" 
+                  onClick={() => addMeal(selectedFoodForPortion, false, customQuantity)}
+                >
+                  {isSaving ? "ARCHIVAGE..." : "ARCHIVER LA DOSE"}
                 </Button>
               </div>
             )}
@@ -473,7 +470,7 @@ export default function JournalPage() {
                         ))}
                       </div>
                       <Button type="button" disabled={isSaving} className="w-full h-14 bg-accent text-black font-black neon-glow-blue rounded-xl" onClick={() => addMeal(aiResult, true)}>
-                        {isSaving ? "SYNCHRO..." : "ARCHIVER RÉSULTAT"}
+                        {isSaving ? "ARCHIVAGE..." : "ARCHIVER RÉSULTAT"}
                       </Button>
                     </div>
                   ) : (
