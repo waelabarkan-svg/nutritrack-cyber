@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Flux IA pour un coaching nutritionnel personnalisé via Groq.
@@ -6,10 +7,6 @@
 
 import { z } from 'genkit';
 import Groq from 'groq-sdk';
-
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
 
 const CoachFeedbackInputSchema = z.object({
   stats: z.object({
@@ -53,16 +50,29 @@ const CoachFeedbackOutputSchema = z.object({
     carbs: z.number(),
     fat: z.number(),
   }),
-  suggestions: z.array(z.string()).describe('3 choix de plats précis pour le Plan de Fin de Journée'),
+  suggestions: z.array(z.object({
+    name: z.string(),
+    description: z.string()
+  })).describe('3 choix de plats précis pour le Plan de Fin de Journée'),
   cyberSwap: z.string().describe('Alternative plus saine au dernier repas si nécessaire'),
   endOfDayPlan: z.string().describe('Directives tactiques pour clôturer la journée'),
 });
 export type CoachFeedbackOutput = z.infer<typeof CoachFeedbackOutputSchema>;
 
 export async function getCoachFeedback(input: CoachFeedbackInput): Promise<CoachFeedbackOutput> {
-  if (!process.env.GROQ_API_KEY) {
-    throw new Error("GROQ_API_KEY manquante");
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    return {
+      feedback: "ERREUR CRITIQUE: GROQ_API_KEY manquante dans l'environnement. Impossible de contacter le coach.",
+      status: "encouragement",
+      missingMacros: { calories: 0, protein: 0, carbs: 0, fat: 0 },
+      suggestions: [{ name: "Erreur Système", description: "Clé API non configurée." }],
+      cyberSwap: "Vérifiez vos variables d'environnement.",
+      endOfDayPlan: "Maintenance requise."
+    };
   }
+
+  const groq = new Groq({ apiKey });
 
   // Calcul des restants si non fournis
   const remCal = input.remainingCalories ?? Math.max(0, input.goals.calories - input.dailyLog.calories);
@@ -81,7 +91,7 @@ export async function getCoachFeedback(input: CoachFeedbackInput): Promise<Coach
           
           Missions :
           1. Analyse les macros manquantes pour atteindre l'objectif.
-          2. Plan de Fin de Journée : Suggère 3 choix de plats précis pour combler EXACTEMENT les manques identifiés.
+          2. Plan de Fin de Journée : Suggère 3 choix de plats précis (objet avec name et description) pour combler EXACTEMENT les manques identifiés.
           3. Cyber-Swap : Si le dernier repas était sous-optimal (trop gras/sucré), propose une alternative moléculairement stable.
           
           Structure JSON attendue :
@@ -89,7 +99,7 @@ export async function getCoachFeedback(input: CoachFeedbackInput): Promise<Coach
             "feedback": "ton conseil global ici",
             "status": "urgent" ou "encouragement",
             "missingMacros": { "calories": n, "protein": n, "carbs": n, "fat": n },
-            "suggestions": [ "Plat 1 : description précise", "Plat 2 : description précise", "Plat 3 : description précise" ],
+            "suggestions": [ {"name": "Nom Cyber", "description": "détails"}, ... ],
             "cyberSwap": "ton alternative ici",
             "endOfDayPlan": "Tes directives tactiques pour la fin de cycle"
           }`
@@ -121,7 +131,7 @@ export async function getCoachFeedback(input: CoachFeedbackInput): Promise<Coach
       feedback: "Liaison neurale instable. Continue tes efforts, Agent !",
       status: "encouragement",
       missingMacros: { calories: 0, protein: 0, carbs: 0, fat: 0 },
-      suggestions: ["Séquence protéique standard", "Hydratation accrue", "Repos neural"],
+      suggestions: [{ name: "Séquence standard", description: "Maintien des paramètres de base." }],
       cyberSwap: "Maintien des paramètres actuels.",
       endOfDayPlan: "Stabilisation du système requise."
     };

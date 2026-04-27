@@ -183,7 +183,8 @@ export default function JournalPage() {
       const enrichedResult = { ...result, imageUrl: scanningImage };
       setAiResult(enrichedResult);
       announceResults(enrichedResult);
-    } catch (e) {
+    } catch (e: any) {
+      alert("ERREUR VISION: " + e.message);
       toast({ variant: "destructive", title: "DATA LINK OVERLOAD" });
     } finally {
       setAiEstimating(false);
@@ -214,6 +215,9 @@ export default function JournalPage() {
     if (!user || isSaving) return;
     setIsSaving(true);
     
+    // Debug mobile: Confirmation de l'appui
+    // console.log("Amorce archivage mobile...");
+
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
@@ -237,7 +241,9 @@ export default function JournalPage() {
         weight: weight
       };
       
+      // console.log("Envoi Firestore en cours...");
       await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
+      // console.log("Succès Firestore !");
       
       setIsScannerOpen(false);
       setIsBarcodeOpen(false);
@@ -253,7 +259,9 @@ export default function JournalPage() {
       setScanningImage(null);
       
       toast({ title: "SYSTÈME MIS À JOUR" });
-    } catch (e) {
+    } catch (e: any) {
+      console.error("ERREUR ARCHIVAGE:", e);
+      alert("ALERTE SYSTÈME: Échec de l'écriture Firestore. Vérifiez la connexion ou les permissions. " + e.message);
       toast({ variant: "destructive", title: "ERREUR SYNCHRO" });
     } finally {
       setIsSaving(false);
@@ -266,7 +274,8 @@ export default function JournalPage() {
     try {
       const result = await estimateDish({ dishName: searchTerm });
       setAiResult({ ...result, imageUrl: null });
-    } catch (e) {
+    } catch (e: any) {
+      alert("ERREUR IA: " + e.message);
       toast({ variant: "destructive", title: "ERREUR SYSTÈME" });
     } finally {
       setAiEstimating(false);
@@ -288,7 +297,8 @@ export default function JournalPage() {
       await updateDoc(mealRef, updateData);
       setSelectedMeal({ ...selectedMeal, ...updateData });
       toast({ title: "RECONSTRUCTION TERMINÉE" });
-    } catch (e) {
+    } catch (e: any) {
+      alert("ERREUR REPAIR: " + e.message);
       toast({ variant: "destructive", title: "ÉCHEC RECONSTRUCTION" });
     } finally {
       setAiEstimating(false);
@@ -430,7 +440,7 @@ export default function JournalPage() {
                               <div className="text-center"><p className="text-sm font-black text-white">{aiResult.carbs}g</p><p className="text-[7px] text-muted-foreground uppercase font-black">GLUC</p></div>
                               <div className="text-center"><p className="text-sm font-black text-white">{aiResult.fat}g</p><p className="text-[7px] text-muted-foreground uppercase font-black">LIPID</p></div>
                             </div>
-                            <Button disabled={isSaving} className="w-full h-14 bg-accent text-black font-black neon-glow-blue rounded-xl" onClick={() => addMeal(aiResult, true)}>
+                            <Button type="button" disabled={isSaving} className="w-full h-14 bg-accent text-black font-black neon-glow-blue rounded-xl" onClick={() => addMeal(aiResult, true)}>
                               {isSaving ? <Loader2 className="animate-spin" /> : "ARCHIVER DONNÉES"}
                             </Button>
                           </div>
@@ -470,7 +480,7 @@ export default function JournalPage() {
                           </div>
                         </div>
                       </div>
-                      <Button disabled={isSaving} className="w-full h-12 bg-primary text-black font-black neon-glow-yellow rounded-xl" onClick={() => addMeal(barcodeResult, true)}>
+                      <Button type="button" disabled={isSaving} className="w-full h-12 bg-primary text-black font-black neon-glow-yellow rounded-xl" onClick={() => addMeal(barcodeResult, true)}>
                         {isSaving ? <Loader2 className="animate-spin" /> : "ARCHIVER PRODUIT"}
                       </Button>
                     </div>
@@ -599,7 +609,7 @@ export default function JournalPage() {
                    </div>
                 </div>
 
-                <Button disabled={isSaving} className="w-full h-14 bg-primary text-black font-black neon-glow-yellow rounded-xl" onClick={() => addMeal(selectedFoodForPortion, false, customQuantity)}>
+                <Button type="button" disabled={isSaving} className="w-full h-14 bg-primary text-black font-black neon-glow-yellow rounded-xl" onClick={() => addMeal(selectedFoodForPortion, false, customQuantity)}>
                   {isSaving ? <Loader2 className="animate-spin" /> : "ARCHIVER LA DOSE"}
                 </Button>
               </div>

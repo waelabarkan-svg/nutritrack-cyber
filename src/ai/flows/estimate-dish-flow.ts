@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Flux de reconstruction moléculaire et coaching nutritionnel via Llama-4 Scout (Groq).
@@ -28,7 +29,22 @@ export type EstimateDishOutput = z.infer<typeof EstimateDishOutputSchema>;
 
 export async function estimateDish(input: { dishName: string }): Promise<EstimateDishOutput> {
   const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) throw new Error("GROQ_API_KEY manquante");
+  if (!apiKey) {
+    return {
+      name: input.dishName,
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      vitamins: "Inconnu",
+      minerals: "Inconnu",
+      aiAnalysis: "ERREUR: GROQ_API_KEY manquante.",
+      healthAdvice: "Configurez vos variables d'environnement sur Vercel.",
+      coachAnalysis: "Liaison IA impossible.",
+      smartSwap: { alternative: "Inconnu", explanation: "Clé API absente." }
+    };
+  }
 
   try {
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -80,8 +96,7 @@ export async function estimateDish(input: { dishName: string }): Promise<Estimat
 
     const data = await response.json();
     const content = data.choices[0].message.content;
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    const result = JSON.parse(jsonMatch ? jsonMatch[0] : content);
+    const result = JSON.parse(content);
 
     return {
       name: result.name || input.dishName,
