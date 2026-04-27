@@ -1,7 +1,7 @@
 'use server';
 /**
  * @fileOverview Flux de reconstruction moléculaire et coaching nutritionnel via Llama-4 Scout (Groq).
- * L'IA agit comme un agent autonome prodiguant des conseils proactifs.
+ * L'IA agit comme une aide à la décision proactive avec suggestions de Smart-Swaps.
  */
 
 import { z } from 'genkit';
@@ -18,6 +18,10 @@ const EstimateDishOutputSchema = z.object({
   aiAnalysis: z.string(),
   healthAdvice: z.string(),
   coachAnalysis: z.string().describe('Analyse approfondie et conseils proactifs du coach IA'),
+  smartSwap: z.object({
+    alternative: z.string(),
+    explanation: z.string(),
+  }).describe('Alternative avec meilleur profil macros mais goût similaire'),
 });
 
 export type EstimateDishOutput = z.infer<typeof EstimateDishOutputSchema>;
@@ -38,10 +42,10 @@ export async function estimateDish(input: { dishName: string }): Promise<Estimat
         messages: [
           {
             role: "system",
-            content: `Tu es un coach nutritionnel d'élite, proactif et expert. 
-            Ta mission est d'analyser les aliments avec une précision moléculaire tout en agissant comme un mentor. 
-            Tu dois identifier les pièges nutritionnels, suggérer des alternatives plus saines si nécessaire, et féliciter l'utilisateur pour les bons choix. 
-            Ton ton est expert, direct et encourageant.`
+            content: `Tu es un coach nutritionnel d'élite et une aide à la décision proactive. 
+            Ta mission est d'analyser les aliments avec une précision moléculaire.
+            Tu dois SYSTEMATIQUEMENT proposer un 'smartSwap' : une alternative avec le même profil de goût mais de meilleures macros (ex: riz blanc -> quinoa).
+            Explique pourquoi ce changement est bénéfique pour le 'système' (le corps de l'utilisateur).`
           },
           {
             role: "user",
@@ -55,11 +59,15 @@ export async function estimateDish(input: { dishName: string }): Promise<Estimat
               "carbs": nombre,
               "fat": nombre,
               "fiber": nombre,
-              "vitamins": "liste de vitamines détectées",
-              "minerals": "liste de minéraux détectés",
+              "vitamins": "liste de vitamines",
+              "minerals": "liste de minéraux",
               "aiAnalysis": "brève analyse technique",
               "healthAdvice": "conseil de santé immédiat",
-              "coachAnalysis": "ton expertise proactive : analyse l'équilibre, propose des alternatives ou des optimisations, et donne ton avis de coach sur ce choix."
+              "coachAnalysis": "ton expertise proactive de coach",
+              "smartSwap": {
+                "alternative": "nom de l'alternative suggérée",
+                "explanation": "pourquoi c'est mieux pour le système"
+              }
             }`
           }
         ],
@@ -86,7 +94,11 @@ export async function estimateDish(input: { dishName: string }): Promise<Estimat
       minerals: result.minerals || "Non détecté",
       aiAnalysis: result.aiAnalysis || "Analyse moléculaire terminée.",
       healthAdvice: result.healthAdvice || "Maintien des paramètres conseillé.",
-      coachAnalysis: result.coachAnalysis || "Analyse proactive indisponible pour le moment."
+      coachAnalysis: result.coachAnalysis || "Analyse proactive indisponible.",
+      smartSwap: {
+        alternative: result.smartSwap?.alternative || "Non suggéré",
+        explanation: result.smartSwap?.explanation || "Paramètres actuels optimaux."
+      }
     };
   } catch (error) {
     console.error("Erreur Reconstruction IA & Coaching:", error);
