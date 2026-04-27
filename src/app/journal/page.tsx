@@ -64,7 +64,6 @@ export default function JournalPage() {
 
   const { data: meals } = useCollection(mealsQuery);
 
-  // Reset de sécurité pour débloquer le bouton si nécessaire
   useEffect(() => {
     if (isPortionOpen) {
       setIsSaving(false);
@@ -218,63 +217,43 @@ export default function JournalPage() {
     localStorage.setItem('biometric_memory', JSON.stringify(filteredMemory.slice(0, 100)));
   };
 
-  const addMeal = async (food: any, isScan = false, weight = 100) => {
-    // ALERTE DE DIAGNOSTIC CRITIQUE
-    window.alert('ACTION DÉMARRÉE');
-
-    if (!user) {
-      window.alert("ERREUR: Utilisateur non connecté.");
-      return;
-    }
-    if (isSaving) return;
-    setIsSaving(true);
-    
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
-
+  const addMeal = async (meal: any, isQuickAdd = false, weight = null) => {
+    window.alert('1. Fonction lancée');
     try {
-      const multiplier = weight / 100;
+      if (!user) {
+        window.alert('ERREUR : Pas d\'utilisateur connecté');
+        return;
+      }
+      window.alert('2. Utilisateur OK : ' + user.uid);
+
       const mealData = {
-        name: food.name.toUpperCase(),
-        calories: Math.round(Number(food.calories) * multiplier),
-        protein: Math.round(Number(food.protein) * multiplier),
-        carbs: Math.round(Number(food.carbs) * multiplier),
-        fat: Math.round(Number(food.fat) * multiplier),
-        fiber: Math.round(Number(food.fiber || 0) * multiplier),
-        vitamins: food.vitamins || null,
-        minerals: food.minerals || null,
+        name: meal.name.toUpperCase(),
+        calories: Math.round(Number(meal.calories) * (weight ? Number(weight) / 100 : 1)),
+        protein: Math.round(Number(meal.protein) * (weight ? Number(weight) / 100 : 1)),
+        carbs: Math.round(Number(meal.carbs) * (weight ? Number(weight) / 100 : 1)),
+        fat: Math.round(Number(meal.fat) * (weight ? Number(weight) / 100 : 1)),
+        fiber: Math.round(Number(meal.fiber || 0) * (weight ? Number(weight) / 100 : 1)),
+        vitamins: meal.vitamins || null,
+        minerals: meal.minerals || null,
         type: mealType,
         date: today,
-        imageUrl: food.imageUrl || null,
+        imageUrl: meal.imageUrl || null,
         createdAt: new Date().toISOString(),
-        isAiEstimated: isScan,
-        weight: weight
+        weight: weight || 100
       };
+      window.alert('3. Données prêtes');
 
-      const docRef = await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
+      await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
+      window.alert('4. SUCCÈS : Enregistré dans Firebase');
       
-      if (docRef.id) {
-        setIsScannerOpen(false);
-        setIsBarcodeOpen(false);
-        setIsPortionOpen(false);
-        setSearchTerm('');
-        
-        updateBiometricMemory({ ...food, weight: 100 });
-        if (isScan) addXp(50, 'scan');
-        else addXp(15, 'scan');
-
-        setAiResult(null);
-        setBarcodeResult(null);
-        setScanningImage(null);
-        toast({ title: "SYSTÈME MIS À JOUR" });
-      }
-    } catch (e: any) {
-      console.error("ERREUR:", e);
-      window.alert("ERREUR_SYSTÈME: " + e.message);
-      toast({ variant: "destructive", title: "ERREUR SYNCHRO" });
-    } finally {
-      setIsSaving(false);
+      setIsScannerOpen(false);
+      setIsBarcodeOpen(false);
+      setIsPortionOpen(false);
+      setSearchTerm('');
+      
+    } catch (error: any) {
+      window.alert('STOP ! Erreur détectée : ' + error.message);
+      console.error(error);
     }
   };
 
@@ -622,11 +601,10 @@ export default function JournalPage() {
 
                 <button 
                   type="button" 
-                  disabled={isSaving} 
-                  className="w-full h-14 bg-primary text-black font-black neon-glow-yellow rounded-xl disabled:opacity-50 active:scale-95 transition-transform"
-                  onPointerDown={() => addMeal(selectedFoodForPortion, false, customQuantity)}
+                  className="w-full h-14 bg-primary text-black font-black neon-glow-yellow rounded-xl active:scale-95 transition-transform"
+                  onPointerDown={() => { window.alert('BOUTON TOUCHÉ'); addMeal(selectedFoodForPortion, false, customQuantity); }}
                 >
-                  {isSaving ? <Loader2 className="animate-spin inline mr-2" /> : "ARCHIVER LA DOSE"}
+                  ARCHIVER LA DOSE
                 </button>
               </div>
             )}
