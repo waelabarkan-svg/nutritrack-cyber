@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useMemo, useEffect, useState } from 'react';
@@ -9,12 +8,13 @@ import { CircularProgress } from '@/components/circular-progress';
 import { HydrationCard } from '@/components/hydration-card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Plus, Flame, Beef, Wheat, Droplet, Zap, AlertTriangle, Loader2, Cpu } from 'lucide-react';
+import { Plus, Flame, Beef, Wheat, Droplet, Zap, AlertTriangle, Loader2, Cpu, ArrowRightLeft, Target } from 'lucide-react';
 import { collection, query, where, doc, onSnapshot } from 'firebase/firestore';
 import { calculateNutritionGoals, UserStats } from '@/lib/nutrition-utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getCoachFeedback, CoachFeedbackOutput } from '@/ai/flows/coach-feedback-flow';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 export default function Home() {
   const { user, loading: authLoading } = useUser();
@@ -67,6 +67,11 @@ export default function Home() {
     return totals;
   }, [meals]);
 
+  const lastMeal = useMemo(() => {
+    if (!meals || meals.length === 0) return null;
+    return [...meals].sort((a: any, b: any) => b.createdAt.localeCompare(a.createdAt))[0];
+  }, [meals]);
+
   const displayStats: UserStats = (stats as UserStats) || {
     gender: 'male', age: 25, height: 175, weight: 70, targetWeight: 70, activityLevel: 'moderate', goal: 'maintain'
   };
@@ -74,7 +79,6 @@ export default function Home() {
   const goals = calculateNutritionGoals(displayStats);
   const calProgress = goals.calories > 0 ? dailyLog.calories / goals.calories : 0;
 
-  // Alerte Critique : Si calories === 0 après 19h
   const isLate = currentTime ? currentTime.getHours() >= 19 : false;
   const isCritical = isLate && dailyLog.calories === 0;
 
@@ -90,14 +94,24 @@ export default function Home() {
           goal: displayStats.goal,
           activityLevel: displayStats.activityLevel,
         },
+        goals,
         dailyLog,
-        hydration: currentHydration
+        hydration: currentHydration,
+        lastMeal: lastMeal ? {
+          name: lastMeal.name,
+          calories: lastMeal.calories,
+          fat: lastMeal.fat,
+          sugar: lastMeal.sugar
+        } : undefined
       });
       setCoachResponse(result);
     } catch (error) {
       setCoachResponse({
         feedback: "ERREUR DE LIAISON NEURALE. TENTEZ UNE RECONNEXION.",
-        status: "encouragement"
+        status: "encouragement",
+        missingMacros: { calories: 0, protein: 0, carbs: 0, fat: 0 },
+        suggestions: [],
+        cyberSwap: "Indisponible"
       });
     } finally {
       setIsCoachLoading(false);
@@ -129,7 +143,7 @@ export default function Home() {
 
       <Dialog open={isCoachOpen} onOpenChange={setIsCoachOpen}>
         <DialogContent className={cn(
-          "bg-black/95 backdrop-blur-2xl border-2 rounded-none p-8 max-w-sm transition-all duration-500 shadow-[0_0_50px_rgba(0,0,0,0.8)]",
+          "bg-black/98 backdrop-blur-3xl border-2 rounded-none p-6 max-w-md transition-all duration-500 shadow-[0_0_50px_rgba(0,0,0,0.9)] max-h-[85vh] overflow-y-auto scrollbar-hide",
           coachResponse?.status === 'urgent' ? "border-destructive neon-glow-red" : "border-[#a855f7] neon-glow-violet"
         )}>
           <DialogHeader>
@@ -137,47 +151,89 @@ export default function Home() {
             <DialogDescription className="sr-only">Analyse neurale de vos performances biométriques.</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6">
-            <div className="flex items-center gap-3">
+          <div className="space-y-8">
+            <div className="flex items-center gap-4">
               <div className={cn(
-                "w-12 h-12 border flex items-center justify-center",
+                "w-14 h-14 border-2 flex items-center justify-center rounded-none",
                 coachResponse?.status === 'urgent' ? "border-destructive text-destructive" : "border-[#a855f7] text-[#a855f7]"
               )}>
-                {isCoachLoading ? <Loader2 className="animate-spin" size={24} /> : coachResponse?.status === 'urgent' ? <AlertTriangle size={24} className="animate-pulse" /> : <Cpu size={24} />}
+                {isCoachLoading ? <Loader2 className="animate-spin" size={28} /> : coachResponse?.status === 'urgent' ? <AlertTriangle size={28} className="animate-pulse" /> : <Cpu size={28} />}
               </div>
               <div>
                 <h3 className={cn(
-                  "text-[10px] font-black uppercase tracking-[0.4em]",
+                  "text-[12px] font-black uppercase tracking-[0.5em]",
                   coachResponse?.status === 'urgent' ? "text-destructive neon-text-red" : "text-[#a855f7] neon-text-violet"
                 )}>
                   {isCoachLoading ? "Synchronisation..." : "Diagnostic Neural"}
                 </h3>
-                <p className="text-[8px] text-white/40 font-black uppercase tracking-widest">Moteur: Groq Llama-3.3</p>
+                <p className="text-[9px] text-white/40 font-black uppercase tracking-widest">Moteur: Groq Llama-3.3-70b</p>
               </div>
             </div>
 
-            <div className="min-h-[100px] flex items-center">
-              {isCoachLoading ? (
-                <div className="w-full space-y-2">
-                  <div className="h-2 w-full bg-white/5 animate-pulse" />
-                  <div className="h-2 w-3/4 bg-white/5 animate-pulse" />
-                  <div className="h-2 w-1/2 bg-white/5 animate-pulse" />
-                </div>
-              ) : (
-                <p className="text-sm font-medium leading-relaxed tracking-wide text-white uppercase italic font-mono">
-                  {coachResponse?.feedback}
-                </p>
-              )}
+            <div className="space-y-2">
+              <p className="text-sm font-medium leading-relaxed tracking-wide text-white uppercase italic font-mono bg-white/5 p-4 border-l-2 border-[#a855f7]">
+                {isCoachLoading ? "Analyse du flux métabolique en cours..." : coachResponse?.feedback}
+              </p>
             </div>
+
+            {!isCoachLoading && coachResponse && (
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                {/* Macros Manquantes */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Target size={14} className="text-accent" />
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-accent">Déficit Bio-Énergétique</h4>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-white/5 border border-white/10">
+                      <p className="text-[8px] text-muted-foreground uppercase font-black">Calories</p>
+                      <p className="text-lg font-black neon-text-red">{coachResponse.missingMacros.calories} <span className="text-[7px]">kcal</span></p>
+                    </div>
+                    <div className="p-3 bg-white/5 border border-white/10">
+                      <p className="text-[8px] text-muted-foreground uppercase font-black">Protéines</p>
+                      <p className="text-lg font-black neon-text-blue">{coachResponse.missingMacros.protein} <span className="text-[7px]">g</span></p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Suggestions de repas */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Plus size={14} className="text-primary" />
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Séquences de Ravitaillement</h4>
+                  </div>
+                  <div className="space-y-3">
+                    {coachResponse.suggestions.map((s, i) => (
+                      <div key={i} className="p-4 bg-white/5 border-l-2 border-primary/40 group hover:border-primary transition-all">
+                        <p className="text-[11px] font-black uppercase text-primary mb-1">{s.name}</p>
+                        <p className="text-[10px] text-white/60 font-medium leading-tight">{s.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Cyber Swap */}
+                <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-none relative overflow-hidden">
+                  <div className="flex items-center gap-3 mb-2">
+                    <ArrowRightLeft size={16} className="text-destructive" />
+                    <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-destructive">Cyber-Swap Recommandé</h4>
+                  </div>
+                  <p className="text-[10px] text-white/80 font-mono italic leading-relaxed uppercase">{coachResponse.cyberSwap}</p>
+                  <div className="absolute top-0 right-0 p-1 opacity-20">
+                    <Zap size={40} className="text-destructive" />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <Button 
               onClick={() => setIsCoachOpen(false)}
               className={cn(
-                "w-full h-12 font-black text-[10px] tracking-[0.3em] rounded-none border-2 bg-black",
+                "w-full h-14 font-black text-[11px] tracking-[0.4em] rounded-none border-2 bg-black transition-all",
                 coachResponse?.status === 'urgent' ? "border-destructive text-destructive hover:bg-destructive/10" : "border-[#a855f7] text-[#a855f7] hover:bg-[#a855f7]/10"
               )}
             >
-              COMPRIS_AGENT
+              ACCUSER_RÉCEPTION_AGENT
             </Button>
           </div>
         </DialogContent>
