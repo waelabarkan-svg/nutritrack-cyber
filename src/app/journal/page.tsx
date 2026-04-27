@@ -212,16 +212,15 @@ export default function JournalPage() {
   };
 
   const addMeal = async (food: any, isScan = false, weight = 100) => {
-    if (!user || isSaving) return;
-
-    // DEBOGAGE TERRAIN MOBILE
-    if (!window.confirm(`SONDE TACTILE: Confirmer archivage pour ${food.name} ?`)) {
+    if (!user) {
+      window.alert("ERREUR: Utilisateur non connecté.");
       return;
     }
+    if (isSaving) return;
 
     setIsSaving(true);
     
-    // Fermeture forcée du clavier
+    // Fermeture forcée du clavier pour éviter les blocages de thread UI sur Android
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
@@ -245,27 +244,35 @@ export default function JournalPage() {
         weight: weight
       };
       
-      console.log("DÉBUT_COMMANDE_FIRESTORE...");
-      await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
-      window.alert("TRANSMISSION RÉUSSIE: Données enregistrées dans Firestore.");
+      console.log("COMMANDE_FIRESTORE: Tentative d'écriture...");
       
+      // Fermeture immédiate de l'interface pour l'Optimistic UI
       setIsScannerOpen(false);
       setIsBarcodeOpen(false);
       setIsPortionOpen(false);
       setSearchTerm('');
+
+      const docRef = await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
       
-      updateBiometricMemory({ ...food, weight: 100 });
-      if (isScan) addXp(50, 'scan');
-      else addXp(15, 'scan');
-      
-      setAiResult(null);
-      setBarcodeResult(null);
-      setScanningImage(null);
-      
-      toast({ title: "SYSTÈME MIS À JOUR" });
+      if (docRef.id) {
+        console.log("SUCCÈS_FIRESTORE:", docRef.id);
+        updateBiometricMemory({ ...food, weight: 100 });
+        if (isScan) addXp(50, 'scan');
+        else addXp(15, 'scan');
+        
+        setAiResult(null);
+        setBarcodeResult(null);
+        setScanningImage(null);
+        toast({ title: "SYSTÈME MIS À JOUR" });
+      }
     } catch (e: any) {
-      console.error("ERREUR CRITIQUE FIRESTORE:", e);
-      window.alert(`ERREUR SYSTÈME: ${e.message}`);
+      console.error("ERREUR_CRITIQUE_FIRESTORE:", e);
+      // Alerte de diagnostic pour mobile
+      window.alert("DIAGNOSTIC_ERREUR: " + JSON.stringify({
+        message: e.message,
+        code: e.code,
+        userId: user?.uid
+      }));
       toast({ variant: "destructive", title: "ERREUR SYNCHRO" });
     } finally {
       setIsSaving(false);
