@@ -213,11 +213,15 @@ export default function JournalPage() {
 
   const addMeal = async (food: any, isScan = false, weight = 100) => {
     if (!user || isSaving) return;
+
+    // DEBOGAGE TERRAIN MOBILE
+    if (!window.confirm(`SONDE TACTILE: Confirmer archivage pour ${food.name} ?`)) {
+      return;
+    }
+
     setIsSaving(true);
     
-    // Debug mobile: Confirmation de l'appui
-    // console.log("Amorce archivage mobile...");
-
+    // Fermeture forcée du clavier
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
@@ -241,9 +245,9 @@ export default function JournalPage() {
         weight: weight
       };
       
-      // console.log("Envoi Firestore en cours...");
+      console.log("DÉBUT_COMMANDE_FIRESTORE...");
       await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
-      // console.log("Succès Firestore !");
+      window.alert("TRANSMISSION RÉUSSIE: Données enregistrées dans Firestore.");
       
       setIsScannerOpen(false);
       setIsBarcodeOpen(false);
@@ -260,8 +264,8 @@ export default function JournalPage() {
       
       toast({ title: "SYSTÈME MIS À JOUR" });
     } catch (e: any) {
-      console.error("ERREUR ARCHIVAGE:", e);
-      alert("ALERTE SYSTÈME: Échec de l'écriture Firestore. Vérifiez la connexion ou les permissions. " + e.message);
+      console.error("ERREUR CRITIQUE FIRESTORE:", e);
+      window.alert(`ERREUR SYSTÈME: ${e.message}`);
       toast({ variant: "destructive", title: "ERREUR SYNCHRO" });
     } finally {
       setIsSaving(false);
@@ -508,11 +512,11 @@ export default function JournalPage() {
                       <p className="text-[10px] text-muted-foreground font-black uppercase">{Math.round(food.calories)} KCAL | P: {Math.round(food.protein)}G</p>
                     </div>
                   </div>
-                  <Button size="icon" className="w-10 h-10 border-primary bg-transparent text-primary hover:bg-primary/10" onClick={() => openPortionPicker(food)}><Plus size={18} /></Button>
+                  <Button type="button" size="icon" className="w-10 h-10 border-primary bg-transparent text-primary hover:bg-primary/10" onClick={() => openPortionPicker(food)}><Plus size={18} /></Button>
                 </div>
               ))}
               {!aiResult && searchTerm.length > 3 && (
-                <Button onClick={handleAiEstimate} disabled={aiEstimating} className="w-full h-14 border-primary/40 bg-black text-primary rounded-xl font-black text-[10px] tracking-widest hover:bg-primary/10">
+                <Button type="button" onClick={handleAiEstimate} disabled={aiEstimating} className="w-full h-14 border-primary/40 bg-black text-primary rounded-xl font-black text-[10px] tracking-widest hover:bg-primary/10">
                   {aiEstimating ? <Loader2 className="animate-spin mr-2" /> : <Sparkles className="mr-2" />} ESTIMATION MOLÉCULAIRE IA
                 </Button>
               )}
@@ -547,7 +551,7 @@ export default function JournalPage() {
                           </div>
                           <div className="flex items-center gap-4">
                             <span className="text-[14px] font-black text-[#00FFFF]">{meal.calories} <span className="text-[7px] text-white/40 ml-0.5">KCAL</span></span>
-                            <button onClick={(e) => { e.stopPropagation(); deleteMeal(meal.id); }} className="opacity-0 group-hover:opacity-100 transition-opacity text-white/20 hover:text-destructive">
+                            <button type="button" onClick={(e) => { e.stopPropagation(); deleteMeal(meal.id); }} className="opacity-0 group-hover:opacity-100 transition-opacity text-white/20 hover:text-destructive">
                               <Trash2 size={12} />
                             </button>
                           </div>
@@ -575,6 +579,7 @@ export default function JournalPage() {
                   {getPortionPresets(selectedFoodForPortion.name).map((p, idx) => (
                     <Button 
                       key={idx} 
+                      type="button"
                       variant="outline" 
                       className={customQuantity === p.amount ? "border-primary text-primary bg-primary/10 h-10 text-[8px]" : "border-white/10 text-white/40 h-10 text-[8px]"}
                       onClick={() => setCustomQuantity(p.amount)}
@@ -688,7 +693,7 @@ export default function JournalPage() {
                     </div>
 
                     {!selectedMeal.vitamins && (
-                      <Button onClick={repairBioData} disabled={aiEstimating} className="w-full border-destructive/30 text-destructive bg-black h-10 font-black text-[8px] tracking-widest hover:bg-destructive/10 rounded-xl">
+                      <Button type="button" onClick={repairBioData} disabled={aiEstimating} className="w-full border-destructive/30 text-destructive bg-black h-10 font-black text-[8px] tracking-widest hover:bg-destructive/10 rounded-xl">
                         {aiEstimating ? <Loader2 className="animate-spin mr-2" /> : <RefreshCw className="mr-2" />} RECONSTRUIRE ARCHIVE IA
                       </Button>
                     )}
