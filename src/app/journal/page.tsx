@@ -44,6 +44,7 @@ export default function JournalPage() {
   const [isMuted, setIsMuted] = useState(false);
   
   const [aiEstimating, setAiEstimating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [aiResult, setAiResult] = useState<any>(null);
   const [scanningImage, setScanningImage] = useState<string | null>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
@@ -214,7 +215,14 @@ export default function JournalPage() {
   };
 
   const addMeal = async (food: any, isScan = false, weight = 100) => {
-    if (!user) return;
+    if (!user || isSaving) return;
+    setIsSaving(true);
+    
+    // Fermeture du clavier sur mobile pour éviter les blocages UI
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+
     try {
       const multiplier = weight / 100;
       const mealData = {
@@ -233,12 +241,14 @@ export default function JournalPage() {
         isAiEstimated: isScan,
         weight: weight
       };
+      
       await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
-      updateBiometricMemory({ ...food, weight: 100 }); // On mémorise la base
+      updateBiometricMemory({ ...food, weight: 100 });
       
       if (isScan) addXp(50, 'scan');
       else addXp(15, 'scan');
       
+      // Réinitialisation complète et forcée des modales
       setAiResult(null);
       setBarcodeResult(null);
       setScanningImage(null);
@@ -246,9 +256,12 @@ export default function JournalPage() {
       setIsBarcodeOpen(false);
       setIsPortionOpen(false);
       setSearchTerm('');
+      
       toast({ title: "SYSTÈME MIS À JOUR" });
     } catch (e) {
       toast({ variant: "destructive", title: "ERREUR SYNCHRO" });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -419,7 +432,9 @@ export default function JournalPage() {
                               <div className="text-center"><p className="text-sm font-black text-white">{aiResult.carbs}g</p><p className="text-[7px] text-muted-foreground uppercase font-black">GLUC</p></div>
                               <div className="text-center"><p className="text-sm font-black text-white">{aiResult.fat}g</p><p className="text-[7px] text-muted-foreground uppercase font-black">LIPID</p></div>
                             </div>
-                            <Button className="w-full h-14 bg-accent text-black font-black neon-glow-blue rounded-xl" onClick={() => addMeal(aiResult, true)}>ARCHIVER DONNÉES</Button>
+                            <Button disabled={isSaving} className="w-full h-14 bg-accent text-black font-black neon-glow-blue rounded-xl" onClick={() => addMeal(aiResult, true)}>
+                              {isSaving ? <Loader2 className="animate-spin" /> : "ARCHIVER DONNÉES"}
+                            </Button>
                           </div>
                         ) : (
                           <div className="absolute bottom-6 left-0 right-0 px-6 flex gap-2">
@@ -457,7 +472,9 @@ export default function JournalPage() {
                           </div>
                         </div>
                       </div>
-                      <Button className="w-full h-12 bg-primary text-black font-black neon-glow-yellow rounded-xl" onClick={() => addMeal(barcodeResult, true)}>ARCHIVER PRODUIT</Button>
+                      <Button disabled={isSaving} className="w-full h-12 bg-primary text-black font-black neon-glow-yellow rounded-xl" onClick={() => addMeal(barcodeResult, true)}>
+                        {isSaving ? <Loader2 className="animate-spin" /> : "ARCHIVER PRODUIT"}
+                      </Button>
                     </div>
                   )}
                 </DialogContent>
@@ -584,7 +601,9 @@ export default function JournalPage() {
                    </div>
                 </div>
 
-                <Button className="w-full h-14 bg-primary text-black font-black neon-glow-yellow rounded-xl" onClick={() => addMeal(selectedFoodForPortion, false, customQuantity)}>ARCHIVER LA DOSE</Button>
+                <Button disabled={isSaving} className="w-full h-14 bg-primary text-black font-black neon-glow-yellow rounded-xl" onClick={() => addMeal(selectedFoodForPortion, false, customQuantity)}>
+                  {isSaving ? <Loader2 className="animate-spin" /> : "ARCHIVER LA DOSE"}
+                </Button>
               </div>
             )}
           </DialogContent>
