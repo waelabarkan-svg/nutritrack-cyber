@@ -68,16 +68,13 @@ export default function JournalPage() {
     if (!searchTerm || searchTerm.length < 2) return [];
     const searchLower = searchTerm.toLowerCase();
     
-    // 1. Récupération de la Mémoire Biométrique (Historique personnel)
     const memory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
     const memoryResults = memory
       .filter((h: any) => h.name?.toLowerCase().includes(searchLower))
       .map((h: any) => ({ ...h, isFromHistory: true }));
 
-    // 2. Base de données statique
     const dbResults = foodDb.filter(f => f.name.toLowerCase().includes(searchLower));
 
-    // 3. Fusion et dédoublonnage (priorité à l'historique)
     const combined = [...memoryResults, ...dbResults];
     const uniqueMap = new Map();
     combined.forEach(item => {
@@ -197,7 +194,7 @@ export default function JournalPage() {
     const memory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
     const newEntry = { 
       name: meal.name.toUpperCase(), 
-      calories: meal.calories / (meal.weight / 100), // Stocker la base pour 100g
+      calories: meal.calories / (meal.weight / 100),
       protein: meal.protein / (meal.weight / 100),
       carbs: meal.carbs / (meal.weight / 100),
       fat: meal.fat / (meal.weight / 100),
@@ -208,7 +205,6 @@ export default function JournalPage() {
       id: Date.now() 
     };
     
-    // Dédoublonnage dans la mémoire par nom
     const filteredMemory = memory.filter((m: any) => m.name.toUpperCase() !== newEntry.name);
     filteredMemory.unshift(newEntry);
     localStorage.setItem('biometric_memory', JSON.stringify(filteredMemory.slice(0, 100)));
@@ -218,7 +214,6 @@ export default function JournalPage() {
     if (!user || isSaving) return;
     setIsSaving(true);
     
-    // Fermeture du clavier sur mobile pour éviter les blocages UI
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
@@ -243,19 +238,19 @@ export default function JournalPage() {
       };
       
       await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
-      updateBiometricMemory({ ...food, weight: 100 });
       
-      if (isScan) addXp(50, 'scan');
-      else addXp(15, 'scan');
-      
-      // Réinitialisation complète et forcée des modales
-      setAiResult(null);
-      setBarcodeResult(null);
-      setScanningImage(null);
       setIsScannerOpen(false);
       setIsBarcodeOpen(false);
       setIsPortionOpen(false);
       setSearchTerm('');
+      
+      updateBiometricMemory({ ...food, weight: 100 });
+      if (isScan) addXp(50, 'scan');
+      else addXp(15, 'scan');
+      
+      setAiResult(null);
+      setBarcodeResult(null);
+      setScanningImage(null);
       
       toast({ title: "SYSTÈME MIS À JOUR" });
     } catch (e) {
@@ -311,6 +306,9 @@ export default function JournalPage() {
   };
 
   const openPortionPicker = (food: any) => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     setSelectedFoodForPortion(food);
     const isSpice = ["SEL", "POIVRE", "PIMENT", "PAPRIKA", "CURCUMA", "CUMIN"].some(s => food.name.toUpperCase().includes(s));
     const isSugar = ["SUCRE", "MIEL"].some(s => food.name.toUpperCase().includes(s));
@@ -406,7 +404,7 @@ export default function JournalPage() {
                     <Camera size={20} />
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="bg-black border-accent text-white rounded-[32px] p-0 overflow-hidden max-w-sm">
+                <DialogContent className="bg-black border-accent text-white rounded-[32px] p-0 overflow-hidden max-w-sm z-[100]">
                   <DialogTitle className="sr-only">Analyse IA</DialogTitle>
                   <div className="relative h-[70vh]">
                     {!scanningImage ? (
@@ -454,7 +452,7 @@ export default function JournalPage() {
                     <Barcode size={20} />
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="bg-black border-primary text-white rounded-[32px] p-6 max-w-sm">
+                <DialogContent className="bg-black border-primary text-white rounded-[32px] p-6 max-w-sm z-[100]">
                   <DialogTitle className="sr-only">Scan Code-Barres</DialogTitle>
                   <div id="reader" className="w-full min-h-[300px] bg-black/50 border border-primary/20 rounded-2xl overflow-hidden" />
                   {isFetchingBarcode && <div className="flex justify-center mt-6"><Loader2 className="animate-spin text-primary" /></div>}
@@ -554,7 +552,7 @@ export default function JournalPage() {
         )}
 
         <Dialog open={isPortionOpen} onOpenChange={setIsPortionOpen}>
-          <DialogContent className="bg-black border-primary text-white rounded-[32px] p-8 max-w-sm">
+          <DialogContent className="bg-black border-primary text-white rounded-[32px] p-8 max-w-sm z-[110]">
             <DialogTitle className="sr-only">Calibration de la Dose</DialogTitle>
             {selectedFoodForPortion && (
               <div className="space-y-8">
@@ -610,7 +608,7 @@ export default function JournalPage() {
         </Dialog>
 
         <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-          <DialogContent className="bg-black/95 backdrop-blur-xl border-accent text-white rounded-[32px] p-0 overflow-hidden shadow-[0_0_50px_rgba(0,242,255,0.15)] max-w-sm">
+          <DialogContent className="bg-black/95 backdrop-blur-xl border-accent text-white rounded-[32px] p-0 overflow-hidden shadow-[0_0_50px_rgba(0,242,255,0.15)] max-w-sm z-[100]">
             <DialogTitle className="sr-only">Détails du repas</DialogTitle>
             {selectedMeal && (
               <div className="relative">
