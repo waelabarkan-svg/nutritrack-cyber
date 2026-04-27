@@ -240,7 +240,7 @@ export default function JournalPage() {
         weight: weight
       };
       
-      // Optimistic close pour fluidité mobile
+      // Fermeture immédiate des modales pour fluidité mobile
       setIsPortionOpen(false);
       setIsScannerOpen(false);
       setIsBarcodeOpen(false);
@@ -399,7 +399,7 @@ export default function JournalPage() {
                 </div>
                 <div className="space-y-1">
                   {sectionMeals.map((meal: any) => (
-                    <div key={meal.id} onClick={() => { setSelectedMeal(meal); setIsDetailsOpen(true); }} className="flex justify-between items-center py-3 border-b border-white/5 active:bg-white/5 px-1">
+                    <div key={meal.id} onClick={() => { setSelectedMeal(meal); setIsDetailsOpen(true); }} className="flex justify-between items-center py-3 border-b border-white/5 active:bg-white/5 px-1 cursor-pointer">
                       <div className="flex items-center gap-3">
                         <p className="text-[10px] font-black uppercase text-white/90">{meal.name}</p>
                         {meal.isAiEstimated && <Badge variant="outline" className="text-[7px] border-accent/30 text-accent h-3 px-1">IA</Badge>}
@@ -418,7 +418,7 @@ export default function JournalPage() {
         </section>
 
         <Dialog open={isPortionOpen} onOpenChange={setIsPortionOpen}>
-          <DialogContent className="bg-black border-primary text-white rounded-[32px] p-8 max-w-sm z-[110] shadow-[0_0_50px_rgba(253,224,71,0.2)]">
+          <DialogContent className="bg-black border-primary text-white rounded-[32px] p-8 max-w-sm z-50 shadow-[0_0_50px_rgba(253,224,71,0.2)]">
             <DialogTitle className="sr-only">Calibration</DialogTitle>
             {selectedFoodForPortion && (
               <div className="space-y-8">
@@ -441,7 +441,7 @@ export default function JournalPage() {
                   className="w-full h-16 bg-primary text-black font-black neon-glow-yellow rounded-xl active:scale-95 transition-all text-[11px] tracking-widest" 
                   onClick={() => addMeal(selectedFoodForPortion, false, customQuantity)}
                 >
-                  {isSaving ? "ARCHIVAGE..." : "ARCHIVER LA DOSE"}
+                  {isSaving ? <Loader2 className="animate-spin" /> : "ARCHIVER LA DOSE"}
                 </Button>
               </div>
             )}
@@ -449,7 +449,7 @@ export default function JournalPage() {
         </Dialog>
 
         <Dialog open={isScannerOpen} onOpenChange={(o) => { setIsScannerOpen(o); if(o) setTimeout(startCamera,100); else stopCamera(); }}>
-          <DialogContent className="bg-black border-accent text-white rounded-[32px] p-0 overflow-hidden max-w-sm z-[110]">
+          <DialogContent className="bg-black border-accent text-white rounded-[32px] p-0 overflow-hidden max-w-sm z-50">
             <div className="relative h-[70vh]">
               {!scanningImage ? (
                 <>
@@ -470,7 +470,7 @@ export default function JournalPage() {
                         ))}
                       </div>
                       <Button type="button" disabled={isSaving} className="w-full h-14 bg-accent text-black font-black neon-glow-blue rounded-xl" onClick={() => addMeal(aiResult, true)}>
-                        {isSaving ? "ARCHIVAGE..." : "ARCHIVER RÉSULTAT"}
+                        {isSaving ? <Loader2 className="animate-spin" /> : "ARCHIVER RÉSULTAT"}
                       </Button>
                     </div>
                   ) : (
@@ -483,14 +483,14 @@ export default function JournalPage() {
         </Dialog>
 
         <Dialog open={isBarcodeOpen} onOpenChange={(o) => { setIsBarcodeOpen(o); if(o) startBarcodeScanner(); else if(barcodeScannerRef.current) barcodeScannerRef.current.clear(); }}>
-          <DialogContent className="bg-black border-primary text-white rounded-[32px] p-6 max-w-sm z-[110]">
+          <DialogContent className="bg-black border-primary text-white rounded-[32px] p-6 max-w-sm z-50">
             <div id="reader" className="w-full min-h-[300px] bg-black/50 border border-primary/20 rounded-2xl overflow-hidden" />
             {isFetchingBarcode && <div className="flex justify-center mt-6"><Loader2 className="animate-spin text-primary" /></div>}
             {barcodeResult && (
               <div className="mt-8 p-6 border border-primary bg-primary/5 rounded-2xl space-y-6">
                 <div className="flex gap-4"><img src={barcodeResult.imageUrl || getFallbackImage(barcodeResult.name)} className="w-16 h-16 object-cover rounded-xl" alt="" /><div className="flex-1"><h3 className="font-black uppercase text-xs text-primary">{barcodeResult.name}</h3><div className="grid grid-cols-4 gap-1 text-[10px] mt-2"><span>{barcodeResult.calories}kcal</span><span>{barcodeResult.protein}g P</span><span>{barcodeResult.carbs}g G</span><span>{barcodeResult.fat}g L</span></div></div></div>
                 <Button type="button" disabled={isSaving} className="w-full h-12 bg-primary text-black font-black rounded-xl" onClick={() => addMeal(barcodeResult, true)}>
-                  {isSaving ? "ARCHIVAGE..." : "ARCHIVER PRODUIT"}
+                  {isSaving ? <Loader2 className="animate-spin" /> : "ARCHIVER PRODUIT"}
                 </Button>
               </div>
             )}
