@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -8,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Plus, Trash2, Search, Camera, X, Check, Loader2, Volume2, VolumeX, Sparkles, Barcode, AlertCircle, RefreshCw, Flame, Zap, Wheat, Droplet, Coffee, Scale } from 'lucide-react';
+import { Plus, Trash2, Search, Camera, X, Check, Loader2, Volume2, VolumeX, Sparkles, Barcode, AlertCircle, RefreshCw, Flame, Zap, Wheat, Droplet, Coffee, Scale, History } from 'lucide-react';
 import { collection, addDoc, query, where, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import foodDb from '@/lib/food-db.json';
@@ -65,14 +66,27 @@ export default function JournalPage() {
   const filteredFood = useMemo(() => {
     if (!searchTerm || searchTerm.length < 2) return [];
     const searchLower = searchTerm.toLowerCase();
-    const dbResults = foodDb.filter(f => f.name.toLowerCase().includes(searchLower));
+    
+    // 1. Récupération de la Mémoire Biométrique (Historique personnel)
     const memory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
     const memoryResults = memory
       .filter((h: any) => h.name?.toLowerCase().includes(searchLower))
       .map((h: any) => ({ ...h, isFromHistory: true }));
 
+    // 2. Base de données statique
+    const dbResults = foodDb.filter(f => f.name.toLowerCase().includes(searchLower));
+
+    // 3. Fusion et dédoublonnage (priorité à l'historique)
     const combined = [...memoryResults, ...dbResults];
-    return Array.from(new Map(combined.map(item => [item.name.toUpperCase(), item])).values()).slice(0, 10);
+    const uniqueMap = new Map();
+    combined.forEach(item => {
+      const key = item.name.toUpperCase();
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, item);
+      }
+    });
+
+    return Array.from(uniqueMap.values()).slice(0, 10);
   }, [searchTerm]);
 
   const announceResults = (data: any) => {
@@ -180,9 +194,23 @@ export default function JournalPage() {
 
   const updateBiometricMemory = (meal: any) => {
     const memory = JSON.parse(localStorage.getItem('biometric_memory') || '[]');
-    const newEntry = { ...meal, id: Date.now() };
-    memory.push(newEntry);
-    localStorage.setItem('biometric_memory', JSON.stringify(memory.slice(-50)));
+    const newEntry = { 
+      name: meal.name.toUpperCase(), 
+      calories: meal.calories / (meal.weight / 100), // Stocker la base pour 100g
+      protein: meal.protein / (meal.weight / 100),
+      carbs: meal.carbs / (meal.weight / 100),
+      fat: meal.fat / (meal.weight / 100),
+      fiber: meal.fiber / (meal.weight / 100),
+      vitamins: meal.vitamins,
+      minerals: meal.minerals,
+      imageUrl: meal.imageUrl,
+      id: Date.now() 
+    };
+    
+    // Dédoublonnage dans la mémoire par nom
+    const filteredMemory = memory.filter((m: any) => m.name.toUpperCase() !== newEntry.name);
+    filteredMemory.unshift(newEntry);
+    localStorage.setItem('biometric_memory', JSON.stringify(filteredMemory.slice(0, 100)));
   };
 
   const addMeal = async (food: any, isScan = false, weight = 100) => {
@@ -206,7 +234,8 @@ export default function JournalPage() {
         weight: weight
       };
       await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
-      updateBiometricMemory(mealData);
+      updateBiometricMemory({ ...food, weight: 100 }); // On mémorise la base
+      
       if (isScan) addXp(50, 'scan');
       else addXp(15, 'scan');
       
@@ -438,14 +467,20 @@ export default function JournalPage() {
 
           {filteredFood.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-[8px] font-black text-primary/40 uppercase tracking-widest px-1">Archives Suggestion</h3>
+              <h3 className="text-[8px] font-black text-primary/40 uppercase tracking-widest px-1">Mémoire Biométrique & Index</h3>
               {filteredFood.map((food: any, idx) => (
                 <div key={idx} className="flex justify-between items-center p-4 bg-white/5 border border-white/10 rounded-2xl group hover:border-primary transition-all">
                   <div className="flex items-center gap-4">
-                    <img src={food.imageUrl || getFallbackImage(food.name)} className="w-10 h-10 object-cover rounded-lg border border-white/10" alt="" />
+                    <div className="relative">
+                      <img src={food.imageUrl || getFallbackImage(food.name)} className="w-10 h-10 object-cover rounded-lg border border-white/10" alt="" />
+                      {food.isFromHistory && <History className="absolute -top-1 -left-1 text-accent bg-black rounded-full p-0.5" size={14} />}
+                    </div>
                     <div>
-                      <p className="font-black text-[12px] uppercase tracking-tight text-white">{food.name}</p>
-                      <p className="text-[10px] text-muted-foreground font-black uppercase">{food.calories} KCAL | P: {food.protein}G</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-black text-[12px] uppercase tracking-tight text-white">{food.name}</p>
+                        {food.isFromHistory && <Badge variant="outline" className="text-[6px] border-accent/30 text-accent h-3 px-1">NEURAL</Badge>}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground font-black uppercase">{Math.round(food.calories)} KCAL | P: {Math.round(food.protein)}G</p>
                     </div>
                   </div>
                   <Button size="icon" className="w-10 h-10 border-primary bg-transparent text-primary hover:bg-primary/10" onClick={() => openPortionPicker(food)}><Plus size={18} /></Button>
