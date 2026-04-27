@@ -219,8 +219,20 @@ export default function JournalPage() {
 
   const addMeal = async (meal: any, isQuickAdd = false, weight = null) => {
     if (isSaving) return;
+
+    // Check réseau immédiat
+    if (typeof window !== 'undefined' && !window.navigator.onLine) {
+      toast({ variant: "destructive", title: "HORS LIGNE", description: "Veuillez vérifier votre connexion réseau." });
+      return;
+    }
+
     setIsSaving(true);
     
+    // Timeout de sécurité (5 secondes) pour débloquer le bouton en cas de latence extrême
+    const safetyTimeout = setTimeout(() => {
+      setIsSaving(false);
+    }, 5000);
+
     // Fermer le clavier mobile
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
@@ -246,12 +258,16 @@ export default function JournalPage() {
         weight: finalWeight
       };
 
+      // Enregistrement Firestore
       await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
+      
+      // Update local memory and XP
       updateBiometricMemory(mealData);
       addXp(25, 'scan');
       
       toast({ title: "ARCHIVAGE RÉUSSI", description: "Données injectées dans le journal." });
       
+      // Fermeture des fenêtres uniquement après succès
       setIsScannerOpen(false);
       setIsBarcodeOpen(false);
       setIsPortionOpen(false);
@@ -259,9 +275,10 @@ export default function JournalPage() {
       
     } catch (error: any) {
       console.error("Erreur archivage:", error);
-      toast({ variant: "destructive", title: "ERREUR D'ENREGISTREMENT" });
+      toast({ variant: "destructive", title: "ERREUR D'ENREGISTREMENT", description: error.message });
     } finally {
       setIsSaving(false);
+      clearTimeout(safetyTimeout);
     }
   };
 
