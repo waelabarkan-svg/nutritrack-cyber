@@ -499,13 +499,9 @@ export default function JournalPage() {
             <div className="space-y-3">
               <div className="flex items-center gap-2 px-1">
                 <h3 className="text-[8px] font-black text-primary/40 uppercase tracking-widest">Mémoire Biométrique & Index</h3>
-                <button 
-                  type="button" 
-                  onPointerDown={(e) => { e.preventDefault(); openDetails({ name: "Index Biométrique", vitamins: "Protocol de recherche", minerals: "Base de données neurale" }); }} 
-                  className="text-accent touch-none"
-                >
-                  <Info size={12} className="neon-text-blue" />
-                </button>
+                <div className="text-accent touch-none">
+                  <Info size={12} className="neon-text-blue opacity-70" />
+                </div>
               </div>
               {filteredFood.map((food: any, idx) => (
                 <div key={idx} className="flex justify-between items-center p-4 bg-white/5 border border-white/10 rounded-2xl group transition-all">
@@ -538,13 +534,9 @@ export default function JournalPage() {
           <div className="space-y-10">
             <div className="flex items-center gap-2 mb-2 px-1">
               <h2 className="text-[12px] font-black text-white/40 uppercase tracking-[0.4em]">LOG DU CYCLE</h2>
-              <button 
-                type="button" 
-                onPointerDown={(e) => { e.preventDefault(); window.alert('PROTOCOLE_LOG : Archivage des flux énergétiques par phase temporelle.'); }} 
-                className="text-accent touch-none"
-              >
-                <Info size={14} className="neon-text-blue" />
-              </button>
+              <div className="text-accent touch-none">
+                <Info size={14} className="neon-text-blue opacity-50" />
+              </div>
             </div>
 
             {['petit-déjeuner', 'déjeuner', 'dîner', 'snack', 'boisson'].map((section) => {
@@ -568,15 +560,15 @@ export default function JournalPage() {
                         >
                           <div className="flex items-center gap-3">
                             <div className="w-0.5 h-6 bg-accent shadow-[0_0_8px_rgba(0,242,255,0.8)] rounded-full" />
-                            <div>
+                            <div className="flex items-center gap-2">
                               <p className="text-[10px] font-black uppercase tracking-tight text-white truncate max-w-[140px]">{meal.name}</p>
-                              <p className="text-[7px] text-muted-foreground uppercase font-black tracking-widest">{meal.weight || 100} G/ML</p>
+                              <Info size={10} className="text-accent opacity-70" />
                             </div>
                           </div>
                           <div className="flex items-center gap-4">
                             <div className="text-right">
                               <span className="text-sm font-black text-accent neon-text-blue">{meal.calories}</span>
-                              <span className="text-[7px] text-white/40 ml-1 uppercase font-black tracking-tighter">Kcal</span>
+                              <span className="text-[7px] text-white/40 ml-1 uppercase font-black tracking-tighter">{meal.weight || 100}G</span>
                             </div>
                             <button 
                               type="button" 
