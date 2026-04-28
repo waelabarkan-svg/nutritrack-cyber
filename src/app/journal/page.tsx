@@ -64,7 +64,6 @@ export default function JournalPage() {
 
   const { data: meals } = useCollection(mealsQuery);
 
-  // Sécurité : Réinitialise l'état de sauvegarde à l'ouverture de la modale de portion
   useEffect(() => {
     if (isPortionOpen) {
       setIsSaving(false);
@@ -502,7 +501,7 @@ export default function JournalPage() {
                 <h3 className="text-[8px] font-black text-primary/40 uppercase tracking-widest">Mémoire Biométrique & Index</h3>
                 <button 
                   type="button" 
-                  onPointerDown={(e) => e.preventDefault()} 
+                  onPointerDown={(e) => { e.preventDefault(); openDetails({ name: "Index Biométrique", vitamins: "Protocol de recherche", minerals: "Base de données neurale" }); }} 
                   className="text-accent touch-none"
                 >
                   <Info size={12} className="neon-text-blue" />
@@ -537,13 +536,24 @@ export default function JournalPage() {
 
         {searchTerm === '' && (
           <div className="space-y-10">
+            <div className="flex items-center gap-2 mb-2 px-1">
+              <h2 className="text-[12px] font-black text-white/40 uppercase tracking-[0.4em]">LOG DU CYCLE</h2>
+              <button 
+                type="button" 
+                onPointerDown={(e) => { e.preventDefault(); window.alert('PROTOCOLE_LOG : Archivage des flux énergétiques par phase temporelle.'); }} 
+                className="text-accent touch-none"
+              >
+                <Info size={14} className="neon-text-blue" />
+              </button>
+            </div>
+
             {['petit-déjeuner', 'déjeuner', 'dîner', 'snack', 'boisson'].map((section) => {
               const sectionMeals = (meals as any)?.filter((m: any) => m.type === section) || [];
               return (
                 <div key={section} className="space-y-4">
-                  <div className="flex items-center gap-2 border-b border-white/10 pb-1 mb-4">
-                    <div className="w-1 h-3 bg-destructive" />
-                    <h3 className="text-[10px] font-light text-white/30 uppercase tracking-[0.4em]">{section}</h3>
+                  <div className="flex items-center gap-2 border-b border-white/10 pb-1 mb-2">
+                    <div className="w-1 h-3 bg-destructive shadow-[0_0_8px_rgba(255,0,0,0.5)]" />
+                    <h3 className="text-[10px] font-black text-white/30 uppercase tracking-[0.4em]">{section}</h3>
                   </div>
                   
                   {sectionMeals.length === 0 ? (
@@ -554,26 +564,26 @@ export default function JournalPage() {
                         <div 
                           key={meal.id} 
                           onPointerDown={(e) => { e.preventDefault(); openDetails(meal); }}
-                          className="flex justify-between items-center p-3 bg-black/40 border border-white/5 rounded-xl group transition-all cursor-pointer touch-none"
+                          className="w-full flex justify-between items-center p-3 bg-black/60 border border-accent/20 rounded-xl group transition-all cursor-pointer touch-none shadow-[0_0_15px_rgba(0,242,255,0.05)] active:border-accent"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-1 h-6 bg-accent/40 rounded-full" />
+                            <div className="w-0.5 h-6 bg-accent shadow-[0_0_8px_rgba(0,242,255,0.8)] rounded-full" />
                             <div>
-                              <p className="text-[10px] font-black uppercase tracking-tight text-white/90 truncate max-w-[150px]">{meal.name}</p>
-                              <p className="text-[7px] text-muted-foreground uppercase font-black">{meal.weight || 100} G/ML</p>
+                              <p className="text-[10px] font-black uppercase tracking-tight text-white truncate max-w-[140px]">{meal.name}</p>
+                              <p className="text-[7px] text-muted-foreground uppercase font-black tracking-widest">{meal.weight || 100} G/ML</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-4">
                             <div className="text-right">
                               <span className="text-sm font-black text-accent neon-text-blue">{meal.calories}</span>
-                              <span className="text-[7px] text-white/40 ml-0.5 uppercase block font-black leading-none">Kcal</span>
+                              <span className="text-[7px] text-white/40 ml-1 uppercase font-black tracking-tighter">Kcal</span>
                             </div>
                             <button 
                               type="button" 
                               onPointerDown={(e) => { e.stopPropagation(); deleteMeal(meal.id); }} 
-                              className="text-white/20 hover:text-destructive p-1 transition-colors"
+                              className="text-white/20 hover:text-destructive p-2 transition-colors touch-none"
                             >
-                              <Trash2 size={12} />
+                              <Trash2 size={14} />
                             </button>
                           </div>
                         </div>
