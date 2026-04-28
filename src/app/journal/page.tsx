@@ -1,4 +1,3 @@
-
 "use client"
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -499,9 +498,6 @@ export default function JournalPage() {
             <div className="space-y-3">
               <div className="flex items-center gap-2 px-1">
                 <h3 className="text-[8px] font-black text-primary/40 uppercase tracking-widest">Mémoire Biométrique & Index</h3>
-                <div className="text-accent touch-none">
-                  <Info size={12} className="neon-text-blue opacity-70" />
-                </div>
               </div>
               {filteredFood.map((food: any, idx) => (
                 <div key={idx} className="flex justify-between items-center p-4 bg-white/5 border border-white/10 rounded-2xl group transition-all">
@@ -535,9 +531,6 @@ export default function JournalPage() {
           <div className="space-y-10">
             <div className="flex items-center gap-2 mb-2 px-1">
               <h2 className="text-[12px] font-black text-white/40 uppercase tracking-[0.4em]">LOG DU CYCLE</h2>
-              <div className="text-accent touch-none">
-                <Info size={14} className="neon-text-blue opacity-50" />
-              </div>
             </div>
 
             {['petit-déjeuner', 'déjeuner', 'dîner', 'snack', 'boisson'].map((section) => {
