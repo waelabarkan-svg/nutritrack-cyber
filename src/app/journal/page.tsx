@@ -513,6 +513,7 @@ export default function JournalPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="font-black text-[12px] uppercase tracking-tight text-white">{food.name}</p>
+                        <Info size={10} className="text-accent opacity-70" />
                         {food.isFromHistory && <Badge variant="outline" className="text-[6px] border-accent/30 text-accent h-3 px-1">NEURAL</Badge>}
                       </div>
                       <p className="text-[10px] text-muted-foreground font-black uppercase">{Math.round(food.calories)} KCAL | P: {Math.round(food.protein)}G</p>
