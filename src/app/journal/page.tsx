@@ -109,8 +109,12 @@ export default function JournalPage() {
 
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
-      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-      tracks.forEach(track => track.stop());
+      const stream = videoRef.current.srcObject as MediaStream;
+      const tracks = stream.getTracks();
+      tracks.forEach(track => {
+        track.stop();
+        stream.removeTrack(track);
+      });
       videoRef.current.srcObject = null;
     }
   };
@@ -119,9 +123,14 @@ export default function JournalPage() {
     setAiResult(null);
     setScanningImage(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } 
+      });
       setHasCameraPermission(true);
-      if (videoRef.current) videoRef.current.srcObject = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
     } catch (err) {
       setHasCameraPermission(false);
       toast({ variant: "destructive", title: "ACCÈS CAMÉRA REFUSÉ" });
@@ -143,6 +152,7 @@ export default function JournalPage() {
   };
 
   const fetchBarcodeData = async (code: string) => {
+    if (isFetchingBarcode) return;
     setIsFetchingBarcode(true);
     try {
       const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`);
@@ -185,6 +195,7 @@ export default function JournalPage() {
   };
 
   const startBarcodeScanner = async () => {
+    if (isScanningActive) return;
     setBarcodeResult(null);
     setTimeout(async () => {
       try {
@@ -195,8 +206,9 @@ export default function JournalPage() {
         await barcodeScannerInstanceRef.current.start(
           { facingMode: "environment" },
           { fps: 10, qrbox: { width: 250, height: 150 } },
-          (decodedText) => {
-            stopBarcodeScanner();
+          async (decodedText) => {
+            // STOP IMMÉDIAT DU SCANNER POUR ÉVITER LES DOUBLONS
+            await stopBarcodeScanner();
             fetchBarcodeData(decodedText);
           },
           () => {} // silent error
@@ -441,7 +453,11 @@ export default function JournalPage() {
               <Input className="bg-white/5 border-primary/20 h-14 pl-12 font-black uppercase rounded-xl focus:ring-primary/40" placeholder="RECHERCHER..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>
             <div className="flex gap-3">
-              <Dialog open={isScannerOpen} onOpenChange={(o) => { setIsScannerOpen(o); if(o) setTimeout(startCamera,100); else stopCamera(); }}>
+              <Dialog open={isScannerOpen} onOpenChange={(o) => { 
+                setIsScannerOpen(o); 
+                if(o) setTimeout(startCamera, 100); 
+                else stopCamera(); 
+              }}>
                 <DialogTrigger asChild>
                   <Button className="h-14 w-14 border-accent bg-black text-accent rounded-full shadow-[0_0_25px_rgba(0,242,255,0.4)] active:scale-90 transition-all">
                     <Camera size={20} />
@@ -452,7 +468,7 @@ export default function JournalPage() {
                   <div className="relative h-[70vh]">
                     {!scanningImage ? (
                       <>
-                        <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
+                        <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
                         <div className="absolute bottom-6 left-0 right-0 flex justify-center items-center px-10">
                           <button className="w-20 h-20 rounded-full border-8 border-accent/30 bg-black/20 backdrop-blur-md flex items-center justify-center group" onClick={capturePhoto}>
                             <div className="w-12 h-12 rounded-full bg-accent group-active:scale-90 transition-transform shadow-[0_0_20px_rgba(0,242,255,0.8)]" />
@@ -479,7 +495,7 @@ export default function JournalPage() {
                           </div>
                         ) : (
                           <div className="absolute bottom-6 left-0 right-0 px-6 flex gap-2">
-                             <Button variant="outline" className="flex-1 h-14 border-white/20 text-white font-black rounded-xl" onClick={() => setScanningImage(null)}>REPRENDRE</Button>
+                             <Button variant="outline" className="flex-1 h-14 border-white/20 text-white font-black rounded-xl" onClick={() => { setScanningImage(null); startCamera(); }}>REPRENDRE</Button>
                              <Button className="flex-[2] h-14 bg-accent text-black font-black rounded-xl" onClick={runImageAnalysis}>ANALYSER</Button>
                           </div>
                         )}
@@ -489,7 +505,10 @@ export default function JournalPage() {
                 </DialogContent>
               </Dialog>
 
-              <Dialog open={isBarcodeOpen} onOpenChange={(o) => { setIsBarcodeOpen(o); if(!o) stopBarcodeScanner(); }}>
+              <Dialog open={isBarcodeOpen} onOpenChange={(o) => { 
+                setIsBarcodeOpen(o); 
+                if(!o) stopBarcodeScanner(); 
+              }}>
                 <DialogTrigger asChild>
                   <Button className="h-14 w-14 border-primary bg-black text-primary rounded-full shadow-[0_0_25px_rgba(253,224,71,0.4)] active:scale-90 transition-all">
                     <Barcode size={20} />
@@ -501,37 +520,26 @@ export default function JournalPage() {
                   {!barcodeResult && (
                     <div className="relative w-full h-full flex flex-col">
                       <div className="flex-1 relative overflow-hidden bg-black/20">
-                        {/* Flux Vidéo */}
                         <div id="barcode-reader" className="w-full h-full" />
                         
-                        {/* Overlay Viseur Cyberpunk */}
                         <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
-                          {/* Fond assombri autour du cadre */}
                           <div className="absolute inset-0 bg-black/40" />
-                          
-                          {/* Cadre de Scan */}
                           <div className="relative w-64 h-40 border-2 border-transparent">
                             <div className="absolute inset-0 bg-transparent border-[1px] border-accent/20" />
-                            
-                            {/* Coins en équerre bleu néon */}
                             <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-accent neon-text-blue" />
                             <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-accent neon-text-blue" />
                             <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-accent neon-text-blue" />
                             <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-accent neon-text-blue" />
-                            
-                            {/* Ligne Laser de Balayage */}
                             <div className="scan-laser-line" />
                           </div>
                         </div>
 
-                        {/* Badges de Statut */}
                         <div className="absolute top-4 left-4 z-20 flex gap-2">
                            <Badge className="bg-accent/20 text-accent border-accent/40 text-[7px] font-black tracking-widest uppercase">SYSTÈME SCAN ACTIF</Badge>
                            <Badge className="bg-black/40 text-white/60 border-white/10 text-[7px] font-black tracking-widest uppercase">AUTO-FOCUS: ON</Badge>
                         </div>
                       </div>
 
-                      {/* Contrôles Inférieurs */}
                       <div className="p-6 bg-black border-t border-primary/20 space-y-4">
                         <div className="flex gap-3">
                           {!isScanningActive ? (
