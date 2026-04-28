@@ -72,8 +72,12 @@ export function HydrationCard() {
                 <h3 className="font-black text-[10px] uppercase tracking-[0.4em] text-accent neon-text-blue truncate">UNITÉ H2O</h3>
                 <Dialog>
                   <DialogTrigger asChild>
-                    <button className="flex items-center justify-center p-1 active:scale-125 transition-transform hover:text-accent">
-                      <Info size={14} className="text-accent/60" />
+                    <button 
+                      type="button"
+                      onPointerDown={(e) => e.preventDefault()}
+                      className="flex items-center justify-center p-1 active:scale-125 transition-transform text-accent touch-none"
+                    >
+                      <Info size={14} className="neon-text-blue" />
                     </button>
                   </DialogTrigger>
                   <DialogContent className="bg-black/95 border-accent neon-glow-blue rounded-none p-8 max-w-[90vw] border-2 font-mono">

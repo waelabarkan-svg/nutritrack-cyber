@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Plus, Trash2, Search, Camera, X, Check, Loader2, Volume2, VolumeX, Sparkles, Barcode, AlertCircle, RefreshCw, Flame, Zap, Wheat, Droplet, Coffee, Scale, History } from 'lucide-react';
+import { Plus, Trash2, Search, Camera, X, Check, Loader2, Volume2, VolumeX, Sparkles, Barcode, AlertCircle, RefreshCw, Flame, Zap, Wheat, Droplet, Coffee, Scale, History, Info } from 'lucide-react';
 import { collection, addDoc, query, where, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import foodDb from '@/lib/food-db.json';
@@ -220,7 +220,6 @@ export default function JournalPage() {
   const addMeal = async (meal: any, isQuickAdd = false, weight = null) => {
     if (isSaving) return;
 
-    // Check réseau immédiat
     if (typeof window !== 'undefined' && !window.navigator.onLine) {
       toast({ variant: "destructive", title: "HORS LIGNE", description: "Veuillez vérifier votre connexion réseau." });
       return;
@@ -228,12 +227,10 @@ export default function JournalPage() {
 
     setIsSaving(true);
     
-    // Timeout de sécurité (5 secondes) pour débloquer le bouton en cas de latence extrême
     const safetyTimeout = setTimeout(() => {
       setIsSaving(false);
     }, 5000);
 
-    // Fermer le clavier mobile
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
@@ -258,16 +255,13 @@ export default function JournalPage() {
         weight: finalWeight
       };
 
-      // Enregistrement Firestore
       await addDoc(collection(db, 'users', user.uid, 'meals'), mealData);
       
-      // Update local memory and XP
       updateBiometricMemory(mealData);
       addXp(25, 'scan');
       
       toast({ title: "ARCHIVAGE RÉUSSI", description: "Données injectées dans le journal." });
       
-      // Fermeture des fenêtres uniquement après succès
       setIsScannerOpen(false);
       setIsBarcodeOpen(false);
       setIsPortionOpen(false);
@@ -504,9 +498,18 @@ export default function JournalPage() {
 
           {filteredFood.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-[8px] font-black text-primary/40 uppercase tracking-widest px-1">Mémoire Biométrique & Index</h3>
+              <div className="flex items-center gap-2 px-1">
+                <h3 className="text-[8px] font-black text-primary/40 uppercase tracking-widest">Mémoire Biométrique & Index</h3>
+                <button 
+                  type="button" 
+                  onPointerDown={(e) => e.preventDefault()} 
+                  className="text-accent touch-none"
+                >
+                  <Info size={12} className="neon-text-blue" />
+                </button>
+              </div>
               {filteredFood.map((food: any, idx) => (
-                <div key={idx} className="flex justify-between items-center p-4 bg-white/5 border border-white/10 rounded-2xl group hover:border-primary transition-all">
+                <div key={idx} className="flex justify-between items-center p-4 bg-white/5 border border-white/10 rounded-2xl group transition-all">
                   <div className="flex items-center gap-4">
                     <div className="relative">
                       <img src={food.imageUrl || getFallbackImage(food.name)} className="w-10 h-10 object-cover rounded-lg border border-white/10" alt="" />
@@ -546,20 +549,30 @@ export default function JournalPage() {
                   {sectionMeals.length === 0 ? (
                     <p className="text-[8px] text-white/10 font-black uppercase tracking-widest italic py-2">Veuillez scanner ou rechercher un aliment</p>
                   ) : (
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       {sectionMeals.map((meal: any) => (
                         <div 
                           key={meal.id} 
-                          onClick={() => openDetails(meal)}
-                          className="flex justify-between items-center py-2 border-b border-white/5 group hover:bg-white/[0.02] transition-all px-1 cursor-pointer"
+                          onPointerDown={(e) => { e.preventDefault(); openDetails(meal); }}
+                          className="flex justify-between items-center p-3 bg-black/40 border border-white/5 rounded-xl group transition-all cursor-pointer touch-none"
                         >
                           <div className="flex items-center gap-3">
-                            <p className="text-[10px] font-black uppercase tracking-tight text-white/90">{meal.name}</p>
-                            {meal.isAiEstimated && <Badge variant="outline" className="text-[8px] border-accent/30 text-accent py-0 h-3">IA</Badge>}
+                            <div className="w-1 h-6 bg-accent/40 rounded-full" />
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-tight text-white/90 truncate max-w-[150px]">{meal.name}</p>
+                              <p className="text-[7px] text-muted-foreground uppercase font-black">{meal.weight || 100} G/ML</p>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-4">
-                            <span className="text-[14px] font-black text-[#00FFFF]">{meal.calories} <span className="text-[7px] text-white/40 ml-0.5">KCAL</span></span>
-                            <button type="button" onClick={(e) => { e.stopPropagation(); deleteMeal(meal.id); }} className="opacity-0 group-hover:opacity-100 transition-opacity text-white/20 hover:text-destructive">
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <span className="text-sm font-black text-accent neon-text-blue">{meal.calories}</span>
+                              <span className="text-[7px] text-white/40 ml-0.5 uppercase block font-black leading-none">Kcal</span>
+                            </div>
+                            <button 
+                              type="button" 
+                              onPointerDown={(e) => { e.stopPropagation(); deleteMeal(meal.id); }} 
+                              className="text-white/20 hover:text-destructive p-1 transition-colors"
+                            >
                               <Trash2 size={12} />
                             </button>
                           </div>
@@ -573,7 +586,6 @@ export default function JournalPage() {
           </div>
         )}
 
-        {/* MODALE DE PORTION OPTIMISÉE POUR MOBILE */}
         <Dialog open={isPortionOpen} onOpenChange={setIsPortionOpen}>
           <DialogContent className="bg-black border-primary text-white rounded-[32px] p-8 max-w-sm z-[110]">
             <DialogTitle className="sr-only">Calibration de la Dose</DialogTitle>
@@ -683,7 +695,9 @@ export default function JournalPage() {
                   </div>
 
                   <div className="space-y-4 pt-4 border-t border-white/10">
-                    <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-accent/70">Bio-Diagnostic</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-accent/70">Bio-Diagnostic</h3>
+                    </div>
                     
                     <div className="space-y-3">
                       <div className="flex justify-between items-center py-2 border-b border-white/5">
