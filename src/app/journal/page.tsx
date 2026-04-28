@@ -8,16 +8,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { Plus, Trash2, Search, Camera, X, Check, Loader2, Volume2, VolumeX, Sparkles, Barcode, AlertCircle, RefreshCw, Flame, Zap, Wheat, Droplet, Coffee, Scale, History, Info } from 'lucide-react';
+import { Plus, Trash2, Search, Camera, X, Check, Loader2, Volume2, VolumeX, Sparkles, Barcode, AlertCircle, RefreshCw, Flame, Zap, Wheat, Droplet, Coffee, Scale, History, Info, Scan } from 'lucide-react';
 import { collection, addDoc, query, where, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import foodDb from '@/lib/food-db.json';
 import { estimateDish } from '@/ai/flows/estimate-dish-flow';
 import { scanDish } from '@/ai/flows/scan-dish-flow';
 import { addXp } from '@/lib/gamification-utils';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
+import { cn } from '@/lib/utils';
 
 type MealType = 'petit-déjeuner' | 'déjeuner' | 'dîner' | 'snack' | 'boisson';
 
@@ -49,10 +50,11 @@ export default function JournalPage() {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [barcodeResult, setBarcodeResult] = useState<any>(null);
   const [isFetchingBarcode, setIsFetchingBarcode] = useState(false);
+  const [isScanningActive, setIsScanningActive] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const barcodeScannerRef = useRef<Html5QrcodeScanner | null>(null);
+  const barcodeScannerInstanceRef = useRef<Html5Qrcode | null>(null);
 
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
@@ -161,6 +163,8 @@ export default function JournalPage() {
         };
         setBarcodeResult(result);
         announceResults(result);
+      } else {
+        toast({ variant: "destructive", title: "PRODUIT NON TROUVÉ", description: "Ce code-barres n'est pas dans la base." });
       }
     } catch (e) {
       toast({ variant: "destructive", title: "ERREUR LIAISON" });
@@ -169,15 +173,40 @@ export default function JournalPage() {
     }
   };
 
-  const startBarcodeScanner = () => {
-    setTimeout(() => {
-      if (barcodeScannerRef.current) barcodeScannerRef.current.clear();
-      barcodeScannerRef.current = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 }, false);
-      barcodeScannerRef.current.render((decodedText) => {
-        barcodeScannerRef.current?.clear();
-        fetchBarcodeData(decodedText);
-      }, () => {});
-    }, 100);
+  const stopBarcodeScanner = async () => {
+    if (barcodeScannerInstanceRef.current && isScanningActive) {
+      try {
+        await barcodeScannerInstanceRef.current.stop();
+        setIsScanningActive(false);
+      } catch (err) {
+        console.error("Failed to stop scanner", err);
+      }
+    }
+  };
+
+  const startBarcodeScanner = async () => {
+    setBarcodeResult(null);
+    setTimeout(async () => {
+      try {
+        if (!barcodeScannerInstanceRef.current) {
+          barcodeScannerInstanceRef.current = new Html5Qrcode("barcode-reader");
+        }
+        
+        await barcodeScannerInstanceRef.current.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 250, height: 150 } },
+          (decodedText) => {
+            stopBarcodeScanner();
+            fetchBarcodeData(decodedText);
+          },
+          () => {} // silent error
+        );
+        setIsScanningActive(true);
+      } catch (err) {
+        console.error("Failed to start scanner", err);
+        toast({ variant: "destructive", title: "ERREUR CAMÉRA", description: "Impossible d'accéder à la caméra arrière." });
+      }
+    }, 200);
   };
 
   const runImageAnalysis = async () => {
@@ -460,33 +489,116 @@ export default function JournalPage() {
                 </DialogContent>
               </Dialog>
 
-              <Dialog open={isBarcodeOpen} onOpenChange={(o) => { setIsBarcodeOpen(o); if(o) startBarcodeScanner(); else if(barcodeScannerRef.current) barcodeScannerRef.current.clear(); }}>
+              <Dialog open={isBarcodeOpen} onOpenChange={(o) => { setIsBarcodeOpen(o); if(!o) stopBarcodeScanner(); }}>
                 <DialogTrigger asChild>
                   <Button className="h-14 w-14 border-primary bg-black text-primary rounded-full shadow-[0_0_25px_rgba(253,224,71,0.4)] active:scale-90 transition-all">
                     <Barcode size={20} />
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="bg-black border-primary text-white rounded-[32px] p-6 max-w-sm z-[100]">
-                  <DialogTitle className="sr-only">Scan Code-Barres</DialogTitle>
-                  <div id="reader" className="w-full min-h-[300px] bg-black/50 border border-primary/20 rounded-2xl overflow-hidden" />
-                  {isFetchingBarcode && <div className="flex justify-center mt-6"><Loader2 className="animate-spin text-primary" /></div>}
-                  {barcodeResult && (
-                    <div className="mt-8 p-6 border border-primary bg-primary/5 rounded-2xl">
-                      <div className="flex gap-5 mb-6">
-                        <img src={barcodeResult.imageUrl || getFallbackImage(barcodeResult.name)} className="w-20 h-20 object-cover border border-primary rounded-xl" alt="" />
-                        <div className="flex-1">
-                          <h3 className="font-black uppercase mb-3 text-sm tracking-tight text-primary neon-text-yellow">{barcodeResult.name}</h3>
-                          <div className="grid grid-cols-4 gap-2 text-center">
-                            <div><p className="text-[11px] font-black">{barcodeResult.calories}</p><p className="text-[7px] text-muted-foreground font-black">KCAL</p></div>
-                            <div><p className="text-[11px] font-black">{barcodeResult.protein}g</p><p className="text-[7px] text-muted-foreground font-black">PROT</p></div>
-                            <div><p className="text-[11px] font-black">{barcodeResult.carbs}g</p><p className="text-[7px] text-muted-foreground font-black">GLUC</p></div>
-                            <div><p className="text-[11px] font-black">{barcodeResult.fat}g</p><p className="text-[7px] text-muted-foreground font-black">LIPID</p></div>
+                <DialogContent className="bg-black border-primary text-white rounded-[32px] p-0 overflow-hidden max-w-sm z-[100] h-[70vh]">
+                  <DialogTitle className="sr-only">Scanner Diagnostique</DialogTitle>
+                  
+                  {!barcodeResult && (
+                    <div className="relative w-full h-full flex flex-col">
+                      <div className="flex-1 relative overflow-hidden bg-black/20">
+                        {/* Flux Vidéo */}
+                        <div id="barcode-reader" className="w-full h-full" />
+                        
+                        {/* Overlay Viseur Cyberpunk */}
+                        <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
+                          {/* Fond assombri autour du cadre */}
+                          <div className="absolute inset-0 bg-black/40" />
+                          
+                          {/* Cadre de Scan */}
+                          <div className="relative w-64 h-40 border-2 border-transparent">
+                            <div className="absolute inset-0 bg-transparent border-[1px] border-accent/20" />
+                            
+                            {/* Coins en équerre bleu néon */}
+                            <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-accent neon-text-blue" />
+                            <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-accent neon-text-blue" />
+                            <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-accent neon-text-blue" />
+                            <div className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-accent neon-text-blue" />
+                            
+                            {/* Ligne Laser de Balayage */}
+                            <div className="scan-laser-line" />
                           </div>
                         </div>
+
+                        {/* Badges de Statut */}
+                        <div className="absolute top-4 left-4 z-20 flex gap-2">
+                           <Badge className="bg-accent/20 text-accent border-accent/40 text-[7px] font-black tracking-widest uppercase">SYSTÈME SCAN ACTIF</Badge>
+                           <Badge className="bg-black/40 text-white/60 border-white/10 text-[7px] font-black tracking-widest uppercase">AUTO-FOCUS: ON</Badge>
+                        </div>
                       </div>
-                      <Button type="button" disabled={isSaving} className="w-full h-12 bg-primary text-black font-black neon-glow-yellow rounded-xl" onClick={() => addMeal(barcodeResult, true)}>
-                        {isSaving ? <Loader2 className="animate-spin" /> : "ARCHIVER PRODUIT"}
-                      </Button>
+
+                      {/* Contrôles Inférieurs */}
+                      <div className="p-6 bg-black border-t border-primary/20 space-y-4">
+                        <div className="flex gap-3">
+                          {!isScanningActive ? (
+                            <Button 
+                              type="button"
+                              className="flex-1 h-14 bg-black border-primary text-primary font-black uppercase tracking-[0.2em] rounded-xl neon-glow-yellow"
+                              onPointerDown={(e) => { e.preventDefault(); startBarcodeScanner(); }}
+                            >
+                              <Scan size={18} className="mr-2" /> ACTIVER SCANNER
+                            </Button>
+                          ) : (
+                            <Button 
+                              type="button"
+                              className="flex-1 h-14 bg-black border-destructive text-destructive font-black uppercase tracking-[0.2em] rounded-xl neon-glow-red"
+                              onPointerDown={(e) => { e.preventDefault(); stopBarcodeScanner(); }}
+                            >
+                              <X size={18} className="mr-2" /> ARRÊTER
+                            </Button>
+                          )}
+                        </div>
+                        <p className="text-[8px] text-center text-muted-foreground uppercase font-black tracking-[0.3em]">Positionnez le code-barres dans le viseur</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {isFetchingBarcode && (
+                    <div className="absolute inset-0 bg-black/80 z-[30] flex flex-col items-center justify-center gap-4">
+                      <Loader2 className="animate-spin text-primary" size={48} />
+                      <p className="text-[10px] font-black uppercase tracking-[0.6em] text-primary animate-pulse">LIAISON BASE DE DONNÉES...</p>
+                    </div>
+                  )}
+
+                  {barcodeResult && (
+                    <div className="h-full flex flex-col p-6 bg-black overflow-y-auto">
+                      <div className="flex-1 space-y-8">
+                        <header className="space-y-2">
+                          <p className="text-primary/60 text-[8px] font-black uppercase tracking-[0.4em]">Données Code-Barres</p>
+                          <h3 className="text-2xl font-black uppercase tracking-tight text-primary neon-text-yellow">{barcodeResult.name}</h3>
+                        </header>
+
+                        <div className="relative h-48 w-full border border-primary/20 rounded-2xl overflow-hidden group">
+                           <img src={barcodeResult.imageUrl || getFallbackImage(barcodeResult.name)} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="" />
+                           <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-4 p-4 bg-white/5 border border-white/10 rounded-2xl">
+                          <div className="text-center"><p className="text-sm font-black text-white">{barcodeResult.calories}</p><p className="text-[7px] text-muted-foreground uppercase font-black">KCAL</p></div>
+                          <div className="text-center"><p className="text-sm font-black text-white">{barcodeResult.protein}g</p><p className="text-[7px] text-muted-foreground uppercase font-black">PROT</p></div>
+                          <div className="text-center"><p className="text-sm font-black text-white">{barcodeResult.carbs}g</p><p className="text-[7px] text-muted-foreground uppercase font-black">GLUC</p></div>
+                          <div className="text-center"><p className="text-sm font-black text-white">{barcodeResult.fat}g</p><p className="text-[7px] text-muted-foreground uppercase font-black">LIPID</p></div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2">
+                             <AlertCircle size={14} className="text-primary" />
+                             <p className="text-[9px] font-black uppercase tracking-widest text-primary/80">Diagnostic de Santé</p>
+                          </div>
+                          <p className="text-[11px] font-medium leading-relaxed italic text-white/70 bg-white/5 p-4 border-l-2 border-primary">{barcodeResult.healthAdvice}</p>
+                        </div>
+                      </div>
+
+                      <div className="pt-8 pb-4 flex gap-3">
+                         <Button variant="outline" className="flex-1 h-14 border-white/10 text-white font-black rounded-xl uppercase tracking-widest" onClick={() => setBarcodeResult(null)}>RESET</Button>
+                         <Button type="button" disabled={isSaving} className="flex-[2] h-14 bg-primary text-black font-black neon-glow-yellow rounded-xl uppercase tracking-widest" onClick={() => addMeal(barcodeResult, true)}>
+                           {isSaving ? <Loader2 className="animate-spin" /> : "ARCHIVER PRODUIT"}
+                         </Button>
+                      </div>
                     </div>
                   )}
                 </DialogContent>
