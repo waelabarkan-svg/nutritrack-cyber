@@ -626,8 +626,13 @@ export default function JournalPage() {
                 <button 
                   type="button" 
                   disabled={isSaving}
-                  className="w-full h-14 bg-primary text-black font-black neon-glow-yellow rounded-xl active:scale-95 transition-all flex items-center justify-center gap-2"
-                  onPointerDown={() => addMeal(selectedFoodForPortion, false, customQuantity)}
+                  className="w-full h-14 bg-primary text-black font-black rounded-xl active:scale-95 transition-all flex items-center justify-center gap-2 touch-none"
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    if (!isSaving) {
+                      addMeal(selectedFoodForPortion, false, customQuantity);
+                    }
+                  }}
                 >
                   {isSaving ? <Loader2 className="animate-spin" size={18} /> : "ARCHIVER LA DOSE"}
                 </button>
